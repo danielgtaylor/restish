@@ -20,6 +20,8 @@ github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38/go.mod h1:r7bzyV
 github.com/alecthomas/chroma v0.0.0-20181013211843-01e18834b5dd/go.mod h1:MmozekIi2rfQSzDcdEZ2BoJ9Pxs/7uc2Y4Boh+hIeZo=
 github.com/alecthomas/chroma v0.7.3 h1:NfdAERMy+esYQs8OXk0I868/qDxxCEo7FMz1WIqMAeI=
 github.com/alecthomas/chroma v0.7.3/go.mod h1:sko8vR34/90zvl5QdcUdvzL3J8NKjAUx9va9jPuFNoM=
+github.com/alecthomas/chroma v0.7.4-0.20200514040646-406571713633 h1:q2tBeIuY6a+TETyTQ40eeDMGQq97EWoOz0YXmhSfCjI=
+github.com/alecthomas/chroma v0.7.4-0.20200514040646-406571713633/go.mod h1:sko8vR34/90zvl5QdcUdvzL3J8NKjAUx9va9jPuFNoM=
 github.com/alecthomas/colour v0.0.0-20160524082231-60882d9e2721/go.mod h1:QO9JBoKquHd+jz9nshCh40fOfO+JzsoXy8qTHF68zU0=
 github.com/alecthomas/colour v0.1.0 h1:nOE9rJm6dsZ66RGWYSFrXw461ZIt9A6+nHgL7FRrDUk=
 github.com/alecthomas/colour v0.1.0/go.mod h1:QO9JBoKquHd+jz9nshCh40fOfO+JzsoXy8qTHF68zU0=

@@ -60,20 +60,32 @@ func marshalReadable(indent string, v interface{}) ([]byte, error) {
 		}
 
 		// Otherwise, print out the slice.
-		s := "[\n"
-
+		length := 0
+		lines := []string{}
 		for i := 0; i < rv.Len(); i++ {
 			encoded, err := marshalReadable(indent+"  ", rv.Index(i).Interface())
 			if err != nil {
 				return nil, err
 			}
-			s += indent + "  " + string(encoded) + "\n"
+			length += len(encoded) // TODO: handle multi-byte runes?
+			lines = append(lines, string(encoded))
 		}
 
-		s += indent + "]"
+		s := ""
+		if len(indent)+(len(lines)*2)+length < 80 {
+			// Special-case: short array gets inlined
+			s += "[" + strings.Join(lines, ", ") + "]"
+		} else {
+			s += "[\n" + indent + "  " + strings.Join(lines, "\n  "+indent) + "\n" + indent + "]"
+		}
 
 		return []byte(s), nil
 	case reflect.Map:
+		// Special case: empty map should go in-line
+		if rv.Len() == 0 {
+			return []byte("{}"), nil
+		}
+
 		m := "{\n"
 
 		// Sort the keys

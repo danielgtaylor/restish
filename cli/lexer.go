@@ -1,0 +1,54 @@
+package cli
+
+import (
+	"github.com/alecthomas/chroma"
+	"github.com/alecthomas/chroma/lexers"
+)
+
+// ReadableLexer colorizes the output of the Readable marshaller.
+var ReadableLexer = lexers.Register(chroma.MustNewLexer(
+	&chroma.Config{
+		Name:         "CLI Readable",
+		Aliases:      []string{"readable"},
+		NotMultiline: true,
+		DotAll:       true,
+	},
+	chroma.Rules{
+		"whitespace": {
+			{`\s+`, chroma.Text, nil},
+		},
+		"scalar": {
+			{`(true|false|null)\b`, chroma.KeywordConstant, nil},
+			{`"?0x[0-9a-f]+(...)?"?`, chroma.LiteralNumberHex, nil},
+			{`"?[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9:+-.]+Z?)?"?`, chroma.LiteralDate, nil},
+			{`-?(0|[1-9]\d*)(\.\d+[eE](\+|-)?\d+|[eE](\+|-)?\d+|\.\d+)`, chroma.LiteralNumberFloat, nil},
+			{`-?(0|[1-9]\d*)`, chroma.LiteralNumberInteger, nil},
+			{`"([a-z]+://|/)(\\\\|\\"|[^"])+"`, chroma.LiteralStringSymbol, nil},
+			{`"(\\\\|\\"|[^"])*"`, chroma.LiteralStringDouble, nil},
+		},
+		"objectrow": {
+			{`:`, chroma.Punctuation, nil},
+			{`\n`, chroma.Punctuation, chroma.Pop(1)},
+			{`\}`, chroma.Punctuation, chroma.Pop(2)},
+			chroma.Include("value"),
+		},
+		"object": {
+			chroma.Include("whitespace"),
+			{`\}`, chroma.Punctuation, chroma.Pop(1)},
+			{`(\\\\|\\:|[^:])+`, chroma.NameTag, chroma.Push("objectrow")},
+		},
+		"arrayvalue": {
+			{`\]`, chroma.Punctuation, chroma.Pop(1)},
+			chroma.Include("value"),
+		},
+		"value": {
+			chroma.Include("whitespace"),
+			{`\{`, chroma.Punctuation, chroma.Push("object")},
+			{`\[`, chroma.Punctuation, chroma.Push("arrayvalue")},
+			chroma.Include("scalar"),
+		},
+		"root": {
+			chroma.Include("value"),
+		},
+	},
+))

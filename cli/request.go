@@ -123,7 +123,7 @@ func ParseResponse(resp *http.Response) (Response, error) {
 	if len(data) > 0 {
 		ct := resp.Header.Get("content-type")
 		if err := Unmarshal(ct, data, &parsed); err != nil {
-			return Response{}, err
+			parsed = data
 		}
 	}
 

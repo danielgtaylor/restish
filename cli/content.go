@@ -80,7 +80,21 @@ type Text struct{}
 
 // Detect if the content type is text.
 func (t Text) Detect(contentType string) bool {
-	return strings.HasPrefix(contentType, "text/")
+	if strings.HasPrefix(contentType, "text/") {
+		return true
+	}
+
+	// Other known text formats
+	known := []string{
+		"application/javascript",
+	}
+	for _, ct := range known {
+		if strings.Contains(contentType, ct) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Marshal the value to a text string.

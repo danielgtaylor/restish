@@ -1,15 +1,19 @@
-# Restish CLI
+![Restish Logo](https://user-images.githubusercontent.com/106826/82109918-ec5b2300-96ee-11ea-9af0-8515329d5965.png)
 
-Restish is a CLI for interacting with [REST](https://apisyouwonthate.com/blog/rest-and-hypermedia-in-2019)-ish HTTP APIs with some nice features built-in, like always having the latest API resources, fields, and operations available when they go live on the API without needing to install or update anything.
+[Restish](https://rest.sh/) is a CLI for interacting with [REST](https://apisyouwonthate.com/blog/rest-and-hypermedia-in-2019)-ish HTTP APIs with some nice features built-in, like always having the latest API resources, fields, and operations available when they go live on the API without needing to install or update anything.
 
 Features include:
 
-- HTTP/2 ([RFC 7540](https://tools.ietf.org/html/rfc7540)) by _default_ with fallback to HTTP/1.1
+- HTTP/2 ([RFC 7540](https://tools.ietf.org/html/rfc7540)) with TLS by _default_ with fallback to HTTP/1.1
 - Generic head/get/post/put/patch/delete verbs like `curl` or [HTTPie](https://httpie.org/)
-- Understands [RFC 8631](https://tools.ietf.org/html/rfc8631) `service-desc` and [RFC 5988](https://tools.ietf.org/html/rfc5988#section-6.2.2) `describedby` link relations to auto-discover API specs if available.
-  - [OpenAPI 3](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.3.md) and [JSON Schema](https://json-schema.org/)
+- Generated commands for CLI operations, e.g. `restish my-api list-users`
+  - Automatically discovers API descriptions
+    - [RFC 8631](https://tools.ietf.org/html/rfc8631) `service-desc` link relation
+    - [RFC 5988](https://tools.ietf.org/html/rfc5988#section-6.2.2) `describedby` link relation
+  - Supported formats
+    - [OpenAPI 3](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.3.md) and [JSON Schema](https://json-schema.org/)
 - Automatic pagination of resource collections via [RFC 5988](https://tools.ietf.org/html/rfc5988) `prev` and `next` hypermedia links
-- API endpoint-based auth built-in:
+- API endpoint-based auth built-in with support for profiles:
   - HTTP Basic
   - API key via header or query param
   - OAuth2 client credentials flow (machine-to-machine, [RFC 6749](https://tools.ietf.org/html/rfc6749))
@@ -23,7 +27,7 @@ Features include:
 - CLI [shorthand](https://github.com/danielgtaylor/openapi-cli-generator/tree/master/shorthand#cli-shorthand-syntax) for structured data input (e.g. for JSON)
 - [JMESPath Plus](https://github.com/danielgtaylor/go-jmespath-plus) response filtering & projection
 - Colorized prettified readable output
-- Fast native binary
+- Fast native zero-dependency binary
 
 Why use this?
 

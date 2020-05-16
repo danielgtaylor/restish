@@ -72,6 +72,10 @@ func MakeRequest(req *http.Request) (*http.Response, error) {
 		req.Header.Set("accept", buildAcceptHeader())
 	}
 
+	if req.Header.Get("accept-encoding") == "" {
+		req.Header.Set("accept-encoding", buildAcceptEncodingHeader())
+	}
+
 	query := req.URL.Query()
 	for _, q := range viper.GetStringSlice("rsh-query") {
 		parts := strings.SplitN(q, "=", 2)
@@ -117,7 +121,12 @@ type Response struct {
 func ParseResponse(resp *http.Response) (Response, error) {
 	var parsed interface{}
 
+	// Handle content encodings
 	defer resp.Body.Close()
+	if err := DecodeResponse(resp); err != nil {
+		return Response{}, err
+	}
+
 	data, _ := ioutil.ReadAll(resp.Body)
 
 	if len(data) > 0 {

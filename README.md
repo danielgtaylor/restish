@@ -14,12 +14,13 @@ Features include:
   - API key via header or query param
   - OAuth2 client credentials flow (machine-to-machine, [RFC 6749](https://tools.ietf.org/html/rfc6749))
   - OAuth2 authorization code (with PKCE [RFC 7636](https://tools.ietf.org/html/rfc7636)) flow
-- Content negotiation & unmarshalling built-in:
+- Content negotiation, decoding & unmarshalling built-in:
   - JSON ([RFC 8259](https://tools.ietf.org/html/rfc8259), https://www.json.org/)
   - YAML (https://yaml.org/)
   - CBOR ([RFC 7049](https://tools.ietf.org/html/rfc7049), http://cbor.io/)
   - MessagePack (https://msgpack.org/)
-- CLI shorthand for structured data input (e.g. for JSON)
+  - Gzip ([RFC 1952](https://tools.ietf.org/html/rfc1952)) and Brotli ([RFC 7932](https://tools.ietf.org/html/rfc7932)) content encoding
+- CLI [shorthand](https://github.com/danielgtaylor/openapi-cli-generator/tree/master/shorthand#cli-shorthand-syntax) for structured data input (e.g. for JSON)
 - [JMESPath Plus](https://github.com/danielgtaylor/go-jmespath-plus) response filtering & projection
 - Colorized prettified readable output
 - Fast native binary

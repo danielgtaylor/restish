@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/hex"
 	"fmt"
+	"math"
 	"reflect"
 	"sort"
 	"strconv"
@@ -36,8 +37,29 @@ func marshalReadable(indent string, v interface{}) ([]byte, error) {
 		i := rv.Convert(reflect.TypeOf(int64(0))).Interface().(int64)
 		return []byte(strconv.FormatInt(i, 10)), nil
 	case reflect.Float32, reflect.Float64:
-		f := rv.Convert(reflect.TypeOf(float64(0))).Interface().(float64)
-		return []byte(strconv.FormatFloat(f, 'g', -1, 64)), nil
+		// Copied from https://golang.org/src/encoding/json/encode.go
+		f := rv.Float()
+		abs := math.Abs(f)
+		fmtByte := byte('f')
+		bits := 64
+		if rv.Kind() == reflect.Float32 {
+			bits = 32
+		}
+		if abs != 0 {
+			if bits == 64 && (abs < 1e-6 || abs >= 1e21) || bits == 32 && (float32(abs) < 1e-6 || float32(abs) >= 1e21) {
+				fmtByte = 'e'
+			}
+		}
+		b := []byte(strconv.FormatFloat(f, fmtByte, -1, bits))
+		if fmtByte == 'e' {
+			// clean up e-09 to e-9
+			n := len(b)
+			if n >= 4 && b[n-4] == 'e' && b[n-3] == '-' && b[n-2] == '0' {
+				b[n-2] = b[n-1]
+				b = b[:n-1]
+			}
+		}
+		return b, nil
 	case reflect.String:
 		return []byte(`"` + strings.Replace(v.(string), `"`, `\"`, -1) + `"`), nil
 	case reflect.Array:

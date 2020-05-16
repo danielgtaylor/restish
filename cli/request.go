@@ -20,6 +20,15 @@ func fixAddress(addr string) string {
 	}
 
 	if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
+		// Does the first part match a known API? If so, replace it with
+		// the base URL for that API.
+		parts := strings.Split(addr, "/")
+		c := configs[parts[0]]
+		if c.Base != "" {
+			parts[0] = c.Base
+			return strings.Join(parts, "/")
+		}
+
 		// Local traffic defaults to HTTP, everything else uses TLS.
 		if strings.Contains(addr, "localhost") {
 			addr = "http://" + addr

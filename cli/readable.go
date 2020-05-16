@@ -61,7 +61,14 @@ func marshalReadable(indent string, v interface{}) ([]byte, error) {
 		}
 		return b, nil
 	case reflect.String:
-		return []byte(`"` + strings.Replace(v.(string), `"`, `\"`, -1) + `"`), nil
+		// Escape quotes
+		s := strings.Replace(v.(string), `"`, `\"`, -1)
+
+		// Trim trailing newlines & add indentation
+		s = strings.TrimRight(s, "\n")
+		s = strings.Replace(s, "\n", "\n  "+indent, -1)
+
+		return []byte(`"` + s + `"`), nil
 	case reflect.Array:
 		return marshalReadable(indent, rv.Slice(0, rv.Len()).Interface())
 	case reflect.Slice:

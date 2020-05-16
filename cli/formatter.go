@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"net/http"
 	"reflect"
 	"sort"
@@ -13,7 +15,10 @@ import (
 	"github.com/alecthomas/chroma/styles"
 	jmespath "github.com/danielgtaylor/go-jmespath-plus"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/ssh/terminal"
 	"gopkg.in/yaml.v2"
+
+	"github.com/eliukblau/pixterm/pkg/ansimage"
 )
 
 func init() {
@@ -198,26 +203,48 @@ func (f *DefaultFormatter) Format(resp Response) error {
 			}
 
 			var e []byte
-			if s, ok := resp.Body.(string); ok {
-				text += "\n" + s
-			} else if reflect.ValueOf(resp.Body).Kind() != reflect.Invalid {
-				e, err = MarshalReadable(resp.Body)
+
+			ct := resp.Headers["Content-Type"]
+			if ct == "image/png" || ct == "image/jpeg" || ct == "image/webp" || ct == "image/gif" {
+				// This is likely an image. Let's display it if we can! Get the window
+				// size, read and scale the image, and display it using unicode.
+				w, h, err := terminal.GetSize(0)
 				if err != nil {
-					return err
+					// Default to standard terminal size
+					w, h = 80, 24
 				}
 
-				if f.tty {
-					// Uncomment to debug lexer...
-					// iter, err := ReadableLexer.Tokenise(&chroma.TokeniseOptions{State: "root"}, string(e))
-					// if err != nil {
-					// 	panic(err)
-					// }
-					// for _, token := range iter.Tokens() {
-					// 	fmt.Println(token.Type, token.Value)
-					// }
+				image, err := ansimage.NewScaledFromReader(bytes.NewReader(resp.Body.([]byte)), h*2, w*1, color.Transparent, ansimage.ScaleModeFit, ansimage.NoDithering)
+				if err == nil {
+					e = []byte(image.Render())
+					handled = true
+				} else {
+					LogWarning("Unable to display image: %v", err)
+				}
+			}
 
-					if e, err = Highlight("readable", e); err != nil {
+			if !handled {
+				if s, ok := resp.Body.(string); ok {
+					text += "\n" + s
+				} else if reflect.ValueOf(resp.Body).Kind() != reflect.Invalid {
+					e, err = MarshalReadable(resp.Body)
+					if err != nil {
 						return err
+					}
+
+					if f.tty {
+						// Uncomment to debug lexer...
+						// iter, err := ReadableLexer.Tokenise(&chroma.TokeniseOptions{State: "root"}, string(e))
+						// if err != nil {
+						// 	panic(err)
+						// }
+						// for _, token := range iter.Tokens() {
+						// 	fmt.Println(token.Type, token.Value)
+						// }
+
+						if e, err = Highlight("readable", e); err != nil {
+							return err
+						}
 					}
 				}
 			}

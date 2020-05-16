@@ -1,12 +1,9 @@
 package cli
 
 import (
-	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,7 +13,6 @@ import (
 	"github.com/logrusorgru/aurora"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
-	"github.com/peterhellberg/link"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -72,14 +68,6 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 
 var tty bool
 var au aurora.Aurora
-var loaders []Loader
-
-// Loader is used to detect and load an API spec, turning it into CLI commands.
-type Loader interface {
-	LocationHints() []string
-	Detect(resp *http.Response) bool
-	Load(entrypoint, spec url.URL, resp *http.Response) []*Operation
-}
 
 func generic(method string, addr string, args []string) {
 	var body io.Reader
@@ -280,115 +268,6 @@ func initCache(appName string) {
 	}
 
 	Cache.ReadInConfig()
-}
-
-// AddLoader adds a new API spec loader to the CLI.
-func AddLoader(loader Loader) {
-	loaders = append(loaders, loader)
-}
-
-// Load will hydrate the command tree for an API, possibly refreshing the
-// API spec if the cache is out of date.
-func Load(entrypoint string, root *cobra.Command) {
-	uris := []string{}
-
-	// TODO: load from cache if present
-
-	LogInfo("Refreshing service definition spec...")
-
-	uri, err := url.Parse(entrypoint)
-	if err != nil {
-		panic(err)
-	}
-
-	name, config := findAPI(entrypoint)
-	found := false
-	if name != "" && len(config.SpecFiles) > 0 {
-		// Load the cached files
-		for _, filename := range config.SpecFiles {
-			resp := &http.Response{
-				Proto:      "HTTP/1.1",
-				StatusCode: 200,
-			}
-
-			body, err := ioutil.ReadFile(filename)
-			if err != nil {
-				panic(err)
-			}
-
-			for _, l := range loaders {
-				// Reset the body
-				resp.Body = ioutil.NopCloser(bytes.NewReader(body))
-
-				if l.Detect(resp) {
-					found = true
-					resp.Body = ioutil.NopCloser(bytes.NewReader(body))
-					operations := l.Load(*uri, *uri, resp)
-					for _, op := range operations {
-						root.AddCommand(op.command())
-					}
-				}
-			}
-		}
-
-		if found {
-			return
-		}
-	}
-
-	LogDebug("Checking %s", entrypoint)
-	resp, err := http.Get(entrypoint)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	links := link.ParseResponse(resp)
-	if serviceDesc := links["service-desc"]; serviceDesc != nil {
-		uris = append(uris, serviceDesc.URI)
-	}
-
-	// Try hints next
-	for _, l := range loaders {
-		uris = append(uris, l.LocationHints()...)
-	}
-
-	uris = append(uris, uri.String())
-
-	for _, checkURI := range uris {
-		parsed, err := url.Parse(checkURI)
-		if err != nil {
-			panic(err)
-		}
-		resolved := uri.ResolveReference(parsed)
-		LogDebug("Checking %s", resolved)
-
-		resp, err := http.Get(resolved.String()) // TODO: use HEAD request
-		if err != nil {
-			panic(err)
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			panic(err)
-		}
-
-		for _, l := range loaders {
-			// Reset the body
-			resp.Body = ioutil.NopCloser(bytes.NewReader(body))
-
-			if l.Detect(resp) {
-				resp.Body = ioutil.NopCloser(bytes.NewReader(body))
-				operations := l.Load(*uri, *resolved, resp)
-				for _, op := range operations {
-					root.AddCommand(op.command())
-				}
-				return
-			}
-		}
-	}
-
-	panic(fmt.Errorf("could not detect API type: %s", entrypoint))
 }
 
 // Run the CLI! Parse arguments, make requests, print responses.

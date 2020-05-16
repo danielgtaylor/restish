@@ -82,7 +82,7 @@ func getRequestInfo(op *openapi3.Operation) (string, string, []interface{}) {
 	return "", "", nil
 }
 
-func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, op *openapi3.Operation) *cli.Operation {
+func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, op *openapi3.Operation) cli.Operation {
 	pathParams := []*cli.Param{}
 	queryParams := []*cli.Param{}
 	headerParams := []*cli.Param{}
@@ -145,7 +145,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, o
 		mediaType, _, _ = getRequestInfo(op)
 	}
 
-	return &cli.Operation{
+	return cli.Operation{
 		Name:          slug.Make(op.OperationID),
 		Short:         op.Summary,
 		Long:          op.Description,
@@ -158,17 +158,17 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, o
 	}
 }
 
-func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *http.Response) []*cli.Operation {
+func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *http.Response) (cli.API, error) {
 	loader := openapi3.NewSwaggerLoader()
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		return cli.API{}, err
 	}
 
 	swagger, err := loader.LoadSwaggerFromDataWithPath(data, location)
 	if err != nil {
-		panic(err)
+		return cli.API{}, err
 	}
 	// spew.Dump(swagger)
 
@@ -180,17 +180,17 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		if strings.HasPrefix(s.URL, prefix) {
 			base, err := url.Parse(s.URL)
 			if err != nil {
-				panic(err)
+				return cli.API{}, err
 			}
 			basePath = base.Path
 		}
 	}
 
-	operations := []*cli.Operation{}
+	operations := []cli.Operation{}
 	for uri, path := range swagger.Paths {
 		resolved, err := cfg.Resolve(basePath + uri)
 		if err != nil {
-			panic(err)
+			return cli.API{}, err
 		}
 		if path.Get != nil {
 			operations = append(operations, openapiOperation(cmd, http.MethodGet, resolved, path.Get))
@@ -209,7 +209,20 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		}
 	}
 
-	return operations
+	short := ""
+	long := ""
+	if swagger.Info != nil {
+		short = swagger.Info.Title
+		long = swagger.Info.Description
+	}
+
+	api := cli.API{
+		Short:      short,
+		Long:       long,
+		Operations: operations,
+	}
+
+	return api, nil
 }
 
 type loader struct {
@@ -247,7 +260,7 @@ func (l *loader) Detect(resp *http.Response) bool {
 	return false
 }
 
-func (l *loader) Load(entrypoint, spec url.URL, resp *http.Response) []*cli.Operation {
+func (l *loader) Load(entrypoint, spec url.URL, resp *http.Response) (cli.API, error) {
 	l.location = &spec
 	l.base = &entrypoint
 	return loadOpenAPI3(l, cli.Root, &spec, resp)

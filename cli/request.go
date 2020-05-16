@@ -125,6 +125,16 @@ type Response struct {
 	Body    interface{}       `json:"body"`
 }
 
+// Map returns a map representing this response matching the encoded JSON.
+func (r Response) Map() map[string]interface{} {
+	return map[string]interface{}{
+		"proto":   r.Proto,
+		"status":  r.Status,
+		"headers": r.Headers,
+		"body":    r.Body,
+	}
+}
+
 // ParseResponse takes an HTTP response and tries to parse it using the
 // registered content types. It returns a map representing the request,
 func ParseResponse(resp *http.Response) (Response, error) {

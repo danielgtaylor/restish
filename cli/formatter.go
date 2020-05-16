@@ -76,19 +76,19 @@ func makeJSONSafe(obj interface{}) interface{} {
 			tmpData[kStr] = makeJSONSafe(value.MapIndex(k).Interface())
 		}
 		return tmpData
-		// case reflect.Struct:
-		// 	for i := 0; i < value.NumField(); i++ {
-		// 		field := value.Field(i)
-		// 		spew.Dump(field, field.Kind(), field.CanSet())
-		// 		switch field.Kind() {
-		// 		case reflect.Slice, reflect.Map, reflect.Struct, reflect.Ptr:
-		// 			if field.CanSet() {
-		// 				field.Set(reflect.ValueOf(makeJSONSafe(field.Interface())))
-		// 			}
-		// 		}
-		// 	}
-		// case reflect.Ptr:
-		// 	return makeJSONSafe(value.Elem().Interface())
+	// case reflect.Struct:
+	// 	for i := 0; i < value.NumField(); i++ {
+	// 		field := value.Field(i)
+	// 		spew.Dump(field, field.Kind(), field.CanSet())
+	// 		switch field.Kind() {
+	// 		case reflect.Slice, reflect.Map, reflect.Struct, reflect.Ptr:
+	// 			if field.CanSet() {
+	// 				field.Set(reflect.ValueOf(makeJSONSafe(field.Interface())))
+	// 			}
+	// 		}
+	// 	}
+	case reflect.Ptr:
+		return makeJSONSafe(value.Elem().Interface())
 	}
 
 	return obj
@@ -128,8 +128,14 @@ func NewDefaultFormatter(tty bool) *DefaultFormatter {
 func (f *DefaultFormatter) Format(resp Response) error {
 	outFormat := viper.GetString("rsh-output-format")
 
-	if viper.GetString("rsh-filter") != "" {
-		result, err := jmespath.Search(viper.GetString("rsh-filter"), resp.Body)
+	var data interface{} = resp.Map()
+
+	filter := viper.GetString("rsh-filter")
+	if filter != "" {
+		// JMESPath can't support maps with arbitrary key types, so we convert
+		// to map[string]interface{} before filtering.
+		data = makeJSONSafe(data)
+		result, err := jmespath.Search(filter, data)
 
 		if err != nil {
 			return err
@@ -144,7 +150,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 			return nil
 		}
 
-		resp.Body = result
+		data = result
 	}
 
 	// Encode to the requested output format using nice formatting.
@@ -153,10 +159,10 @@ func (f *DefaultFormatter) Format(resp Response) error {
 	var lexer string
 
 	handled := false
-	kind := reflect.ValueOf(resp.Body).Kind()
+	kind := reflect.ValueOf(data).Kind()
 	if viper.GetBool("rsh-raw") && kind == reflect.String {
 		handled = true
-		dStr := resp.Body.(string)
+		dStr := data.(string)
 		encoded = []byte(dStr)
 		lexer = ""
 
@@ -167,7 +173,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 	} else if viper.GetBool("rsh-raw") && kind == reflect.Slice {
 		scalars := true
 
-		for _, item := range resp.Body.([]interface{}) {
+		for _, item := range data.([]interface{}) {
 			switch item.(type) {
 			case nil, bool, int, int64, float64, string:
 				// The above are scalars used by decoders
@@ -178,7 +184,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 
 		if scalars {
 			handled = true
-			for _, item := range resp.Body.([]interface{}) {
+			for _, item := range data.([]interface{}) {
 				if item == nil {
 					encoded = append(encoded, []byte("null\n")...)
 				} else {
@@ -263,8 +269,8 @@ func (f *DefaultFormatter) Format(resp Response) error {
 				encoded = append(encoded, e...)
 			}
 		} else if outFormat == "yaml" {
-			resp.Body = makeJSONSafe(resp.Body)
-			encoded, err = yaml.Marshal(resp)
+			data = makeJSONSafe(data)
+			encoded, err = yaml.Marshal(data)
 
 			if err != nil {
 				return err
@@ -272,8 +278,8 @@ func (f *DefaultFormatter) Format(resp Response) error {
 
 			lexer = "yaml"
 		} else {
-			resp.Body = makeJSONSafe(resp.Body)
-			encoded, err = json.MarshalIndent(resp, "", "  ")
+			data = makeJSONSafe(data)
+			encoded, err = json.MarshalIndent(data, "", "  ")
 
 			if err != nil {
 				return err

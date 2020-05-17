@@ -2,10 +2,12 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path"
 	"time"
 
 	"github.com/peterhellberg/link"
@@ -36,7 +38,7 @@ func AddLoader(loader Loader) {
 	loaders = append(loaders, loader)
 }
 
-func load(root *cobra.Command, entrypoint, spec url.URL, resp *http.Response, loader Loader) error {
+func load(root *cobra.Command, entrypoint, spec url.URL, resp *http.Response, name string, loader Loader) error {
 	api, err := loader.Load(entrypoint, spec, resp)
 	if err != nil {
 		return err
@@ -51,6 +53,16 @@ func load(root *cobra.Command, entrypoint, spec url.URL, resp *http.Response, lo
 	for _, op := range api.Operations {
 		root.AddCommand(op.command())
 	}
+
+	// Save the cache
+	cacheFile := path.Join(cacheDir(), name+".json")
+	d, err := json.MarshalIndent(api, "", "  ")
+	if err != nil {
+		// No cache
+		LogDebug("Couldn't save API cache: %v", err)
+		return nil
+	}
+	ioutil.WriteFile(cacheFile, d, 0600)
 
 	return nil
 }
@@ -72,7 +84,7 @@ func Load(entrypoint string, root *cobra.Command) error {
 	name, config := findAPI(entrypoint)
 	found := false
 	if name != "" && len(config.SpecFiles) > 0 {
-		// Load the cached files
+		// Load the local files
 		for _, filename := range config.SpecFiles {
 			resp := &http.Response{
 				Proto:      "HTTP/1.1",
@@ -91,7 +103,7 @@ func Load(entrypoint string, root *cobra.Command) error {
 				if l.Detect(resp) {
 					found = true
 					resp.Body = ioutil.NopCloser(bytes.NewReader(body))
-					if err := load(root, *uri, *uri, resp, l); err != nil {
+					if err := load(root, *uri, *uri, resp, name, l); err != nil {
 						return err
 					}
 				}
@@ -147,7 +159,7 @@ func Load(entrypoint string, root *cobra.Command) error {
 			if l.Detect(resp) {
 				resp.Body = ioutil.NopCloser(bytes.NewReader(body))
 
-				if err := load(root, *uri, *resolved, resp, l); err != nil {
+				if err := load(root, *uri, *resolved, resp, name, l); err != nil {
 					return err
 				}
 				return nil

@@ -6,17 +6,53 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/danielgtaylor/restish/cli"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+
+	"github.com/pquerna/cachecontrol"
+)
+
+// OpenAPI Extensions
+const (
+	// Change the CLI name for an operation or parameter
+	ExtName = "x-cli-name"
+
+	// Set additional command aliases for an operation
+	ExtAliases = "x-cli-aliases"
+
+	// Change the description of an operation or parameter
+	ExtDescription = "x-cli-description"
+
+	// Ignore a path, operation, or parameter
+	ExtIgnore = "x-cli-ignore"
+
+	// Create a hidden command for an operation. It will not show in the help,
+	// but can still be called.
+	ExtHidden = "x-cli-hidden"
 )
 
 // Resolver is able to resolve relative URIs against a base.
 type Resolver interface {
 	Resolve(uri string) (*url.URL, error)
+}
+
+// extStr returns the string value of an OpenAPI extension stored as a JSON
+// raw message.
+func extStr(v openapi3.ExtensionProps, key string) (decoded string) {
+	i := v.Extensions[key]
+	if i != nil {
+		if err := json.Unmarshal(i.(json.RawMessage), &decoded); err != nil {
+			cli.LogWarning("Cannot read extensions property %s", key)
+			decoded = ""
+		}
+	}
+
+	return
 }
 
 func getRequestInfo(op *openapi3.Operation) (string, string, []interface{}) {
@@ -82,12 +118,14 @@ func getRequestInfo(op *openapi3.Operation) (string, string, []interface{}) {
 	return "", "", nil
 }
 
-func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, op *openapi3.Operation) cli.Operation {
+func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, path *openapi3.PathItem, op *openapi3.Operation) cli.Operation {
 	pathParams := []*cli.Param{}
 	queryParams := []*cli.Param{}
 	headerParams := []*cli.Param{}
 
-	for _, p := range op.Parameters {
+	combinedParams := append(path.Parameters, op.Parameters...)
+
+	for _, p := range combinedParams {
 		if p.Value != nil {
 			var def interface{}
 			var example interface{}
@@ -119,9 +157,15 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, o
 				explode = *p.Value.Explode
 			}
 
+			displayName := ""
+			if override := extStr(p.Value.ExtensionProps, ExtName); override != "" {
+				displayName = override
+			}
+
 			param := &cli.Param{
 				Type:        typ,
 				Name:        p.Value.Name,
+				DisplayName: displayName,
 				Description: p.Value.Description,
 				Style:       style,
 				Explode:     explode,
@@ -145,16 +189,39 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, o
 		mediaType, _, _ = getRequestInfo(op)
 	}
 
+	name := slug.Make(op.OperationID)
+	if override := extStr(op.ExtensionProps, ExtName); override != "" {
+		name = override
+	}
+
+	var aliases []string
+	if op.Extensions[ExtAliases] != nil {
+		// We need to decode the raw extension value into our string slice.
+		json.Unmarshal(op.Extensions[ExtAliases].(json.RawMessage), &aliases)
+	}
+
+	desc := op.Description
+	if override := extStr(op.ExtensionProps, ExtDescription); override != "" {
+		desc = override
+	}
+
+	hidden := false
+	if path.Extensions[ExtHidden] != nil {
+		json.Unmarshal(path.Extensions[ExtHidden].(json.RawMessage), &hidden)
+	}
+
 	return cli.Operation{
-		Name:          slug.Make(op.OperationID),
+		Name:          name,
+		Aliases:       aliases,
 		Short:         op.Summary,
-		Long:          op.Description,
+		Long:          desc,
 		Method:        method,
 		URITemplate:   uriTemplate.String(),
 		PathParams:    pathParams,
 		QueryParams:   queryParams,
 		HeaderParams:  headerParams,
 		BodyMediaType: mediaType,
+		Hidden:        hidden,
 	}
 }
 
@@ -188,24 +255,30 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 
 	operations := []cli.Operation{}
 	for uri, path := range swagger.Paths {
+		var ignore bool
+		if path.Extensions[ExtIgnore] != nil {
+			json.Unmarshal(path.Extensions[ExtIgnore].(json.RawMessage), &ignore)
+		}
+		if ignore {
+			// Ignore this path.
+			continue
+		}
+
 		resolved, err := cfg.Resolve(basePath + uri)
 		if err != nil {
 			return cli.API{}, err
 		}
-		if path.Get != nil {
-			operations = append(operations, openapiOperation(cmd, http.MethodGet, resolved, path.Get))
-		}
-		if path.Post != nil {
-			operations = append(operations, openapiOperation(cmd, http.MethodPost, resolved, path.Post))
-		}
-		if path.Put != nil {
-			operations = append(operations, openapiOperation(cmd, http.MethodPut, resolved, path.Put))
-		}
-		if path.Patch != nil {
-			operations = append(operations, openapiOperation(cmd, http.MethodPatch, resolved, path.Patch))
-		}
-		if path.Delete != nil {
-			operations = append(operations, openapiOperation(cmd, http.MethodDelete, resolved, path.Delete))
+
+		for method, operation := range path.Operations() {
+			if path.Extensions[ExtIgnore] != nil {
+				json.Unmarshal(path.Extensions[ExtIgnore].(json.RawMessage), &ignore)
+			}
+			if ignore {
+				// Ignore this operation.
+				continue
+			}
+
+			operations = append(operations, openapiOperation(cmd, method, resolved, path, operation))
 		}
 	}
 
@@ -216,10 +289,20 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		long = swagger.Info.Description
 	}
 
+	// Assume we used an HTTP GET for getting the spec.
+	req, _ := http.NewRequest(http.MethodGet, location.String(), nil)
+	reasons, expires, _ := cachecontrol.CachableResponse(req, resp, cachecontrol.Options{})
+
+	if len(reasons) == 0 && expires.IsZero() {
+		// Default to one week.
+		expires = time.Now().Add(7 * 24 * time.Hour)
+	}
+
 	api := cli.API{
 		Short:      short,
 		Long:       long,
 		Operations: operations,
+		CacheUntil: expires,
 	}
 
 	return api, nil

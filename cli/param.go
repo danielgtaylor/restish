@@ -5,6 +5,7 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/iancoleman/strcase"
 	"github.com/spf13/pflag"
 )
 
@@ -23,6 +24,7 @@ const (
 type Param struct {
 	Type        string      `json:"type"`
 	Name        string      `json:"name"`
+	DisplayName string      `json:"displayName,omitEmpty"`
 	Description string      `json:"description,omitempty"`
 	Style       Style       `json:"style,omitempty"`
 	Explode     bool        `json:"explode,omitempty"`
@@ -31,14 +33,14 @@ type Param struct {
 }
 
 // Parse the parameter from a string input (e.g. command line argument)
-func (p *Param) Parse(value string) (interface{}, error) {
+func (p Param) Parse(value string) (interface{}, error) {
 	// TODO: parse based on the type, used mostly for path parameter parsing
 	// which is almost always a string anyway.
 	return value, nil
 }
 
 // Serialize the parameter based on the type/style/explode configuration.
-func (p *Param) Serialize(value interface{}) []string {
+func (p Param) Serialize(value interface{}) []string {
 	v := reflect.ValueOf(value)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
@@ -92,7 +94,13 @@ func (p *Param) Serialize(value interface{}) []string {
 }
 
 // AddFlag adds a new option flag to a command's flag set for this parameter.
-func (p *Param) AddFlag(flags *pflag.FlagSet) interface{} {
+func (p Param) AddFlag(flags *pflag.FlagSet) interface{} {
+	name := p.Name
+	if p.DisplayName != "" {
+		name = p.DisplayName
+	}
+	name = strcase.ToDelimited(p.Name, '-')
+
 	def := p.Default
 
 	switch p.Type {
@@ -100,32 +108,32 @@ func (p *Param) AddFlag(flags *pflag.FlagSet) interface{} {
 		if def == nil {
 			def = false
 		}
-		return flags.Bool(p.Name, def.(bool), p.Description)
+		return flags.Bool(name, def.(bool), p.Description)
 	case "integer":
 		if def == nil {
 			def = 0
 		}
-		return flags.Int(p.Name, int(def.(float64)), p.Description)
+		return flags.Int(name, int(def.(float64)), p.Description)
 	case "number":
 		if def == nil {
 			def = 0.0
 		}
-		return flags.Float64(p.Name, def.(float64), p.Description)
+		return flags.Float64(name, def.(float64), p.Description)
 	case "string":
 		if def == nil {
 			def = ""
 		}
-		return flags.String(p.Name, def.(string), p.Description)
+		return flags.String(name, def.(string), p.Description)
 	case "array[boolean]":
 		if def == nil {
 			def = []bool{}
 		}
-		return flags.BoolSlice(p.Name, def.([]bool), p.Description)
+		return flags.BoolSlice(name, def.([]bool), p.Description)
 	case "array[integer]":
 		if def == nil {
 			def = []int{}
 		}
-		return flags.IntSlice(p.Name, def.([]int), p.Description)
+		return flags.IntSlice(name, def.([]int), p.Description)
 	case "array[number]":
 		log.Printf("number slice not implemented for param %s", p.Name)
 		return nil
@@ -144,7 +152,7 @@ func (p *Param) AddFlag(flags *pflag.FlagSet) interface{} {
 			}
 			def = tmp
 		}
-		return flags.StringSlice(p.Name, def.([]string), p.Description)
+		return flags.StringSlice(name, def.([]string), p.Description)
 	}
 
 	return nil

@@ -227,6 +227,10 @@ func userHomeDir() string {
 	return os.Getenv("HOME")
 }
 
+func cacheDir() string {
+	return path.Join(userHomeDir(), "."+viper.GetString("app-name"))
+}
+
 func initConfig(appName, envPrefix string) {
 	// One-time setup to ensure the path exists so we can write files into it
 	// later as needed.

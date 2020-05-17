@@ -15,6 +15,7 @@ import (
 // Operation represents an API action, e.g. list-things or create-user
 type Operation struct {
 	Name          string   `json:"name"`
+	Aliases       []string `json:"aliases,omitempty"`
 	Short         string   `json:"short,omitempty"`
 	Long          string   `json:"long,omitempty"`
 	Method        string   `json:"method,omitempty"`
@@ -23,10 +24,11 @@ type Operation struct {
 	QueryParams   []*Param `json:"queryParams,omitempty"`
 	HeaderParams  []*Param `json:"headerParams,omitempty"`
 	BodyMediaType string   `json:"bodyMediaType,omitempty"`
+	Hidden        bool     `json:"hidden,omitempty"`
 }
 
 // command returns a Cobra command instance for this operation.
-func (o *Operation) command() *cobra.Command {
+func (o Operation) command() *cobra.Command {
 	flags := map[string]interface{}{}
 
 	use := slug.Make(o.Name)
@@ -40,10 +42,12 @@ func (o *Operation) command() *cobra.Command {
 	}
 
 	sub := &cobra.Command{
-		Use:   use,
-		Short: o.Short,
-		Long:  o.Long,
-		Args:  argSpec,
+		Use:     use,
+		Aliases: o.Aliases,
+		Short:   o.Short,
+		Long:    o.Long,
+		Args:    argSpec,
+		Hidden:  o.Hidden,
 		Run: func(cmd *cobra.Command, args []string) {
 			uri := o.URITemplate
 			for i, param := range o.PathParams {

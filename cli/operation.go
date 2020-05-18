@@ -41,11 +41,18 @@ func (o Operation) command() *cobra.Command {
 		argSpec = cobra.MinimumNArgs(len(o.PathParams))
 	}
 
+	long := o.Long
+	if tty {
+		if l, err := Highlight("markdown", []byte(o.Long)); err == nil {
+			long = string(l)
+		}
+	}
+
 	sub := &cobra.Command{
 		Use:     use,
 		Aliases: o.Aliases,
 		Short:   o.Short,
-		Long:    o.Long,
+		Long:    long,
 		Args:    argSpec,
 		Hidden:  o.Hidden,
 		Run: func(cmd *cobra.Command, args []string) {

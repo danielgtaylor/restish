@@ -5,14 +5,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
+	"github.com/danielgtaylor/openapi-cli-generator/shorthand"
 	"github.com/danielgtaylor/restish/cli"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 
 	"github.com/pquerna/cachecontrol"
 )
@@ -55,30 +56,16 @@ func extStr(v openapi3.ExtensionProps, key string) (decoded string) {
 	return
 }
 
-func getRequestInfo(op *openapi3.Operation) (string, string, []interface{}) {
+func getRequestInfo(op *openapi3.Operation) (string, *openapi3.Schema, []interface{}) {
 	mts := make(map[string][]interface{})
 
 	if op.RequestBody != nil && op.RequestBody.Value != nil {
 		for mt, item := range op.RequestBody.Value.Content {
-			var schema string
+			var schema *openapi3.Schema
 			var examples []interface{}
 
 			if item.Schema != nil && item.Schema.Value != nil {
-				// Let's make this a bit more concise. Since it has special JSON
-				// marshalling functions, we do a dance to get it into plain JSON before
-				// converting to YAML.
-				data, err := json.Marshal(item.Schema.Value)
-				if err != nil {
-					continue
-				}
-
-				var unmarshalled interface{}
-				json.Unmarshal(data, &unmarshalled)
-
-				data, err = yaml.Marshal(unmarshalled)
-				if err == nil {
-					schema = string(data)
-				}
+				schema = item.Schema.Value
 			}
 
 			if item.Example != nil {
@@ -99,23 +86,23 @@ func getRequestInfo(op *openapi3.Operation) (string, string, []interface{}) {
 	// Prefer JSON.
 	for mt, item := range mts {
 		if strings.Contains(mt, "json") {
-			return mt, item[0].(string), item[1].([]interface{})
+			return mt, item[0].(*openapi3.Schema), item[1].([]interface{})
 		}
 	}
 
 	// Fall back to YAML next.
 	for mt, item := range mts {
 		if strings.Contains(mt, "yaml") {
-			return mt, item[0].(string), item[1].([]interface{})
+			return mt, item[0].(*openapi3.Schema), item[1].([]interface{})
 		}
 	}
 
 	// Last resort: return the first we find!
 	for mt, item := range mts {
-		return mt, item[0].(string), item[1].([]interface{})
+		return mt, item[0].(*openapi3.Schema), item[1].([]interface{})
 	}
 
-	return "", "", nil
+	return "", nil, nil
 }
 
 func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, path *openapi3.PathItem, op *openapi3.Operation) cli.Operation {
@@ -184,11 +171,6 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		}
 	}
 
-	mediaType := ""
-	if op.RequestBody != nil && op.RequestBody.Value != nil {
-		mediaType, _, _ = getRequestInfo(op)
-	}
-
 	name := slug.Make(op.OperationID)
 	if override := extStr(op.ExtensionProps, ExtName); override != "" {
 		name = override
@@ -208,6 +190,78 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 	hidden := false
 	if path.Extensions[ExtHidden] != nil {
 		json.Unmarshal(path.Extensions[ExtHidden].(json.RawMessage), &hidden)
+	}
+
+	mediaType := ""
+	if op.RequestBody != nil && op.RequestBody.Value != nil {
+		mt, reqSchema, reqExamples := getRequestInfo(op)
+		mediaType = mt
+
+		var examples []string
+		if len(reqExamples) > 0 {
+			wroteHeader := false
+			for _, ex := range reqExamples {
+				if _, ok := ex.(string); !ok {
+					// Not a string, so it's structured data. Let's marshal it to the
+					// shorthand syntax if we can.
+					if m, ok := ex.(map[string]interface{}); ok {
+						ex = shorthand.Get(m)
+						examples = append(examples, ex.(string))
+						continue
+					}
+
+					b, _ := json.Marshal(ex)
+
+					if !wroteHeader {
+						desc += "\n## Input Example\n\n"
+						wroteHeader = true
+					}
+
+					desc += "\n" + string(b) + "\n"
+					continue
+				}
+
+				if !wroteHeader {
+					desc += "\n## Input Example\n\n"
+					wroteHeader = true
+				}
+
+				desc += "\n" + ex.(string) + "\n"
+			}
+		}
+
+		if reqSchema != nil {
+			desc += "\n## Request Schema (" + mt + ")\n\n```schema\n" + renderSchema(reqSchema, "", modeWrite) + "\n```\n"
+		}
+	}
+
+	codes := []string{}
+	for code := range op.Responses {
+		codes = append(codes, code)
+	}
+	sort.Strings(codes)
+
+	for _, code := range codes {
+		if op.Responses[code] == nil || op.Responses[code].Value == nil {
+			continue
+		}
+
+		resp := op.Responses[code].Value
+
+		if len(resp.Content) > 0 {
+			for ct, typeInfo := range resp.Content {
+				desc += "\n## Response " + code + " (" + ct + ")\n"
+
+				if typeInfo.Schema != nil && typeInfo.Schema.Value != nil {
+					desc += "\n```schema\n" + renderSchema(typeInfo.Schema.Value, "", modeRead) + "\n```\n"
+				}
+			}
+		} else {
+			desc += "\n## Response " + code + "\n"
+			if resp.Description != nil && *resp.Description != "" {
+				desc += "\n" + *resp.Description + "\n"
+			}
+		}
 	}
 
 	return cli.Operation{

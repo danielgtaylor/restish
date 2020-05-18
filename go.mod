@@ -3,7 +3,6 @@ module github.com/danielgtaylor/restish
 go 1.14
 
 require (
-	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
 	github.com/alecthomas/chroma v0.7.4-0.20200514040646-406571713633
 	github.com/andybalholm/brotli v1.0.0
 	github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba

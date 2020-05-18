@@ -52,3 +52,32 @@ var ReadableLexer = lexers.Register(chroma.MustNewLexer(
 		},
 	},
 ))
+
+// SchemaLexer colorizes schema output.
+var SchemaLexer = lexers.Register(chroma.MustNewLexer(
+	&chroma.Config{
+		Name:         "CLI Schema",
+		Aliases:      []string{"schema"},
+		NotMultiline: true,
+		DotAll:       true,
+	},
+	chroma.Rules{
+		"whitespace": {
+			{`\s+`, chroma.Text, nil},
+		},
+		"value": {
+			chroma.Include("whitespace"),
+			{`(\()([^ )]+)`, chroma.ByGroups(chroma.Text, chroma.Keyword), nil},
+			{`([^:]+)(:)([^ )]+)`, chroma.ByGroups(chroma.String, chroma.Text, chroma.Text), nil},
+			{`\)[^\n]*`, chroma.Text, chroma.Pop(1)},
+		},
+		"row": {
+			chroma.Include("whitespace"),
+			{`([^*:\n]+)(\*?)(:)`, chroma.ByGroups(chroma.NameTag, chroma.GenericStrong, chroma.Text), chroma.Push("value")},
+			{`(\()([^ )]+)`, chroma.ByGroups(chroma.Text, chroma.Keyword), chroma.Push("value")},
+		},
+		"root": {
+			chroma.Include("row"),
+		},
+	},
+))

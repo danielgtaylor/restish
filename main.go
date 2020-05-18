@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	cli.Init()
+	cli.Init("restish")
 
 	// Register content encodings
 	cli.AddEncoding("gzip", &cli.GzipEncoding{})

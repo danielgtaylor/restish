@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -85,9 +86,14 @@ func generic(method string, addr string, args []string) {
 }
 
 // Init will set up the CLI.
-func Init() {
-	initConfig("restish", "")
-	initCache("restish")
+func Init(name string) {
+	initConfig(name, "")
+	initCache(name)
+
+	// Reset registries.
+	authHandlers = map[string]AuthHandler{}
+	contentTypes = []contentTypeEntry{}
+	encodings = map[string]ContentEncoding{}
 
 	// Determine if we are using a TTY or colored output is forced-on.
 	tty = false
@@ -114,11 +120,11 @@ func Init() {
 		Use:     filepath.Base(os.Args[0]),
 		Long:    "A generic client for REST-ish APIs <https://rest.sh/>",
 		Version: "0.1",
-		Example: `  # Get a URL
-  $ restish google.com
+		Example: fmt.Sprintf(`  # Get a URL
+  $ %s google.com
 
   # Specify verb, header, and body shorthand
-  $ restish post :8888/users -H authorization:abc123 name: Kari, role: admin`,
+  $ %s post :8888/users -H authorization:abc123 name: Kari, role: admin`, name, name),
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodGet, args[0], args[1:])

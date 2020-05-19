@@ -7,15 +7,12 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/danielgtaylor/openapi-cli-generator/shorthand"
 	"github.com/danielgtaylor/restish/cli"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
-
-	"github.com/pquerna/cachecontrol"
 )
 
 // OpenAPI Extensions
@@ -366,20 +363,10 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		long = swagger.Info.Description
 	}
 
-	// Assume we used an HTTP GET for getting the spec.
-	req, _ := http.NewRequest(http.MethodGet, location.String(), nil)
-	reasons, expires, _ := cachecontrol.CachableResponse(req, resp, cachecontrol.Options{})
-
-	if len(reasons) == 0 && expires.IsZero() {
-		// Default to one week.
-		expires = time.Now().Add(7 * 24 * time.Hour)
-	}
-
 	api := cli.API{
 		Short:      short,
 		Long:       long,
 		Operations: operations,
-		CacheUntil: expires,
 	}
 
 	return api, nil

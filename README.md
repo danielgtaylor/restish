@@ -24,6 +24,7 @@ Features include:
   - CBOR ([RFC 7049](https://tools.ietf.org/html/rfc7049), http://cbor.io/)
   - MessagePack (https://msgpack.org/)
   - Gzip ([RFC 1952](https://tools.ietf.org/html/rfc1952)) and Brotli ([RFC 7932](https://tools.ietf.org/html/rfc7932)) content encoding
+- Local caching that respects [RFC 7234](https://tools.ietf.org/html/rfc7234) `Cache-Control` and `Expires` headers
 - CLI [shorthand](https://github.com/danielgtaylor/openapi-cli-generator/tree/master/shorthand#cli-shorthand-syntax) for structured data input (e.g. for JSON)
 - [JMESPath Plus](https://github.com/danielgtaylor/go-jmespath-plus) response filtering & projection
 - Colorized prettified readable output

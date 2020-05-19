@@ -267,6 +267,7 @@ Not after (expires): %s (%s)
 	AddGlobalFlag("rsh-query", "q", "Add custom query param", []string{}, true)
 	AddGlobalFlag("rsh-no-paginate", "", "Disable auto-pagination", false, false)
 	AddGlobalFlag("rsh-profile", "p", "API auth profile", "default", false)
+	AddGlobalFlag("rsh-no-cache", "", "Disable HTTP cache", false, false)
 
 	initAPIConfig()
 }

@@ -8,10 +8,12 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/peterhellberg/link"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // API represents an abstracted API description used to build CLI commands
@@ -21,7 +23,6 @@ type API struct {
 	Short      string      `json:"short"`
 	Long       string      `json:"long,omitempty"`
 	Operations []Operation `json:"operations,omitempty"`
-	CacheUntil time.Time   `json:"cacheUntil,omitempty"`
 }
 
 var loaders []Loader
@@ -72,9 +73,9 @@ func load(root *cobra.Command, entrypoint, spec url.URL, resp *http.Response, na
 func Load(entrypoint string, root *cobra.Command) error {
 	uris := []string{}
 
-	// TODO: load from cache if present
-
-	LogInfo("Refreshing service definition spec...")
+	if !strings.HasSuffix(entrypoint, "/") {
+		entrypoint += "/"
+	}
 
 	uri, err := url.Parse(entrypoint)
 	if err != nil {
@@ -115,12 +116,24 @@ func Load(entrypoint string, root *cobra.Command) error {
 		}
 	}
 
+	// For fetching specs, we apply a 24-hour cache time if no cache headers
+	// are set. So APIs can opt-in to caching if they want control, otherwise
+	// we try and do the right thing and not hit them too often.
+	client := MinCachedTransport(24 * time.Hour).Client()
+	if viper.GetBool("rsh-no-cache") {
+		client = http.DefaultClient
+	}
+
 	LogDebug("Checking %s", entrypoint)
-	resp, err := http.Get(entrypoint)
+	resp, err := client.Get(entrypoint)
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
+	// Hack: read body even if empty to enable caching, due to a bug in httpcache
+	// that only writes cache items after reaching EOF. Upstream lib is frozen
+	// so needs to be forked and import paths fixed up.
+	ioutil.ReadAll(resp.Body)
 
 	links := link.ParseResponse(resp)
 	if serviceDesc := links["service-desc"]; serviceDesc != nil {
@@ -142,7 +155,7 @@ func Load(entrypoint string, root *cobra.Command) error {
 		resolved := uri.ResolveReference(parsed)
 		LogDebug("Checking %s", resolved)
 
-		resp, err := http.Get(resolved.String()) // TODO: use HEAD request
+		resp, err := client.Get(resolved.String())
 		if err != nil {
 			panic(err)
 		}

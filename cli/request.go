@@ -106,7 +106,12 @@ func MakeRequest(req *http.Request) (*http.Response, error) {
 
 	LogDebugRequest(req)
 
-	resp, err := http.DefaultClient.Do(req)
+	client := CachedTransport().Client()
+	if viper.GetBool("rsh-no-cache") {
+		client = http.DefaultClient
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

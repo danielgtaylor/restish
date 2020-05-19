@@ -79,6 +79,10 @@ func getRequestInfo(op *openapi3.Operation) (string, *openapi3.Schema, []interfa
 				}
 			}
 
+			if schema != nil && len(examples) == 0 {
+				examples = append(examples, genExample(schema))
+			}
+
 			mts[mt] = []interface{}{schema, examples}
 		}
 	}
@@ -193,11 +197,11 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 	}
 
 	mediaType := ""
+	var examples []string
 	if op.RequestBody != nil && op.RequestBody.Value != nil {
 		mt, reqSchema, reqExamples := getRequestInfo(op)
 		mediaType = mt
 
-		var examples []string
 		if len(reqExamples) > 0 {
 			wroteHeader := false
 			for _, ex := range reqExamples {
@@ -205,8 +209,23 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 					// Not a string, so it's structured data. Let's marshal it to the
 					// shorthand syntax if we can.
 					if m, ok := ex.(map[string]interface{}); ok {
-						ex = shorthand.Get(m)
-						examples = append(examples, ex.(string))
+						exs := shorthand.Get(m)
+
+						if len(exs) < 150 {
+							examples = append(examples, exs)
+						} else {
+							found := false
+							for _, e := range examples {
+								if e == "<input.json" {
+									found = true
+									break
+								}
+							}
+							if !found {
+								examples = append(examples, "<input.json")
+							}
+						}
+
 						continue
 					}
 
@@ -251,6 +270,9 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		if len(resp.Content) > 0 {
 			for ct, typeInfo := range resp.Content {
 				desc += "\n## Response " + code + " (" + ct + ")\n"
+				if resp.Description != nil && *resp.Description != "" {
+					desc += "\n" + *resp.Description + "\n"
+				}
 
 				if typeInfo.Schema != nil && typeInfo.Schema.Value != nil {
 					desc += "\n```schema\n" + renderSchema(typeInfo.Schema.Value, "", modeRead) + "\n```\n"
@@ -275,6 +297,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		QueryParams:   queryParams,
 		HeaderParams:  headerParams,
 		BodyMediaType: mediaType,
+		Examples:      examples,
 		Hidden:        hidden,
 	}
 }

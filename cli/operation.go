@@ -24,6 +24,7 @@ type Operation struct {
 	QueryParams   []*Param `json:"queryParams,omitempty"`
 	HeaderParams  []*Param `json:"headerParams,omitempty"`
 	BodyMediaType string   `json:"bodyMediaType,omitempty"`
+	Examples      []string `json:"examples,omitempty"`
 	Hidden        bool     `json:"hidden,omitempty"`
 }
 
@@ -48,11 +49,17 @@ func (o Operation) command() *cobra.Command {
 		}
 	}
 
+	examples := ""
+	for _, ex := range o.Examples {
+		examples += fmt.Sprintf("  %s %s %s\n", Root.CommandPath(), use, ex)
+	}
+
 	sub := &cobra.Command{
 		Use:     use,
 		Aliases: o.Aliases,
 		Short:   o.Short,
 		Long:    long,
+		Example: examples,
 		Args:    argSpec,
 		Hidden:  o.Hidden,
 		Run: func(cmd *cobra.Command, args []string) {

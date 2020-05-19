@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/logrusorgru/aurora"
 	"github.com/mattn/go-colorable"
@@ -44,12 +46,12 @@ Aliases:
   {{.NameAndAliases}}{{end}}{{if .HasExample}}
 
 Examples:
-{{.Example}}{{end}}{{if (not .Parent)}}{{if (gt (len .Commands) 8)}}
+{{.Example}}{{end}}{{if (not .Parent)}}{{if (gt (len .Commands) 9)}}
 
-Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options")))}}
+Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert")))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
-Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options"))}}
+Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert"))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{else}}{{if .HasAvailableSubCommands}}
 
 Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
@@ -208,6 +210,53 @@ func Init(name string) {
 		},
 	}
 	Root.AddCommand(delete)
+
+	cert := &cobra.Command{
+		Use:   "cert url",
+		Short: "Get cert info",
+		Long:  "Get TLS certificate information including expiration date",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			addr := args[0]
+
+			if !strings.Contains(addr, ":") {
+				addr += ":443"
+			}
+
+			conn, err := tls.Dial("tcp", addr, nil)
+			if err != nil {
+				panic(err)
+			}
+
+			chains := conn.ConnectionState().VerifiedChains
+			if chains != nil && len(chains) > 0 && len(chains[0]) > 0 {
+				// The first cert in the first chain should represent the domain.
+				c := chains[0][0]
+
+				expiresRelative := ""
+				days := c.NotAfter.Sub(time.Now()).Hours() / 24
+				if days > 0 {
+					expiresRelative = fmt.Sprintf("in %.1f days", days)
+				} else {
+					expiresRelative = fmt.Sprintf("%.1f days ago", -days)
+				}
+
+				info := fmt.Sprintf(`Issuer: %s
+Subject: %s
+Signature Algorithm: %s
+Not before: %s
+Not after (expires): %s (%s)
+`, c.Issuer.String(), c.Subject.String(), c.SignatureAlgorithm.String(), c.NotBefore.String(), c.NotAfter.String(), expiresRelative)
+
+				if len(c.DNSNames) > 0 {
+					info += "DNS names:\n  " + strings.Join(c.DNSNames, "\n  ") + "\n"
+				}
+
+				fmt.Print(info)
+			}
+		},
+	}
+	Root.AddCommand(cert)
 
 	AddGlobalFlag("rsh-verbose", "v", "Enable verbose log output", false, false)
 	AddGlobalFlag("rsh-output-format", "o", "Output format [auto, json, yaml]", "auto", false)

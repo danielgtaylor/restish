@@ -123,7 +123,15 @@ Each profile can have a number of preset headers or query params, a type of auth
 
 TODO: commands coming soon...
 
-Registered APIs are stored in `~/.restish/apis.json`.
+Registered APIs are stored in `~/.restish/apis.json`. A very basic example config for local service testing with [Huma](https://huma.rocks/) or [FastAPI](https://fastapi.tiangolo.com/) and named `local` might look like:
+
+```json
+{
+  "local": {
+    "base": "http://localhost:8888"
+  }
+}
+```
 
 ### API Endpoint Usage
 

@@ -47,4 +47,95 @@ $ go get -u github.com/danielgtaylor/restish
 
 ## Usage
 
-Coming soon...
+Generic HTTP verbs require no setup and are easy to use. If no verb is supplied then a GET is assumed. The `https://` is also optional as it is the default.
+
+```sh
+# Perform an HTTP GET request
+$ restish jsonplaceholder.typicode.com/users/1
+
+# Above is equivalent to:
+$ restish get https://jsonplaceholder.typicode.com/users/1
+```
+
+You will see a response like:
+
+```http
+HTTP/2.0 200 OK
+Content-Encoding: br
+Content-Type: application/json; charset=utf-8
+Date: Wed, 20 May 2020 05:50:52 GMT
+
+{
+  address: {
+    city: "Gwenborough"
+    geo: {
+      lat: "-37.3159"
+      lng: "81.1496"
+    }
+    street: "Kulas Light"
+    suite: "Apt. 556"
+    zipcode: "92998-3874"
+  }
+  company: {
+    bs: "harness real-time e-markets"
+    catchPhrase: "Multi-layered client-server neural-net"
+    name: "Romaguera-Crona"
+  }
+  email: "Sincere@april.biz"
+  id: 1
+  name: "Leanne Graham"
+  phone: "1-770-736-8031 x56442"
+  username: "Bret"
+  website: "hildegard.org"
+}
+```
+
+Various inputs can be passed in as needed:
+
+```sh
+# Pass a query param (either way)
+$ restish example.com?search=foo
+$ restish -q search=foo example.com
+
+# Pass a header
+$ restish -H MyHeader:value example.com
+
+# Pass in a body via a file
+$ restish post example.com/users <user.json
+
+# Pass in body via CLI shorthand
+$ restish post example.com/users name: Kari, tags[]: admin
+```
+
+### Registering an API Endpoint
+
+APIs can be registered in order to provide API description auto-discovery with convenience commands and authentication.
+
+Each registered API can have a number of named auth profiles which can be selected via the `-p` or `--rsh-profile` argument. The default profile is called `default`.
+
+Each profile can have a number of preset headers or query params, a type of auth, and any auth-specific params. The following auth types are available:
+
+| Type                       | Inputs                                              |
+| -------------------------- | --------------------------------------------------- |
+| `http-basic`               | `username`, `password`                              |
+| `oauth-client-credentials` | `client_id`, `client_secret`, `token_url`, `scopes` |
+| `oauth-authorization-code` | `client_id`, `authorize_url`, `token_url`, `scopes` |
+
+TODO: commands coming soon...
+
+Registered APIs are stored in `~/.restish/apis.json`.
+
+### API Endpoint Usage
+
+The registered API short name can be used instead of the domain, for example:
+
+```sh
+# Supposed we have an API called `ex`. Show what the API can do:
+$ restish ex --help
+
+# If there is e.g. an OpenAPI spec linked, call one of the operations:
+$ restish ex list-items -q search=active
+
+# If not, you can still use the shorthand in URLs:
+$ restish ex/items?search=active
+```

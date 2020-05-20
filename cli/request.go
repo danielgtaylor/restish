@@ -108,7 +108,7 @@ func MakeRequest(req *http.Request) (*http.Response, error) {
 
 	client := CachedTransport().Client()
 	if viper.GetBool("rsh-no-cache") {
-		client = http.DefaultClient
+		client = &http.Client{Transport: InvalidateCachedTransport()}
 	}
 
 	resp, err := client.Do(req)

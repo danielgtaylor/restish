@@ -121,7 +121,7 @@ func Load(entrypoint string, root *cobra.Command) error {
 	// we try and do the right thing and not hit them too often.
 	client := MinCachedTransport(24 * time.Hour).Client()
 	if viper.GetBool("rsh-no-cache") {
-		client = http.DefaultClient
+		client = &http.Client{Transport: InvalidateCachedTransport()}
 	}
 
 	LogDebug("Checking %s", entrypoint)

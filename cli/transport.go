@@ -12,6 +12,15 @@ import (
 	"github.com/gbl08ma/httpcache/diskcache"
 )
 
+// cacheKey returns the cache key for req.
+func cacheKey(req *http.Request) string {
+	if req.Method == http.MethodGet {
+		return req.URL.String()
+	}
+
+	return req.Method + " " + req.URL.String()
+}
+
 // CachedTransport returns an HTTP transport with caching abilities.
 func CachedTransport() *httpcache.Transport {
 	t := httpcache.NewTransport(diskcache.New(path.Join(cacheDir(), "responses")))
@@ -55,4 +64,26 @@ func MinCachedTransport(min time.Duration) *httpcache.Transport {
 	t := CachedTransport()
 	t.Transport = &minCachedTransport{min}
 	return t
+}
+
+type invalidateCachedTransport struct {
+	transport *httpcache.Transport
+}
+
+func (i invalidateCachedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Invalidate cache entry.
+	key := cacheKey(req)
+	i.transport.Cache.Delete(key)
+
+	// Make the request.
+	return i.transport.RoundTrip(req)
+}
+
+// InvalidateCachedTransport returns an HTTP transport which will not read
+// cached items (it deletes them) and then refreshes the cache when new items
+// are fetched.
+func InvalidateCachedTransport() http.RoundTripper {
+	return &invalidateCachedTransport{
+		transport: CachedTransport(),
+	}
 }

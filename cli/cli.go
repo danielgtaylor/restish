@@ -335,11 +335,14 @@ func Run() {
 	// We need to register new commands at runtime based on the selected API
 	// so that we don't have to potentially refresh and parse every single
 	// registered API just to run. So this is a little hacky, but we hijack
-	// the root command's flag parsing to parse twice, get the first arg, and
+	// the input args to find non-option arguments, get the first arg, and
 	// if it isn't from a well-known set try to load that API.
-	Root.SetOutput(ioutil.Discard)
-	Root.ParseFlags(os.Args)
-	Root.SetOutput(Stderr)
+	args := []string{}
+	for _, arg := range os.Args {
+		if !strings.HasPrefix(arg, "-") {
+			args = append(args, arg)
+		}
+	}
 
 	// Now that flags are parsed we can enable verbose mode if requested.
 	if viper.GetBool("rsh-verbose") {
@@ -350,13 +353,13 @@ func Run() {
 	}
 
 	// Load the API commands if we can.
-	if len(Root.Flags().Args()) > 1 {
-		apiName := Root.Flags().Args()[1]
+	if len(args) > 1 {
+		apiName := args[1]
 
-		if apiName == "help" && len(Root.Flags().Args()) > 2 {
+		if apiName == "help" && len(args) > 2 {
 			// The explicit `help` command is followed by the actual commands
 			// you want help with. The first one is the API name.
-			apiName = Root.Flags().Args()[2]
+			apiName = args[2]
 		}
 
 		if apiName != "help" && apiName != "head" && apiName != "options" && apiName != "get" && apiName != "post" && apiName != "put" && apiName != "patch" && apiName != "delete" {

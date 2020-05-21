@@ -342,10 +342,15 @@ func Run() {
 		if !strings.HasPrefix(arg, "-") {
 			args = append(args, arg)
 		}
+
+		// Try to detect if verbose mode is enabled via a flag.
+		if arg == "-v" || arg == "--rsh-verbose" {
+			enableVerbose = true
+		}
 	}
 
 	// Now that flags are parsed we can enable verbose mode if requested.
-	if viper.GetBool("rsh-verbose") {
+	if enableVerbose || viper.GetBool("rsh-verbose") {
 		enableVerbose = true
 
 		settings := viper.AllSettings()

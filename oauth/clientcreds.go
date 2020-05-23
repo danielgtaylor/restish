@@ -5,12 +5,23 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/danielgtaylor/restish/cli"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 )
 
 // ClientCredentialsHandler implements the Client Credentials OAuth2 flow.
 type ClientCredentialsHandler struct{}
+
+// Parameters returns a list of OAuth2 Authorization Code inputs.
+func (h *ClientCredentialsHandler) Parameters() []cli.AuthParam {
+	return []cli.AuthParam{
+		{Name: "client_id", Required: true, Help: "OAuth 2.0 Client ID"},
+		{Name: "client_secret", Required: true, Help: "OAuth 2.0 Client Secret"},
+		{Name: "token_url", Required: true, Help: "OAuth 2.0 token URL, e.g. https://api.example.com/oauth/token"},
+		{Name: "scopes", Help: "Optional scopes to request in the token"},
+	}
+}
 
 // OnRequest gets run before the request goes out on the wire.
 func (h *ClientCredentialsHandler) OnRequest(request *http.Request, key string, params map[string]string) error {

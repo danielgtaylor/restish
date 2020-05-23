@@ -107,6 +107,16 @@ $ restish post example.com/users <user.json
 $ restish post example.com/users name: Kari, tags[]: admin
 ```
 
+Headers and query params can also be set via environment variables, for example:
+
+```sh
+# Set via env vars
+$ export RSH_HEADER=header1:value1,header2:value2
+$ restish example.com/users
+```
+
+If you have persistent headers or query params you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Read on to find out how.
+
 ### Registering an API Endpoint
 
 APIs can be registered in order to provide API description auto-discovery with convenience commands and authentication.
@@ -121,7 +131,19 @@ Each profile can have a number of preset headers or query params, a type of auth
 | `oauth-client-credentials` | `client_id`, `client_secret`, `token_url`, `scopes` |
 | `oauth-authorization-code` | `client_id`, `authorize_url`, `token_url`, `scopes` |
 
-TODO: commands coming soon...
+Register a new API like this, which launches an interactive configuration interface to set up base URIs, headers & query params, and auth.
+
+```sh
+# Register a new API named `example`
+$ restish api configure example
+
+# Call the API with a specific profile
+$ restish -p myProfile example list-items
+
+# Set an environment variable for the profile
+$ export RSH_PROFILE=myProfile
+$ restish example list-items
+```
 
 Registered APIs are stored in `~/.restish/apis.json`. A very basic example config for local service testing with [Huma](https://huma.rocks/) or [FastAPI](https://fastapi.tiangolo.com/) and named `local` might look like:
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -26,13 +27,19 @@ func AddGlobalFlag(name, short, description string, defaultValue interface{}, mu
 		}
 	case float32, float64:
 		if multi {
-			panic(fmt.Errorf("unshpported float slice param"))
+			panic(fmt.Errorf("unsupported float slice param"))
 		} else {
 			flags.Float64P(name, short, viper.GetFloat64(name), description)
 		}
 	default:
 		if multi {
-			flags.StringSliceP(name, short, viper.Get(name).([]string), description)
+			v := viper.Get(name)
+			if s, ok := v.(string); ok {
+				// Probably loaded from the environment.
+				v = strings.Split(s, ",")
+				viper.Set(name, v)
+			}
+			flags.StringSliceP(name, short, v.([]string), description)
 		} else {
 			flags.StringP(name, short, fmt.Sprintf("%v", viper.Get(name)), description)
 		}

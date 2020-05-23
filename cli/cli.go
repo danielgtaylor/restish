@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -374,7 +375,9 @@ func Run() {
 			if cfg, ok := configs[apiName]; ok {
 				for _, cmd := range Root.Commands() {
 					if cmd.Use == apiName {
-						Load(cfg.Base, cmd)
+						if _, err := Load(cfg.Base, cmd); err != nil {
+							panic(err)
+						}
 						break
 					}
 				}
@@ -384,6 +387,12 @@ func Run() {
 
 	// Phew, we made it. Execute the command now that everything is loaded
 	// and all the relevant sub-commands are registered.
+	defer func() {
+		if err := recover(); err != nil {
+			LogError("Caught error: %v", err)
+			LogDebug("%s", string(debug.Stack()))
+		}
+	}()
 	if err := Root.Execute(); err != nil {
 		LogError("Error: %v", err)
 	}

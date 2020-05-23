@@ -356,6 +356,58 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		}
 	}
 
+	authSchemes := []cli.APIAuth{}
+	for _, v := range swagger.Components.SecuritySchemes {
+		if v != nil && v.Value != nil {
+			scheme := v.Value
+
+			switch scheme.Type {
+			case "apiKey":
+				// TODO: api key auth
+			case "http":
+				if scheme.Scheme == "basic" {
+					authSchemes = append(authSchemes, cli.APIAuth{
+						Name: "http-basic",
+						Params: map[string]string{
+							"username": "",
+							"password": "",
+						},
+					})
+				}
+				// TODO: bearer
+			case "oauth2":
+				flows := scheme.Flows
+				if flows != nil {
+					if flows.ClientCredentials != nil {
+						cc := flows.ClientCredentials
+						authSchemes = append(authSchemes, cli.APIAuth{
+							Name: "oauth-client-credentials",
+							Params: map[string]string{
+								"client_id":     "",
+								"client_secret": "",
+								"token_url":     cc.TokenURL,
+								// TODO: scopes
+							},
+						})
+					}
+
+					if flows.AuthorizationCode != nil {
+						ac := flows.AuthorizationCode
+						authSchemes = append(authSchemes, cli.APIAuth{
+							Name: "oauth-authorization-code",
+							Params: map[string]string{
+								"client_id":     "",
+								"authorize_url": ac.AuthorizationURL,
+								"token_url":     ac.TokenURL,
+								// TODO: scopes
+							},
+						})
+					}
+				}
+			}
+		}
+	}
+
 	short := ""
 	long := ""
 	if swagger.Info != nil {
@@ -367,6 +419,7 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		Short:      short,
 		Long:       long,
 		Operations: operations,
+		Auth:       authSchemes,
 	}
 
 	return api, nil

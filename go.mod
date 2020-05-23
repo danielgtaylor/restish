@@ -3,6 +3,7 @@ module github.com/danielgtaylor/restish
 go 1.14
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.0.7
 	github.com/alecthomas/chroma v0.7.4-0.20200514040646-406571713633
 	github.com/andybalholm/brotli v1.0.0
 	github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba

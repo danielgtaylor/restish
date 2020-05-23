@@ -150,6 +150,16 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 // flow.
 type AuthorizationCodeHandler struct{}
 
+// Parameters returns a list of OAuth2 Authorization Code inputs.
+func (h *AuthorizationCodeHandler) Parameters() []cli.AuthParam {
+	return []cli.AuthParam{
+		{Name: "client_id", Required: true, Help: "OAuth 2.0 Client ID"},
+		{Name: "authorization_url", Required: true, Help: "OAuth 2.0 authorization URL, e.g. https://api.example.com/oauth/authorize"},
+		{Name: "token_url", Required: true, Help: "OAuth 2.0 token URL, e.g. https://api.example.com/oauth/token"},
+		{Name: "scopes", Help: "Optional scopes to request in the token"},
+	}
+}
+
 // OnRequest gets run before the request goes out on the wire.
 func (h *AuthorizationCodeHandler) OnRequest(request *http.Request, key string, params map[string]string) error {
 	if request.Header.Get("Authorization") == "" {

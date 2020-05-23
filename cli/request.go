@@ -24,7 +24,7 @@ func fixAddress(addr string) string {
 		// the base URL for that API.
 		parts := strings.Split(addr, "/")
 		c := configs[parts[0]]
-		if c.Base != "" {
+		if c != nil && c.Base != "" {
 			parts[0] = c.Base
 			return strings.Join(parts, "/")
 		}
@@ -48,9 +48,20 @@ func MakeRequest(req *http.Request) (*http.Response, error) {
 	start := time.Now()
 
 	name, config := findAPI(req.URL.String())
+
+	if config == nil {
+		config = &APIConfig{Profiles: map[string]*APIProfile{
+			"default": {},
+		}}
+	}
+
 	profile := config.Profiles[viper.GetString("rsh-profile")]
 
-	if profile.Auth.Name != "" {
+	if profile == nil {
+		panic("Invalid profile " + viper.GetString("rsh-profile"))
+	}
+
+	if profile.Auth != nil && profile.Auth.Name != "" {
 		auth, ok := authHandlers[profile.Auth.Name]
 		if ok {
 			auth.OnRequest(req, name+":"+viper.GetString("rsh-profile"), profile.Auth.Params)

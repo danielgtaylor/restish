@@ -2,12 +2,10 @@ package cli
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"time"
 
@@ -23,6 +21,21 @@ type API struct {
 	Short      string      `json:"short"`
 	Long       string      `json:"long,omitempty"`
 	Operations []Operation `json:"operations,omitempty"`
+	Auth       []APIAuth   `json:"auth,omitempty"`
+}
+
+// Merge two APIs together. Takes the description if none is set and merges
+// operations. Ignores auth - if that differs then create another API instead.
+func (a *API) Merge(other API) {
+	if a.Short == "" {
+		a.Short = other.Short
+	}
+
+	if a.Long == "" {
+		a.Long = other.Long
+	}
+
+	a.Operations = append(a.Operations, other.Operations...)
 }
 
 var loaders []Loader
@@ -39,38 +52,30 @@ func AddLoader(loader Loader) {
 	loaders = append(loaders, loader)
 }
 
-func load(root *cobra.Command, entrypoint, spec url.URL, resp *http.Response, name string, loader Loader) error {
+func load(root *cobra.Command, entrypoint, spec url.URL, resp *http.Response, name string, loader Loader) (API, error) {
 	api, err := loader.Load(entrypoint, spec, resp)
 	if err != nil {
-		return err
+		return API{}, err
 	}
 
-	if api.Short != "" {
+	if root.Short == "" {
 		root.Short = api.Short
 	}
 
-	root.Long = api.Long
+	if root.Long == "" {
+		root.Long = api.Long
+	}
 
 	for _, op := range api.Operations {
 		root.AddCommand(op.command())
 	}
 
-	// Save the cache
-	cacheFile := path.Join(cacheDir(), name+".json")
-	d, err := json.MarshalIndent(api, "", "  ")
-	if err != nil {
-		// No cache
-		LogDebug("Couldn't save API cache: %v", err)
-		return nil
-	}
-	ioutil.WriteFile(cacheFile, d, 0600)
-
-	return nil
+	return api, nil
 }
 
 // Load will hydrate the command tree for an API, possibly refreshing the
 // API spec if the cache is out of date.
-func Load(entrypoint string, root *cobra.Command) error {
+func Load(entrypoint string, root *cobra.Command) (API, error) {
 	uris := []string{}
 
 	if !strings.HasSuffix(entrypoint, "/") {
@@ -79,10 +84,11 @@ func Load(entrypoint string, root *cobra.Command) error {
 
 	uri, err := url.Parse(entrypoint)
 	if err != nil {
-		panic(err)
+		return API{}, err
 	}
 
 	name, config := findAPI(entrypoint)
+	desc := API{}
 	found := false
 	if name != "" && len(config.SpecFiles) > 0 {
 		// Load the local files
@@ -94,7 +100,7 @@ func Load(entrypoint string, root *cobra.Command) error {
 
 			body, err := ioutil.ReadFile(filename)
 			if err != nil {
-				panic(err)
+				return API{}, err
 			}
 
 			for _, l := range loaders {
@@ -104,15 +110,19 @@ func Load(entrypoint string, root *cobra.Command) error {
 				if l.Detect(resp) {
 					found = true
 					resp.Body = ioutil.NopCloser(bytes.NewReader(body))
-					if err := load(root, *uri, *uri, resp, name, l); err != nil {
-						return err
+					tmp, err := load(root, *uri, *uri, resp, name, l)
+					if err != nil {
+						return API{}, err
 					}
+					LogDebug("Loaded %s", filename)
+					desc.Merge(tmp)
+					break
 				}
 			}
 		}
 
 		if found {
-			return nil
+			return desc, nil
 		}
 	}
 
@@ -127,7 +137,7 @@ func Load(entrypoint string, root *cobra.Command) error {
 	LogDebug("Checking %s", entrypoint)
 	resp, err := client.Get(entrypoint)
 	if err != nil {
-		panic(err)
+		return API{}, err
 	}
 	defer resp.Body.Close()
 	// Hack: read body even if empty to enable caching, due to a bug in httpcache
@@ -150,19 +160,19 @@ func Load(entrypoint string, root *cobra.Command) error {
 	for _, checkURI := range uris {
 		parsed, err := url.Parse(checkURI)
 		if err != nil {
-			panic(err)
+			return API{}, err
 		}
 		resolved := uri.ResolveReference(parsed)
 		LogDebug("Checking %s", resolved)
 
 		resp, err := client.Get(resolved.String())
 		if err != nil {
-			panic(err)
+			return API{}, err
 		}
 		defer resp.Body.Close()
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			panic(err)
+			return API{}, err
 		}
 
 		for _, l := range loaders {
@@ -172,13 +182,10 @@ func Load(entrypoint string, root *cobra.Command) error {
 			if l.Detect(resp) {
 				resp.Body = ioutil.NopCloser(bytes.NewReader(body))
 
-				if err := load(root, *uri, *resolved, resp, name, l); err != nil {
-					return err
-				}
-				return nil
+				return load(root, *uri, *resolved, resp, name, l)
 			}
 		}
 	}
 
-	panic(fmt.Errorf("could not detect API type: %s", entrypoint))
+	return API{}, fmt.Errorf("could not detect API type: %s", entrypoint)
 }

@@ -20,6 +20,9 @@ func main() {
 	cli.AddContentType("application/yaml", 0.5, &cli.YAML{})
 	cli.AddContentType("text/*", 0.2, &cli.Text{})
 
+	// Add link relation parsers
+	cli.AddLinkParser(&cli.LinkHeaderParser{})
+
 	// Register format loaders to auto-discover API descriptions
 	cli.AddLoader(openapi.New())
 

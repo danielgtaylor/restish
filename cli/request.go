@@ -58,7 +58,11 @@ func MakeRequest(req *http.Request) (*http.Response, error) {
 	profile := config.Profiles[viper.GetString("rsh-profile")]
 
 	if profile == nil {
-		panic("Invalid profile " + viper.GetString("rsh-profile"))
+		if viper.GetString("rsh-profile") != "default" {
+			panic("Invalid profile " + viper.GetString("rsh-profile"))
+		}
+
+		profile = &APIProfile{}
 	}
 
 	if profile.Auth != nil && profile.Auth.Name != "" {
@@ -138,15 +142,32 @@ type Response struct {
 	Proto   string            `json:"proto"`
 	Status  int               `json:"status"`
 	Headers map[string]string `json:"headers"`
+	Links   Links             `json:"links"`
 	Body    interface{}       `json:"body"`
 }
 
 // Map returns a map representing this response matching the encoded JSON.
 func (r Response) Map() map[string]interface{} {
+	links := map[string][]map[string]interface{}{}
+
+	for rel, list := range r.Links {
+		if _, ok := links[rel]; !ok {
+			links[rel] = []map[string]interface{}{}
+		}
+
+		for _, l := range list {
+			links[rel] = append(links[rel], map[string]interface{}{
+				"rel": l.Rel,
+				"uri": l.URI,
+			})
+		}
+	}
+
 	return map[string]interface{}{
 		"proto":   r.Proto,
 		"status":  r.Status,
 		"headers": r.Headers,
+		"links":   links,
 		"body":    r.Body,
 	}
 }
@@ -177,6 +198,7 @@ func ParseResponse(resp *http.Response) (Response, error) {
 		Proto:   resp.Proto,
 		Status:  resp.StatusCode,
 		Headers: headers,
+		Links:   Links{},
 		Body:    parsed,
 	}
 
@@ -186,6 +208,10 @@ func ParseResponse(resp *http.Response) (Response, error) {
 			joiner = "\n"
 		}
 		headers[k] = strings.Join(v, joiner)
+	}
+
+	if err := ParseLinks(resp.Request.URL, &output); err != nil {
+		return Response{}, err
 	}
 
 	return output, nil

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -49,10 +50,10 @@ Aliases:
 Examples:
 {{.Example}}{{end}}{{if (not .Parent)}}{{if (gt (len .Commands) 9)}}
 
-Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert")))}}
+Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links")))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
-Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert"))}}
+Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links"))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{else}}{{if .HasAvailableSubCommands}}
 
 Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
@@ -123,7 +124,7 @@ func Init(name string) {
 		Use:     filepath.Base(os.Args[0]),
 		Long:    "A generic client for REST-ish APIs <https://rest.sh/>",
 		Version: "0.1",
-		Example: fmt.Sprintf(`  # Get a URL
+		Example: fmt.Sprintf(`  # Get a URI
   $ %s google.com
 
   # Specify verb, header, and body shorthand
@@ -136,9 +137,9 @@ func Init(name string) {
 	Root.SetUsageTemplate(usageTemplate)
 
 	head := &cobra.Command{
-		Use:   "head url",
-		Short: "Head a URL",
-		Long:  "Perform an HTTP HEAD on the given URL",
+		Use:   "head uri",
+		Short: "Head a URI",
+		Long:  "Perform an HTTP HEAD on the given URI",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodHead, args[0], args[1:])
@@ -147,9 +148,9 @@ func Init(name string) {
 	Root.AddCommand(head)
 
 	options := &cobra.Command{
-		Use:   "options url",
-		Short: "Options a URL",
-		Long:  "Perform an HTTP OPTIONS on the given URL",
+		Use:   "options uri",
+		Short: "Options a URI",
+		Long:  "Perform an HTTP OPTIONS on the given URI",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodOptions, args[0], args[1:])
@@ -158,9 +159,9 @@ func Init(name string) {
 	Root.AddCommand(options)
 
 	get := &cobra.Command{
-		Use:   "get url",
-		Short: "Get a URL",
-		Long:  "Perform an HTTP GET on the given URL",
+		Use:   "get uri",
+		Short: "Get a URI",
+		Long:  "Perform an HTTP GET on the given URI",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodGet, args[0], args[1:])
@@ -169,9 +170,9 @@ func Init(name string) {
 	Root.AddCommand(get)
 
 	post := &cobra.Command{
-		Use:   "post url [body...]",
-		Short: "Post a URL",
-		Long:  "Perform an HTTP POST on the given URL",
+		Use:   "post uri [body...]",
+		Short: "Post a URI",
+		Long:  "Perform an HTTP POST on the given URI",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodPost, args[0], args[1:])
@@ -180,9 +181,9 @@ func Init(name string) {
 	Root.AddCommand(post)
 
 	put := &cobra.Command{
-		Use:   "put url [body...]",
-		Short: "Put a URL",
-		Long:  "Perform an HTTP PUT on the given URL",
+		Use:   "put uri [body...]",
+		Short: "Put a URI",
+		Long:  "Perform an HTTP PUT on the given URI",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodPut, args[0], args[1:])
@@ -191,9 +192,9 @@ func Init(name string) {
 	Root.AddCommand(put)
 
 	patch := &cobra.Command{
-		Use:   "patch url [body...]",
-		Short: "Patch a URL",
-		Long:  "Perform an HTTP PATCH on the given URL",
+		Use:   "patch uri [body...]",
+		Short: "Patch a URI",
+		Long:  "Perform an HTTP PATCH on the given URI",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodPatch, args[0], args[1:])
@@ -202,9 +203,9 @@ func Init(name string) {
 	Root.AddCommand(patch)
 
 	delete := &cobra.Command{
-		Use:   "delete url [body...]",
-		Short: "Delete a URL",
-		Long:  "Perform an HTTP DELETE on the given URL",
+		Use:   "delete uri [body...]",
+		Short: "Delete a URI",
+		Long:  "Perform an HTTP DELETE on the given URI",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodDelete, args[0], args[1:])
@@ -213,7 +214,7 @@ func Init(name string) {
 	Root.AddCommand(delete)
 
 	cert := &cobra.Command{
-		Use:   "cert url",
+		Use:   "cert uri",
 		Short: "Get cert info",
 		Long:  "Get TLS certificate information including expiration date",
 		Args:  cobra.ExactArgs(1),
@@ -259,11 +260,52 @@ Not after (expires): %s (%s)
 	}
 	Root.AddCommand(cert)
 
+	linkCmd := &cobra.Command{
+		Use:   "links uri [rel1 rel2...]",
+		Short: "Get link relations from the given URI, with optional filtering",
+		Long:  "Returns a list of resolved references to the link relations after making an HTTP GET request to the given URI. Additional arguments filter down the set of returned relationship names.",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			req, _ := http.NewRequest(http.MethodGet, fixAddress(args[0]), nil)
+			resp, err := GetParsedResponse(req)
+			if err != nil {
+				panic(err)
+			}
+
+			var output interface{} = resp.Links
+
+			if len(args) > 1 {
+				tmp := []*Link{}
+				for _, rel := range args[1:] {
+					for _, link := range resp.Links[rel] {
+						tmp = append(tmp, link)
+					}
+				}
+				output = tmp
+			}
+
+			encoded, err := json.MarshalIndent(output, "", "  ")
+			if err != nil {
+				panic(err)
+			}
+
+			if tty {
+				encoded, err = Highlight("json", encoded)
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			fmt.Println(string(encoded))
+		},
+	}
+	Root.AddCommand(linkCmd)
+
 	AddGlobalFlag("rsh-verbose", "v", "Enable verbose log output", false, false)
 	AddGlobalFlag("rsh-output-format", "o", "Output format [auto, json, yaml]", "auto", false)
 	AddGlobalFlag("rsh-filter", "f", "Filter / project results using JMESPath Plus", "", false)
 	AddGlobalFlag("rsh-raw", "r", "Output result of query as raw rather than an escaped JSON string or list", false, false)
-	AddGlobalFlag("rsh-server", "s", "Override server URL", "", false)
+	AddGlobalFlag("rsh-server", "s", "Override scheme://server:port for an API", "", false)
 	AddGlobalFlag("rsh-header", "H", "Add custom header", []string{}, true)
 	AddGlobalFlag("rsh-query", "q", "Add custom query param", []string{}, true)
 	AddGlobalFlag("rsh-no-paginate", "", "Disable auto-pagination", false, false)
@@ -368,7 +410,7 @@ func Run() {
 			apiName = args[2]
 		}
 
-		if apiName != "help" && apiName != "head" && apiName != "options" && apiName != "get" && apiName != "post" && apiName != "put" && apiName != "patch" && apiName != "delete" {
+		if apiName != "help" && apiName != "head" && apiName != "options" && apiName != "get" && apiName != "post" && apiName != "put" && apiName != "patch" && apiName != "delete" && apiName != "api" && apiName != "links" {
 			// Try to find the registered config for this API. If not found,
 			// there is no need to do anything since the normal flow will catch
 			// the command being missing and print help.

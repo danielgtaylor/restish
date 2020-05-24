@@ -30,6 +30,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.5.1
+	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9
 	github.com/twpayne/httpcache v1.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 	golang.org/x/net v0.0.0-20200513185701-a91f0712d120 // indirect
@@ -39,4 +40,5 @@ require (
 	gopkg.in/h2non/gock.v1 v1.0.15
 	gopkg.in/ini.v1 v1.56.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

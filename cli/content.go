@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/amzn/ion-go/ion"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/shamaton/msgpack"
 	"gopkg.in/yaml.v2"
@@ -216,4 +217,27 @@ func (m MsgPack) Marshal(value interface{}) ([]byte, error) {
 // Unmarshal the value from encoded YAML.
 func (m MsgPack) Unmarshal(data []byte, value interface{}) error {
 	return msgpack.Decode(data, value)
+}
+
+// Ion describes content types like `application/ion`.
+type Ion struct{}
+
+// Detect if the content type is Ion.
+func (i Ion) Detect(contentType string) bool {
+	first := strings.Split(contentType, ";")[0]
+	if first == "application/ion" || strings.HasSuffix(first, "+ion") {
+		return true
+	}
+
+	return false
+}
+
+// Marshal the value to encoded binary Ion.
+func (i Ion) Marshal(value interface{}) ([]byte, error) {
+	return ion.MarshalBinary(value)
+}
+
+// Unmarshal the value form encoded binary or text Ion.
+func (i Ion) Unmarshal(data []byte, value interface{}) error {
+	return ion.Unmarshal(data, value)
 }

@@ -16,6 +16,7 @@ func main() {
 	// Register content type marshallers
 	cli.AddContentType("application/cbor", 0.9, &cli.CBOR{})
 	cli.AddContentType("application/msgpack", 0.8, &cli.MsgPack{})
+	cli.AddContentType("application/ion", 0.6, &cli.Ion{})
 	cli.AddContentType("application/json", 0.5, &cli.JSON{})
 	cli.AddContentType("application/yaml", 0.5, &cli.YAML{})
 	cli.AddContentType("text/*", 0.2, &cli.Text{})

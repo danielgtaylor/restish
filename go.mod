@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/AlecAivazis/survey/v2 v2.0.7
 	github.com/alecthomas/chroma v0.7.4-0.20200514040646-406571713633
+	github.com/amzn/ion-go v0.0.0-20200520044940-e32dee6c36bc
 	github.com/andybalholm/brotli v1.0.0
 	github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba
 	github.com/danielgtaylor/openapi-cli-generator v0.0.0-20200228065623-fa97dc37f943

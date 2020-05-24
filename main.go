@@ -23,6 +23,8 @@ func main() {
 
 	// Add link relation parsers
 	cli.AddLinkParser(&cli.LinkHeaderParser{})
+	cli.AddLinkParser(&cli.HALParser{})
+	cli.AddLinkParser(&cli.TerrificallySimpleJSONParser{})
 
 	// Register format loaders to auto-discover API descriptions
 	cli.AddLoader(openapi.New())

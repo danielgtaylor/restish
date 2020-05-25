@@ -159,3 +159,36 @@ func (t TerrificallySimpleJSONParser) walk(resp *Response, key string, value int
 
 	return nil
 }
+
+type sirenLink struct {
+	Rel  []string `mapstructure:"rel"`
+	Href string   `mapstructure:"href"`
+}
+
+type sirenBody struct {
+	Links []sirenLink `mapstructure:"links"`
+}
+
+// SirenParser parses Siren hypermedia links.
+type SirenParser struct{}
+
+// ParseLinks processes the links in a parsed response.
+func (s SirenParser) ParseLinks(resp *Response) error {
+	siren := sirenBody{}
+	if err := mapstructure.Decode(resp.Body, &siren); err == nil {
+		for _, link := range siren.Links {
+			if link.Href == "" {
+				continue
+			}
+
+			for _, rel := range link.Rel {
+				resp.Links[rel] = append(resp.Links[rel], &Link{
+					Rel: rel,
+					URI: link.Href,
+				})
+			}
+		}
+	}
+
+	return nil
+}

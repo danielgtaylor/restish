@@ -25,9 +25,10 @@ Features include:
   - MessagePack (https://msgpack.org/)
   - Amazon Ion (http://amzn.github.io/ion-docs/)
   - Gzip ([RFC 1952](https://tools.ietf.org/html/rfc1952)) and Brotli ([RFC 7932](https://tools.ietf.org/html/rfc7932)) content encoding
-- Standardized [hypermedia](https://smartbear.com/learn/api-design/what-is-hypermedia/) parsing
+- Standardized [hypermedia](https://smartbear.com/learn/api-design/what-is-hypermedia/) parsing into queryable/followable response links:
   - HTTP Link relation headers ([RFC 5988](https://tools.ietf.org/html/rfc5988#section-6.2.2))
   - [HAL](http://stateless.co/hal_specification.html)
+  - [Siren](https://github.com/kevinswiber/siren)
   - [Terrifically Simple JSON](https://github.com/mpnally/Terrifically-Simple-JSON)
 - Local caching that respects [RFC 7234](https://tools.ietf.org/html/rfc7234) `Cache-Control` and `Expires` headers
 - CLI [shorthand](https://github.com/danielgtaylor/openapi-cli-generator/tree/master/shorthand#cli-shorthand-syntax) for structured data input (e.g. for JSON)

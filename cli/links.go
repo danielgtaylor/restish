@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"reflect"
 
+	"github.com/mitchellh/mapstructure"
 	link "github.com/tent/http-link-go"
 )
 
@@ -80,42 +81,36 @@ func (l LinkHeaderParser) ParseLinks(resp *Response) error {
 	return nil
 }
 
+// halLink represents a single link in a HAL response.
+type halLink struct {
+	Href string `mapstructure:"href"`
+}
+
+// halBody represents the top-level HAL response body.
+type halBody struct {
+	Links map[string]halLink `mapstructure:"_links"`
+}
+
 // HALParser parses HAL hypermedia links. Ignores curies.
 type HALParser struct{}
 
 // ParseLinks processes the links in a parsed response.
 func (h HALParser) ParseLinks(resp *Response) error {
-	// Convert map[interface{}]interface{} to map[string]interface{} for
-	// easier traversal/querying.
-	b := makeJSONSafe(resp.Body)
-
-	if m, ok := b.(map[string]interface{}); ok {
-		links := m["_links"]
-		if links != nil {
-			if linksmap, ok := links.(map[string]interface{}); ok {
-				for rel, v := range linksmap {
-					if rel == "curies" {
-						continue
-					}
-
-					if vm, ok := v.(map[string]interface{}); ok {
-						if _, ok := vm["href"].(string); !ok {
-							continue
-						}
-
-						if resp.Links == nil {
-							resp.Links = map[string][]*Link{}
-						}
-
-						resp.Links[rel] = append(resp.Links[rel], &Link{
-							Rel: rel,
-							URI: vm["href"].(string),
-						})
-					}
-				}
+	hal := halBody{}
+	if err := mapstructure.Decode(resp.Body, &hal); err == nil {
+		for rel, link := range hal.Links {
+			if rel == "curies" {
+				// TODO: handle curies at some point?
+				continue
 			}
+
+			resp.Links[rel] = append(resp.Links[rel], &Link{
+				Rel: rel,
+				URI: link.Href,
+			})
 		}
 	}
+
 	return nil
 }
 

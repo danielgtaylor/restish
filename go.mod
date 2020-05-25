@@ -20,7 +20,7 @@ require (
 	github.com/logrusorgru/aurora v0.0.0-20200102142835-e9ef32dff381
 	github.com/mattn/go-colorable v0.1.6
 	github.com/mattn/go-isatty v0.0.12
-	github.com/mitchellh/mapstructure v1.3.0 // indirect
+	github.com/mitchellh/mapstructure v1.3.0
 	github.com/pelletier/go-toml v1.7.0 // indirect
 	github.com/peterhellberg/link v1.1.0
 	github.com/shamaton/msgpack v1.1.1

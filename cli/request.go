@@ -40,11 +40,30 @@ func fixAddress(addr string) string {
 	return addr
 }
 
+type requestOption struct {
+	client     *http.Client
+	disableLog bool
+}
+
+// WithClient sets the client to use for the request.
+func WithClient(c *http.Client) requestOption {
+	return requestOption{
+		client: c,
+	}
+}
+
+// WithoutLog disabled debug logging for the given request/response.
+func WithoutLog() requestOption {
+	return requestOption{
+		disableLog: true,
+	}
+}
+
 // MakeRequest makes an HTTP request using the default client. It adds the
 // user-agent, auth, and any passed headers or query params to the request
 // before sending it out on the wire. If verbose mode is enabled, it will
 // print out both the request and response.
-func MakeRequest(req *http.Request) (*http.Response, error) {
+func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, error) {
 	start := time.Now()
 
 	name, config := findAPI(req.URL.String())
@@ -119,11 +138,24 @@ func MakeRequest(req *http.Request) (*http.Response, error) {
 
 	req.URL.RawQuery = query.Encode()
 
-	LogDebugRequest(req)
-
 	client := CachedTransport().Client()
 	if viper.GetBool("rsh-no-cache") {
 		client = &http.Client{Transport: InvalidateCachedTransport()}
+	}
+
+	log := true
+	for _, option := range options {
+		if option.client != nil {
+			client = option.client
+		}
+
+		if option.disableLog {
+			log = false
+		}
+	}
+
+	if log {
+		LogDebugRequest(req)
 	}
 
 	resp, err := client.Do(req)
@@ -131,7 +163,9 @@ func MakeRequest(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 
-	LogDebugResponse(start, resp)
+	if log {
+		LogDebugResponse(start, resp)
+	}
 
 	return resp, nil
 }

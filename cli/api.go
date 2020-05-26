@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/peterhellberg/link"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -134,23 +133,26 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 		client = &http.Client{Transport: InvalidateCachedTransport()}
 	}
 
-	LogDebug("Checking %s", entrypoint)
-	resp, err := client.Get(entrypoint)
+	LogDebug("Checking API entrypoint %s", entrypoint)
+	req, err := http.NewRequest(http.MethodGet, entrypoint, nil)
 	if err != nil {
 		return API{}, err
 	}
-	defer resp.Body.Close()
-	// Hack: read body even if empty to enable caching, due to a bug in httpcache
-	// that only writes cache items after reaching EOF. Upstream lib is frozen
-	// so needs to be forked and import paths fixed up.
-	ioutil.ReadAll(resp.Body)
+	httpResp, err := MakeRequest(req, WithClient(client), WithoutLog())
+	defer httpResp.Body.Close()
 
-	links := link.ParseResponse(resp)
-	if serviceDesc := links["service-desc"]; serviceDesc != nil {
-		uris = append(uris, serviceDesc.URI)
+	resp, err := ParseResponse(httpResp)
+
+	// Start with known link relations for API descriptions.
+	for _, l := range resp.Links["service-desc"] {
+		uris = append(uris, l.URI)
+	}
+	for _, l := range resp.Links["describedby"] {
+		uris = append(uris, l.URI)
 	}
 
-	// Try hints next
+	// Try hints from loaders next. These are likely places for API descriptions
+	// to be on the server, like e.g. `/openapi.json`.
 	for _, l := range loaders {
 		uris = append(uris, l.LocationHints()...)
 	}

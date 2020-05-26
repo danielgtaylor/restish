@@ -25,6 +25,7 @@ func main() {
 	cli.AddLinkParser(&cli.LinkHeaderParser{})
 	cli.AddLinkParser(&cli.HALParser{})
 	cli.AddLinkParser(&cli.TerrificallySimpleJSONParser{})
+	cli.AddLinkParser(&cli.JSONAPIParser{})
 
 	// Register format loaders to auto-discover API descriptions
 	cli.AddLoader(openapi.New())

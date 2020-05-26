@@ -15,7 +15,7 @@ type Link struct {
 	URI string `json:"uri"`
 }
 
-// Links represents a list of linke relations.
+// Links represents a map of `rel` => list of linke relations.
 type Links map[string][]*Link
 
 // LinkParser parses link relationships in a response.
@@ -186,6 +186,57 @@ func (s SirenParser) ParseLinks(resp *Response) error {
 					Rel: rel,
 					URI: link.Href,
 				})
+			}
+		}
+	}
+
+	return nil
+}
+
+func getJSONAPIlinks(links map[string]interface{}, resp *Response, isItem bool) {
+	for k, v := range links {
+		rel := k
+		if isItem && k == "self" {
+			rel = "item"
+		}
+
+		if s, ok := v.(string); ok {
+			resp.Links[rel] = append(resp.Links[rel], &Link{
+				Rel: rel,
+				URI: s,
+			})
+		}
+
+		if m, ok := v.(map[string]interface{}); ok {
+			if s, ok := m["href"].(string); ok {
+				resp.Links[rel] = append(resp.Links[rel], &Link{
+					Rel: rel,
+					URI: s,
+				})
+			}
+		}
+	}
+}
+
+// JSONAPIParser parses JSON:API hypermedia links.
+type JSONAPIParser struct{}
+
+// ParseLinks processes the links in a parsed response.
+func (j JSONAPIParser) ParseLinks(resp *Response) error {
+	if b, ok := resp.Body.(map[string]interface{}); ok {
+		// Find top-level links
+		if l, ok := b["links"].(map[string]interface{}); ok {
+			getJSONAPIlinks(l, resp, false)
+		}
+
+		// Find collection item links
+		if d, ok := b["data"].([]interface{}); ok {
+			for _, item := range d {
+				if m, ok := item.(map[string]interface{}); ok {
+					if l, ok := m["links"].(map[string]interface{}); ok {
+						getJSONAPIlinks(l, resp, true)
+					}
+				}
 			}
 		}
 	}

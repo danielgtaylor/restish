@@ -53,6 +53,14 @@ func extStr(v openapi3.ExtensionProps, key string) (decoded string) {
 	return
 }
 
+// extBool returns the boolean value of an OpenAPI extension.
+func extBool(v openapi3.ExtensionProps, key string) (decoded bool) {
+	if v.Extensions[ExtIgnore] != nil {
+		json.Unmarshal(v.Extensions[ExtIgnore].(json.RawMessage), &decoded)
+	}
+	return
+}
+
 func getRequestInfo(op *openapi3.Operation) (string, *openapi3.Schema, []interface{}) {
 	mts := make(map[string][]interface{})
 
@@ -150,11 +158,20 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 				displayName = override
 			}
 
+			description := p.Value.Description
+			if override := extStr(p.Value.ExtensionProps, ExtDescription); override != "" {
+				description = override
+			}
+
+			if override := extBool(p.Value.ExtensionProps, ExtIgnore); override {
+				continue
+			}
+
 			param := &cli.Param{
 				Type:        typ,
 				Name:        p.Value.Name,
 				DisplayName: displayName,
-				Description: p.Value.Description,
+				Description: description,
 				Style:       style,
 				Explode:     explode,
 				Default:     def,
@@ -189,8 +206,8 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 	}
 
 	hidden := false
-	if path.Extensions[ExtHidden] != nil {
-		json.Unmarshal(path.Extensions[ExtHidden].(json.RawMessage), &hidden)
+	if override := extBool(path.ExtensionProps, ExtHidden); override {
+		hidden = true
 	}
 
 	mediaType := ""
@@ -329,12 +346,7 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 
 	operations := []cli.Operation{}
 	for uri, path := range swagger.Paths {
-		var ignore bool
-		if path.Extensions[ExtIgnore] != nil {
-			json.Unmarshal(path.Extensions[ExtIgnore].(json.RawMessage), &ignore)
-		}
-		if ignore {
-			// Ignore this path.
+		if override := extBool(path.ExtensionProps, ExtIgnore); override {
 			continue
 		}
 
@@ -344,11 +356,7 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		}
 
 		for method, operation := range path.Operations() {
-			if path.Extensions[ExtIgnore] != nil {
-				json.Unmarshal(path.Extensions[ExtIgnore].(json.RawMessage), &ignore)
-			}
-			if ignore {
-				// Ignore this operation.
+			if override := extBool(operation.ExtensionProps, ExtIgnore); override {
 				continue
 			}
 
@@ -413,6 +421,14 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 	if swagger.Info != nil {
 		short = swagger.Info.Title
 		long = swagger.Info.Description
+
+		if override := extStr(swagger.Info.ExtensionProps, ExtName); override != "" {
+			short = override
+		}
+
+		if override := extStr(swagger.Info.ExtensionProps, ExtDescription); override != "" {
+			long = override
+		}
 	}
 
 	api := cli.API{

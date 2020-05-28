@@ -119,6 +119,11 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		req.Header.Set("accept-encoding", buildAcceptEncodingHeader())
 	}
 
+	if req.Header.Get("content-type") == "" && req.Body != nil {
+		// We have a body but no content-type; default to JSON.
+		req.Header.Set("content-type", "application/json; charset=utf-8")
+	}
+
 	query := req.URL.Query()
 	for _, q := range viper.GetStringSlice("rsh-query") {
 		parts := strings.SplitN(q, "=", 2)

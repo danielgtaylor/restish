@@ -63,6 +63,8 @@ Date: Wed, 20 May 2020 05:50:52 GMT
 }
 ```
 
+?> Note that the output above is **not** JSON! By default, Restish outputs an HTTP+JSON-like format meant to be more readable. See [output](/output.md) for more info.
+
 Various inputs can be passed in as needed:
 
 ```bash
@@ -90,9 +92,9 @@ $ restish example.com/users
 
 If you have persistent headers or query params you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Read on to find out how.
 
-## Calling APIs
+## API Operation Commands
 
-APIs can be registered in order to provide API description auto-discovery with convenience commands and authentication. APIs are registered with a short nickname. For example the GitHub v3 API might be called `github`.
+APIs can be registered in order to provide API description auto-discovery with convenience commands and authentication. APIs are registered with a short nickname. For example the GitHub v3 API might be called `github` or the Digital Ocean API might be called `do`.
 
 Each registered API can have a number of named profiles which can be selected via the `-p` or `--rsh-profile` argument. The default profile is called `default`.
 
@@ -132,3 +134,5 @@ You can even use the short nickname in place of the full API domain, so for exam
 # Use the API nickname instead of the domain
 $ restish example/items?search=active
 ```
+
+That's it for the guide! Hopefully this gave you a quick overview of what is possible with Restish. See the more in-depth topics in the side navigation bar to go deep on how all the above works and is used. Thanks for reading! :tada:

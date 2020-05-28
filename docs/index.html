@@ -86,7 +86,8 @@
       .token.property,
       .token.class-name,
       .token.constant,
-      .token.symbol {
+      .token.symbol,
+      .token.key {
         color: #5fafd7;
       }
 
@@ -141,7 +142,7 @@
     <script src="//unpkg.com/prismjs/components/prism-json.min.js"></script>
     <script src="//unpkg.com/prismjs/components/prism-yaml.min.js"></script>
     <script>
-      // Custom "readable" language for Restish output
+      // Custom "readable" language for Restish output, see `cli/lexer.go`.
       Prism.languages.readable = {
         response: {
           alias: "keyword",

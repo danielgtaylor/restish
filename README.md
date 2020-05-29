@@ -1,5 +1,7 @@
 ![Restish Logo](https://user-images.githubusercontent.com/106826/82109918-ec5b2300-96ee-11ea-9af0-8515329d5965.png)
 
+[![Restish Approved](https://img.shields.io/badge/Works%20With-Restish-ff5f87)](https://rest.sh/) [![CI](https://github.com/danielgtaylor/restish/workflows/CI/badge.svg?branch=master)](https://github.com/danielgtaylor/restish/actions?query=workflow%3ACI+branch%3Amaster++) [![codecov](https://codecov.io/gh/danielgtaylor/restish/branch/master/graph/badge.svg)](https://codecov.io/gh/danielgtaylor/restish) [![Docs](https://godoc.org/github.com/danielgtaylor/restish?status.svg)](https://pkg.go.dev/github.com/danielgtaylor/restish?tab=subdirectories) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/restish)](https://goreportcard.com/report/github.com/danielgtaylor/restish)
+
 [Restish](https://rest.sh/) is a CLI for interacting with [REST](https://apisyouwonthate.com/blog/rest-and-hypermedia-in-2019)-ish HTTP APIs with some nice features built-in, like always having the latest API resources, fields, and operations available when they go live on the API without needing to install or update anything.
 
 See the [user guide](https://rest.sh/#/guide) to get started.

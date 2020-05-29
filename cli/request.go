@@ -315,11 +315,9 @@ func GetParsedResponse(req *http.Request) (Response, error) {
 			parsed.Body = append(parsed.Body.([]interface{}), l...)
 
 			// Update the total computed size to include the size of each individual
-			// request.
+			// request if the content size is available.
 			if s, err := strconv.ParseInt(parsedNext.Headers["Content-Length"], 10, 64); err == nil {
 				computedSize += s
-			} else {
-				LogError("%v", err)
 			}
 		} else {
 			LogWarning("Auto-pagination next page is not a list, aborting")

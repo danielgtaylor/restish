@@ -4,7 +4,19 @@ This guide will help you to get started installing and using Restish.
 
 ## Installation
 
-Grab a [release](https://github.com/danielgtaylor/restish/releases) for your platform, otherwise if you have Go installed:
+You can install in one of three ways: Homebrew tap, GitHub release, or via `go get`.
+
+If you have [Homebrew](https://brew.sh/) then install via the official tap:
+
+```bash
+# Add the tap
+$ brew tap danielgtaylor/restish
+
+# Install the executable
+$ brew install restish
+```
+
+If you don't have Homebrew, you can grab a [release](https://github.com/danielgtaylor/restish/releases) for your platform and manually copy the executable to the right location (e.g. `/usr/local/bin/restish`), otherwise if you have Go installed:
 
 ```bash
 # Download / build / install

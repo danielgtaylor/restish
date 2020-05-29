@@ -3,5 +3,6 @@
 - [Configuration](configuration.md "Configuring Restish")
 - [OpenAPI](openapi.md "OpenAPI 3 & Restish")
 - [Input](input.md "Restish Input")
+- [CLI Shorthand](shorthand.md "CLI Shorthand")
 - [Output](output.md "Restish Output")
 - [Hypermedia](hypermedia.md "Hypermedia Linking in Restish")

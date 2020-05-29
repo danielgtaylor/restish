@@ -9,7 +9,32 @@
       name="viewport"
       content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
     />
-    <!-- <link rel="stylesheet" href="//unpkg.com/docsify/lib/themes/vue.css" /> -->
+    <meta
+      name="twitter:image:src"
+      content="https://repository-images.githubusercontent.com/264117985/f0d34600-9951-11ea-97c1-cf185c56f111"
+    />
+    <meta name="twitter:site" content="@github" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="danielgtaylor/restish" />
+    <meta
+      name="twitter:description"
+      content="Restish is a CLI for interacting with REST-ish HTTP APIs with some nice features built-in - danielgtaylor/restish"
+    />
+    <meta
+      property="og:image"
+      content="https://repository-images.githubusercontent.com/264117985/f0d34600-9951-11ea-97c1-cf185c56f111"
+    />
+    <meta property="og:site_name" content="GitHub" />
+    <meta property="og:type" content="object" />
+    <meta property="og:title" content="danielgtaylor/restish" />
+    <meta
+      property="og:url"
+      content="https://github.com/danielgtaylor/restish"
+    />
+    <meta
+      property="og:description"
+      content="Restish is a CLI for interacting with REST-ish HTTP APIs with some nice features built-in - danielgtaylor/restish"
+    />
     <!-- Theme: Simple (latest v0.x.x) -->
     <link
       rel="stylesheet"
@@ -17,7 +42,7 @@
     />
     <style>
       :root {
-        --base-font-size: 14px;
+        --base-font-size: 16px;
         --theme-color: #5fafd7;
         --link-color: #ff5f87;
         --code-theme-background: #333;
@@ -104,11 +129,11 @@
       .token.string,
       .token.char,
       .token.attr-value,
-      .token.regex,
-      .token.variable {
+      .token.regex {
         color: #afd787;
       }
 
+      .token.variable,
       .token.binary {
         color: #ffd7d7;
       }
@@ -134,10 +159,10 @@
         repo: "danielgtaylor/restish",
         loadSidebar: true,
         subMaxLevel: 2,
+        auto2top: true,
       };
     </script>
     <script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
-    <script src="//unpkg.com/prismjs/components/prism-bash.min.js"></script>
     <script src="//unpkg.com/prismjs/components/prism-http.min.js"></script>
     <script src="//unpkg.com/prismjs/components/prism-json.min.js"></script>
     <script src="//unpkg.com/prismjs/components/prism-yaml.min.js"></script>
@@ -153,9 +178,9 @@
           },
         },
         header: {
-          pattern: /^[A-Z][a-zA-Z-]+:.*/m,
+          pattern: /^[A-Z][a-zA-Z0-9-]+:.*/m,
           inside: {
-            property: /[A-Z][a-zA-Z-]+(?=:)/,
+            property: /[A-Z][a-zA-Z0-9-]+(?=:)/,
           },
         },
         property: /^\s+[a-z0-9-_]+(?=:)/im,
@@ -169,6 +194,44 @@
         number: /\b0x[\dA-Fa-f]+\b|(?:\b\d+\.?\d*|\B\.\d+)(?:[Ee][+-]?\d+)?/,
         boolean: /\b(?:true|false)\b/i,
         null: /\bnull\b/i,
+      };
+
+      Prism.languages.bash = {
+        comment: /^#.*/m,
+        json: {
+          pattern: /^\{(.|\n)*\}/m,
+          greedy: false,
+          inside: Prism.languages.json,
+        },
+        uri: {
+          pattern: /(https?:\/\/)?[a-z0-9.-]+\.com\S*/,
+        },
+        variable: /[A-Z0-9_]+(?:[=])/,
+        varuse: {
+          alias: "variable",
+          pattern: /\$[A-Z0-9_]+/,
+        },
+        header: {
+          pattern: /-H [A-Z][a-zA-Z0-9-]+:\S+/,
+          inside: {
+            property: /[A-Z][a-zA-Z0-9-]+(?=:)/,
+          },
+        },
+        queryparam: {
+          pattern: /-q [a-z0-9-]+=\S+/i,
+          inside: {
+            property: /[a-z0-9-]+(?==)/i,
+          },
+        },
+        string: {
+          pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))|('(?:\\.|[^\\'\r\n])*'(?!\s*:))/,
+          greedy: true,
+        },
+        property: /[a-z0-9.\[\]-]+(?=:)/,
+        number: /\b[0-9]+(\.[0-9]+)?/,
+        boolean: /\b(?:true|false)\b/i,
+        null: /\bnull\b/i,
+        keyword: /restish|</,
       };
     </script>
   </body>

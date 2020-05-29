@@ -6,8 +6,12 @@ import (
 	"github.com/danielgtaylor/restish/openapi"
 )
 
+var version string = "dev"
+var commit string
+var date string
+
 func main() {
-	cli.Init("restish")
+	cli.Init("restish", version)
 
 	// Register content encodings
 	cli.AddEncoding("gzip", &cli.GzipEncoding{})

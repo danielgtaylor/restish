@@ -12,7 +12,7 @@ import (
 
 func run(cmd string) string {
 	viper.Set("nocolor", true)
-	Init("test")
+	Init("test", "1.0.0'")
 	AddContentType("application/json", 1, JSON{})
 
 	capture := &strings.Builder{}

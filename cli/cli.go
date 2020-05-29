@@ -90,7 +90,7 @@ func generic(method string, addr string, args []string) {
 }
 
 // Init will set up the CLI.
-func Init(name string) {
+func Init(name string, version string) {
 	initConfig(name, "")
 	initCache(name)
 
@@ -123,7 +123,7 @@ func Init(name string) {
 	Root = &cobra.Command{
 		Use:     filepath.Base(os.Args[0]),
 		Long:    "A generic client for REST-ish APIs <https://rest.sh/>",
-		Version: "0.1",
+		Version: version,
 		Example: fmt.Sprintf(`  # Get a URI
   $ %s google.com
 

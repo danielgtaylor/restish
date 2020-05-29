@@ -1,0 +1,40 @@
+# This is an example goreleaser.yaml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+before:
+  hooks:
+    - go mod download
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    ignore:
+      - goos: darwin
+        goarch: 386
+archives:
+  - name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    replacements:
+      darwin: mac
+      386: i386
+      amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
+brews:
+  - github:
+      owner: danielgtaylor
+      name: homebrew-restish
+    homepage: https://rest.sh/
+    description: Restish is a CLI for interacting with REST-ish HTTP APIs with some nice features built-in.
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

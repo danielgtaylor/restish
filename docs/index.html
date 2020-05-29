@@ -206,7 +206,7 @@
         uri: {
           pattern: /(https?:\/\/)?[a-z0-9.-]+\.com\S*/,
         },
-        variable: /[A-Z0-9_]+(?:[=])/,
+        variable: /[A-Z0-9_]+(?=[=])/,
         varuse: {
           alias: "variable",
           pattern: /\$[A-Z0-9_]+/,

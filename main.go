@@ -13,23 +13,8 @@ var date string
 func main() {
 	cli.Init("restish", version)
 
-	// Register content encodings
-	cli.AddEncoding("gzip", &cli.GzipEncoding{})
-	cli.AddEncoding("br", &cli.BrotliEncoding{})
-
-	// Register content type marshallers
-	cli.AddContentType("application/cbor", 0.9, &cli.CBOR{})
-	cli.AddContentType("application/msgpack", 0.8, &cli.MsgPack{})
-	cli.AddContentType("application/ion", 0.6, &cli.Ion{})
-	cli.AddContentType("application/json", 0.5, &cli.JSON{})
-	cli.AddContentType("application/yaml", 0.5, &cli.YAML{})
-	cli.AddContentType("text/*", 0.2, &cli.Text{})
-
-	// Add link relation parsers
-	cli.AddLinkParser(&cli.LinkHeaderParser{})
-	cli.AddLinkParser(&cli.HALParser{})
-	cli.AddLinkParser(&cli.TerrificallySimpleJSONParser{})
-	cli.AddLinkParser(&cli.JSONAPIParser{})
+	// Register default encodings, content type handlers, and link parsers.
+	cli.Defaults()
 
 	// Register format loaders to auto-discover API descriptions
 	cli.AddLoader(openapi.New())

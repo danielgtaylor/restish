@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/peterhellberg/link"
 	"github.com/spf13/viper"
 )
 
@@ -277,12 +276,12 @@ func GetParsedResponse(req *http.Request) (Response, error) {
 
 	base := req.URL
 	for {
-		links := link.ParseResponse(resp)
-		if links["next"] == nil || viper.GetBool("rsh-no-paginate") {
+		links := parsed.Links
+		if len(links["next"]) == 0 || viper.GetBool("rsh-no-paginate") {
 			break
 		}
 
-		LogDebug("Found pagination via rel=next link: %s", links["next"].URI)
+		LogDebug("Found pagination via rel=next link: %s", links["next"][0].URI)
 
 		if _, ok := parsed.Body.([]interface{}); !ok {
 			// TODO: support non-list formats like JSON:API
@@ -291,7 +290,7 @@ func GetParsedResponse(req *http.Request) (Response, error) {
 		}
 
 		// Make the next request
-		next, _ := url.Parse(links["next"].URI)
+		next, _ := url.Parse(links["next"][0].URI)
 		next = base.ResolveReference(next)
 		req, _ = http.NewRequest(http.MethodGet, next.String(), nil)
 

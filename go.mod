@@ -22,7 +22,6 @@ require (
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mitchellh/mapstructure v1.3.0
 	github.com/pelletier/go-toml v1.7.0 // indirect
-	github.com/peterhellberg/link v1.1.0
 	github.com/shamaton/msgpack v1.1.1
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cast v1.3.1 // indirect

@@ -98,6 +98,7 @@ func Init(name string, version string) {
 	authHandlers = map[string]AuthHandler{}
 	contentTypes = []contentTypeEntry{}
 	encodings = map[string]ContentEncoding{}
+	linkParsers = []LinkParser{}
 
 	// Determine if we are using a TTY or colored output is forced-on.
 	tty = false
@@ -296,7 +297,7 @@ Not after (expires): %s (%s)
 				}
 			}
 
-			fmt.Println(string(encoded))
+			fmt.Fprintln(Stdout, string(encoded))
 		},
 	}
 	Root.AddCommand(linkCmd)
@@ -371,6 +372,28 @@ func initCache(appName string) {
 	}
 
 	Cache.ReadInConfig()
+}
+
+// Defaults adds the default encodings, content types, and link parsers to
+// the CLI.
+func Defaults() {
+	// Register content encodings
+	AddEncoding("gzip", &GzipEncoding{})
+	AddEncoding("br", &BrotliEncoding{})
+
+	// Register content type marshallers
+	AddContentType("application/cbor", 0.9, &CBOR{})
+	AddContentType("application/msgpack", 0.8, &MsgPack{})
+	AddContentType("application/ion", 0.6, &Ion{})
+	AddContentType("application/json", 0.5, &JSON{})
+	AddContentType("application/yaml", 0.5, &YAML{})
+	AddContentType("text/*", 0.2, &Text{})
+
+	// Add link relation parsers
+	AddLinkParser(&LinkHeaderParser{})
+	AddLinkParser(&HALParser{})
+	AddLinkParser(&TerrificallySimpleJSONParser{})
+	AddLinkParser(&JSONAPIParser{})
 }
 
 // Run the CLI! Parse arguments, make requests, print responses.

@@ -125,19 +125,21 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 		}
 	}
 
-	// For fetching specs, we apply a 24-hour cache time if no cache headers
-	// are set. So APIs can opt-in to caching if they want control, otherwise
-	// we try and do the right thing and not hit them too often.
-	client := MinCachedTransport(24 * time.Hour).Client()
-	if viper.GetBool("rsh-no-cache") {
-		client = &http.Client{Transport: InvalidateCachedTransport()}
-	}
-
 	LogDebug("Checking API entrypoint %s", entrypoint)
 	req, err := http.NewRequest(http.MethodGet, entrypoint, nil)
 	if err != nil {
 		return API{}, err
 	}
+
+	// For fetching specs, we apply a 24-hour cache time if no cache headers
+	// are set. So APIs can opt-in to caching if they want control, otherwise
+	// we try and do the right thing and not hit them too often. Localhost
+	// is never cached to make local development easier.
+	client := MinCachedTransport(24 * time.Hour).Client()
+	if viper.GetBool("rsh-no-cache") || req.URL.Hostname() == "localhost" {
+		client = &http.Client{Transport: InvalidateCachedTransport()}
+	}
+
 	httpResp, err := MakeRequest(req, WithClient(client), WithoutLog())
 	defer httpResp.Body.Close()
 

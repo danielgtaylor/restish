@@ -300,13 +300,19 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		}
 	}
 
+	tmpl, err := url.PathUnescape(uriTemplate.String())
+	if err != nil {
+		// Unescape didn't work, just fall back to the original template.
+		tmpl = uriTemplate.String()
+	}
+
 	return cli.Operation{
 		Name:          name,
 		Aliases:       aliases,
 		Short:         op.Summary,
 		Long:          desc,
 		Method:        method,
-		URITemplate:   uriTemplate.String(),
+		URITemplate:   tmpl,
 		PathParams:    pathParams,
 		QueryParams:   queryParams,
 		HeaderParams:  headerParams,

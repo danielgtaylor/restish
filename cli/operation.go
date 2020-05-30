@@ -71,7 +71,7 @@ func (o Operation) command() *cobra.Command {
 					log.Fatalf("could not parse param %s with input %s: %v", param.Name, value, err)
 				}
 				// Replaces URL-encoded `{`+name+`}` in the template.
-				uri = strings.Replace(uri, "%7B"+param.Name+"%7D", fmt.Sprintf("%v", value), 1)
+				uri = strings.Replace(uri, "{"+param.Name+"}", fmt.Sprintf("%v", value), 1)
 			}
 
 			query := url.Values{}

@@ -7,7 +7,7 @@ Restish comes with an optional contextual shorthand syntax for passing structure
 $ restish post api.example.com/items foo.bar[].baz: 1, .hello: world
 ```
 
-Would result in the following body contents being sent on the wire (assuming a JSON media type is specified in the OpenAPI spec):
+Would result in the following body contents being sent on the wire (assuming a JSON media type is specified in the service spec):
 
 ```json
 {

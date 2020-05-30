@@ -60,6 +60,21 @@ You should see something like the following, which enables you to create and edi
 
 <img alt="Screen Shot" src="https://user-images.githubusercontent.com/106826/83099522-79dd3200-a062-11ea-8a78-b03a2fecf030.png">
 
+Once an API is configured, you can start using it by using its short name. For example, given an API named `example`:
+
+```bash
+# If it has an API service description, call an operation
+$ restish example list-items
+
+# If there is no API description you can still use persistent headers and auth
+$ restish example/items
+
+# It also works for full URIs, e.g. auth will be applied to:
+$ restish https://api.example.com/items
+```
+
+Read on the learn more about the available API options.
+
 ### Persistent Headers & Query Params
 
 Follow the prompts to add or edit persistent headers or query params. These are values that get sent with **every request** when using that profile.
@@ -119,7 +134,7 @@ For example, to integrate with a third-party service like [Auth0](https://auth0.
         "auth": {
           "name": "oauth-authorization-code",
           "params": {
-            "audience": "https://api.company.com",
+            "audience": "audience-name",
             "authorize_url": "https://company.auth0.com/authorize",
             "client_id": "abc123",
             "scopes": "offline_access",

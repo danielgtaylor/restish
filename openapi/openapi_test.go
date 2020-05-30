@@ -144,7 +144,7 @@ func TestLoadOpenAPI(t *testing.T) {
 			{
 				Name:         "createpets",
 				Short:        "Create a pet",
-				Long:         "\n## Response 201\n\nNull response\n\n## Response default (application/json)\n\nunexpected error\n\n```schema\n(object) {\n  code*: (integer) \n  message*: (string) \n}\n```\n",
+				Long:         "\n## Response 201\n\nNull response\n\n## Response default (application/json)\n\nunexpected error\n\n```schema\n{\n  code*: (integer format:int32) \n  message*: (string) \n}\n```\n",
 				Method:       "POST",
 				URITemplate:  "http://api.example.com/pets",
 				PathParams:   []*cli.Param{},
@@ -154,7 +154,7 @@ func TestLoadOpenAPI(t *testing.T) {
 			{
 				Name:        "listpets",
 				Short:       "List all pets",
-				Long:        "\n## Response 200 (application/json)\n\nA paged array of pets\n\n```schema\n(array) [\n  (object) {\n    id*: (integer) \n    name*: (string) \n    tag: (string) \n  }\n]\n```\n\n## Response default (application/json)\n\nunexpected error\n\n```schema\n(object) {\n  code*: (integer) \n  message*: (string) \n}\n```\n",
+				Long:        "\n## Response 200 (application/json)\n\nA paged array of pets\n\n```schema\n[\n  {\n    id*: (integer format:int64) \n    name*: (string) \n    tag: (string) \n  }\n]\n```\n\n## Response default (application/json)\n\nunexpected error\n\n```schema\n{\n  code*: (integer format:int32) \n  message*: (string) \n}\n```\n",
 				Method:      "GET",
 				URITemplate: "http://api.example.com/pets",
 				PathParams:  []*cli.Param{},
@@ -170,7 +170,7 @@ func TestLoadOpenAPI(t *testing.T) {
 			{
 				Name:        "showpetbyid",
 				Short:       "Info for a specific pet",
-				Long:        "\n## Response 200 (application/json)\n\nExpected response to a valid request\n\n```schema\n(object) {\n  id*: (integer) \n  name*: (string) \n  tag: (string) \n}\n```\n\n## Response default (application/json)\n\nunexpected error\n\n```schema\n(object) {\n  code*: (integer) \n  message*: (string) \n}\n```\n",
+				Long:        "\n## Response 200 (application/json)\n\nExpected response to a valid request\n\n```schema\n{\n  id*: (integer format:int64) \n  name*: (string) \n  tag: (string) \n}\n```\n\n## Response default (application/json)\n\nunexpected error\n\n```schema\n{\n  code*: (integer format:int32) \n  message*: (string) \n}\n```\n",
 				Method:      "GET",
 				URITemplate: "http://api.example.com/pets/{petId}",
 				PathParams: []*cli.Param{

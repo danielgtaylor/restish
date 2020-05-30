@@ -27,7 +27,7 @@ func renderSchema(s *openapi3.Schema, indent string, mode schemaMode) string {
 			s.Type = "array"
 		}
 
-		if len(s.Properties) > 0 || (s.AdditionalProperties != nil && s.AdditionalProperties.Value != nil) {
+		if len(s.Properties) > 0 || (s.AdditionalProperties != nil && s.AdditionalProperties.Value != nil) || (s.AdditionalPropertiesAllowed != nil && *s.AdditionalPropertiesAllowed) {
 			s.Type = "object"
 		}
 	}
@@ -40,20 +40,48 @@ func renderSchema(s *openapi3.Schema, indent string, mode schemaMode) string {
 		tags := []string{}
 
 		// TODO: handler more validators
+		if s.Nullable {
+			tags = append(tags, "nullable:true")
+		}
+
 		if s.Min != nil {
-			tags = append(tags, fmt.Sprintf("min:%g", *s.Min))
+			key := "min"
+			if s.ExclusiveMin {
+				key = "exclusiveMin"
+			}
+			tags = append(tags, fmt.Sprintf("%s:%g", key, *s.Min))
 		}
 
 		if s.Max != nil {
-			tags = append(tags, fmt.Sprintf("max:%g", *s.Max))
+			key := "max"
+			if s.ExclusiveMax {
+				key = "exclusiveMax"
+			}
+			tags = append(tags, fmt.Sprintf("%s:%g", key, *s.Max))
+		}
+
+		if s.MultipleOf != nil {
+			tags = append(tags, fmt.Sprintf("multiple:%g", *s.MultipleOf))
 		}
 
 		if s.Default != nil {
 			tags = append(tags, fmt.Sprintf("default:%v", s.Default))
 		}
 
+		if s.Format != "" {
+			tags = append(tags, fmt.Sprintf("format:%v", s.Format))
+		}
+
 		if s.Pattern != "" {
 			tags = append(tags, fmt.Sprintf("pattern:%s", s.Pattern))
+		}
+
+		if s.MinLength != 0 {
+			tags = append(tags, fmt.Sprintf("minLen:%d", s.MinLength))
+		}
+
+		if s.MaxLength != nil {
+			tags = append(tags, fmt.Sprintf("maxLen:%d", *s.MaxLength))
 		}
 
 		if len(s.Enum) > 0 {
@@ -72,15 +100,15 @@ func renderSchema(s *openapi3.Schema, indent string, mode schemaMode) string {
 
 		return fmt.Sprintf("(%s%s) %s", s.Type, tagStr, doc)
 	case "array":
-		arr := "(array) [\n  " + indent + renderSchema(s.Items.Value, indent+"  ", mode) + "\n" + indent + "]"
+		arr := "[\n  " + indent + renderSchema(s.Items.Value, indent+"  ", mode) + "\n" + indent + "]"
 		return arr
 	case "object":
 		// Special case: object with nothing defined
-		if len(s.Properties) == 0 && (s.AdditionalProperties == nil || s.AdditionalProperties.Value == nil) {
+		if len(s.Properties) == 0 && (s.AdditionalProperties == nil || s.AdditionalProperties.Value == nil) && (s.AdditionalPropertiesAllowed == nil || !*s.AdditionalPropertiesAllowed) {
 			return "(object)"
 		}
 
-		obj := "(object) {\n"
+		obj := "{\n"
 
 		keys := []string{}
 		for name := range s.Properties {
@@ -113,6 +141,8 @@ func renderSchema(s *openapi3.Schema, indent string, mode schemaMode) string {
 
 		if s.AdditionalProperties != nil && s.AdditionalProperties.Value != nil && s.AdditionalProperties.Value.Type != "" {
 			obj += indent + "  " + "<any>: " + renderSchema(s.AdditionalProperties.Value, indent+"  ", mode) + "\n"
+		} else if s.AdditionalPropertiesAllowed != nil && *s.AdditionalPropertiesAllowed {
+			obj += indent + "  <any>: <any>\n"
 		}
 
 		obj += indent + "}"

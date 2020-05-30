@@ -69,7 +69,7 @@ var SchemaLexer = lexers.Register(chroma.MustNewLexer(
 			chroma.Include("whitespace"),
 			{`(\()([^ )]+)`, chroma.ByGroups(chroma.Text, chroma.Keyword), nil},
 			{`([^:]+)(:)([^ )]+)`, chroma.ByGroups(chroma.String, chroma.Text, chroma.Text), nil},
-			{`\)[^\n]*`, chroma.Text, chroma.Pop(1)},
+			{`[^\n]*`, chroma.Text, chroma.Pop(1)},
 		},
 		"row": {
 			chroma.Include("whitespace"),

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -10,25 +9,26 @@ import (
 )
 
 type mockAsker struct {
+	t         *testing.T
 	pos       int
 	responses []string
 }
 
 func (a *mockAsker) askConfirm(message string, def bool, help string) bool {
 	a.pos++
-	fmt.Println("confirm", a.responses[a.pos-1])
+	a.t.Log("confirm", a.responses[a.pos-1])
 	return a.responses[a.pos-1] == "y"
 }
 
 func (a *mockAsker) askInput(message string, def string, required bool, help string) string {
 	a.pos++
-	fmt.Println("input", a.responses[a.pos-1])
+	a.t.Log("input", a.responses[a.pos-1])
 	return a.responses[a.pos-1]
 }
 
 func (a *mockAsker) askSelect(message string, options []string, def interface{}, help string) string {
 	a.pos++
-	fmt.Println("select", a.responses[a.pos-1])
+	a.t.Log("select", a.responses[a.pos-1])
 	return a.responses[a.pos-1]
 }
 
@@ -48,6 +48,7 @@ func TestInteractive(t *testing.T) {
 	gock.New("http://api.example.com").Get("/openapi.yaml").Reply(404)
 
 	mock := &mockAsker{
+		t: t,
 		responses: []string{
 			// TODO: Add a bunch more responses for various code paths.
 			"http://api.example.com",

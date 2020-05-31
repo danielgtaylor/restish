@@ -100,6 +100,10 @@ func (t Text) Detect(contentType string) bool {
 
 // Marshal the value to a text string.
 func (t Text) Marshal(value interface{}) ([]byte, error) {
+	if s, ok := value.(string); ok {
+		return []byte(s), nil
+	}
+
 	if s, ok := value.(stringer); ok {
 		return []byte(s.String()), nil
 	}

@@ -20,7 +20,6 @@ func main() {
 	cli.AddLoader(openapi.New())
 
 	// Register auth schemes
-	cli.AddAuth("http-basic", &cli.BasicAuth{})
 	cli.AddAuth("oauth-client-credentials", &oauth.ClientCredentialsHandler{})
 	cli.AddAuth("oauth-authorization-code", &oauth.AuthorizationCodeHandler{})
 

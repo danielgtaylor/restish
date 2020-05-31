@@ -77,7 +77,7 @@ func initAPIConfig() {
 		Short:   "Initialize an API",
 		Long:    "Initializes an API with a short interactive prompt session to set up the base URI and auth if needed.",
 		Args:    cobra.ExactArgs(1),
-		Run:     askInitAPI,
+		Run:     askInitAPIDefault,
 	})
 
 	// Register API sub-commands

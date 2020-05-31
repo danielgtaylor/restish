@@ -10,17 +10,25 @@ import (
 	"gopkg.in/h2non/gock.v1"
 )
 
-func run(cmd string, color ...bool) string {
+func reset(color bool) {
 	viper.Reset()
 
-	if len(color) == 0 || !color[0] {
-		viper.Set("nocolor", true)
-	} else {
+	if color {
 		viper.Set("color", true)
+	} else {
+		viper.Set("nocolor", true)
 	}
 
 	Init("test", "1.0.0'")
 	Defaults()
+}
+
+func run(cmd string, color ...bool) string {
+	if len(color) == 0 || !color[0] {
+		reset(false)
+	} else {
+		reset(true)
+	}
 
 	capture := &strings.Builder{}
 	Stdout = capture

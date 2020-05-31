@@ -141,9 +141,15 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 	}
 
 	httpResp, err := MakeRequest(req, WithClient(client), WithoutLog())
+	if err != nil {
+		return API{}, err
+	}
 	defer httpResp.Body.Close()
 
 	resp, err := ParseResponse(httpResp)
+	if err != nil {
+		return API{}, err
+	}
 
 	// Start with known link relations for API descriptions.
 	for _, l := range resp.Links["service-desc"] {

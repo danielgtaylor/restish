@@ -394,6 +394,9 @@ func Defaults() {
 	AddLinkParser(&HALParser{})
 	AddLinkParser(&TerrificallySimpleJSONParser{})
 	AddLinkParser(&JSONAPIParser{})
+
+	// Register auth schemes
+	AddAuth("http-basic", &BasicAuth{})
 }
 
 // Run the CLI! Parse arguments, make requests, print responses.

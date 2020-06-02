@@ -20,6 +20,10 @@ const (
 	StyleForm
 )
 
+func typeConvert(from, to interface{}) interface{} {
+	return reflect.ValueOf(from).Convert(reflect.TypeOf(to)).Interface()
+}
+
 // Param represents an API operation input parameter.
 type Param struct {
 	Type        string      `json:"type"`
@@ -113,12 +117,12 @@ func (p Param) AddFlag(flags *pflag.FlagSet) interface{} {
 		if def == nil {
 			def = 0
 		}
-		return flags.Int(name, int(def.(float64)), p.Description)
+		return flags.Int(name, typeConvert(def, 0).(int), p.Description)
 	case "number":
 		if def == nil {
 			def = 0.0
 		}
-		return flags.Float64(name, def.(float64), p.Description)
+		return flags.Float64(name, typeConvert(def, float64(0.0)).(float64), p.Description)
 	case "string":
 		if def == nil {
 			def = ""

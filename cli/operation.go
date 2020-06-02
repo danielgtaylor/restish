@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"github.com/gosimple/slug"
@@ -76,6 +77,11 @@ func (o Operation) command() *cobra.Command {
 
 			query := url.Values{}
 			for _, param := range o.QueryParams {
+				if reflect.ValueOf(flags[param.Name]).Elem().Interface() == param.Default {
+					// No need to send the default value. Just skip it.
+					continue
+				}
+
 				for _, v := range param.Serialize(flags[param.Name]) {
 					query.Add(param.Name, v)
 				}

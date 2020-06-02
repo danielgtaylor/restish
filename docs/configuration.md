@@ -56,7 +56,7 @@ Adding or editing an API is possible via an interactive terminal UI:
 $ restish api configure $NAME
 ```
 
-You should see something like the following, which enables you to create and edit profiles, headers, query params, and auth:
+You should see something like the following, which enables you to create and edit profiles, headers, query params, and auth, eventually saving the data to `~/.restish/apis.json`:
 
 <img alt="Screen Shot" src="https://user-images.githubusercontent.com/106826/83099522-79dd3200-a062-11ea-8a78-b03a2fecf030.png">
 
@@ -146,3 +146,20 @@ For example, to integrate with a third-party service like [Auth0](https://auth0.
   }
 }
 ```
+
+### Loading From Files
+
+Sometimes an API won't provide a way to fetch its spec document, or a third-party will provide a spec for an existing public API, for example GitHub or Stripe.
+
+In this case you can download the spec files to your machine and link to them in the API configuration. Use the `spec_files` array configuration directive for this in `~/.restish/apis.json`:
+
+```json
+{
+  "my-api": {
+    "base": "https://api.github.com",
+    "spec_files": ["/path/to/github-openapi.yaml"]
+  }
+}
+```
+
+!> If more than one file path is specified, then the loaded APIs are merged in the order specified. You will get operations from both APIs, but there can only be a single API title or description so the first encountered non-zero value is used.

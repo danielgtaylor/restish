@@ -25,16 +25,7 @@ If neither one of those returns an OpenAPI spec, then the loader gives up.
 
 ### Loading from Files
 
-For local testing or an API you don't control or can't update, you can load from OpenAPI files. Use the `spec_files` API configuration directive. For example, in `~/.restish/apis.json`:
-
-```json
-{
-  "my-api": {
-    "base": "https://api.example.com",
-    "spec_files": ["/path/to/openapi.json"]
-  }
-}
-```
+For local testing or an API you don't control or can't update, you can load from OpenAPI files. See [Configuration: Loading from Files](configuration.md#loading-from-files) for an example configuration.
 
 ## OpenAPI Extensions
 

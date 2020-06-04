@@ -43,6 +43,10 @@
 - Colorized prettified readable output
 - Fast native zero-dependency binary
 
+## Articles
+
+- [A CLI for REST APIs Part 1](https://dev.to/danielgtaylor/a-cli-for-rest-apis-part-1-104b)
+
 ## Why use this?
 
 Every API deserves a CLI for quick access and for power users to script against the service. Building CLIs from scratch is a pain. Restish provides one tool your users can install that just works for multiple APIs and is always up to date, because the interface is defined by the server.

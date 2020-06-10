@@ -66,11 +66,6 @@ func (l LinkHeaderParser) ParseLinks(resp *Response) error {
 		}
 
 		for _, parsed := range links {
-
-			if resp.Links == nil {
-				resp.Links = map[string][]*Link{}
-			}
-
 			resp.Links[parsed.Rel] = append(resp.Links[parsed.Rel], &Link{
 				Rel: parsed.Rel,
 				URI: parsed.URI,
@@ -137,10 +132,6 @@ func (t TerrificallySimpleJSONParser) walk(resp *Response, key string, value int
 			if s, ok := k.Interface().(string); ok {
 				kStr = s
 				if s == "self" {
-					if resp.Links == nil {
-						resp.Links = map[string][]*Link{}
-					}
-
 					resp.Links[key] = append(resp.Links[key], &Link{
 						Rel: key,
 						URI: fmt.Sprintf("%v", v.MapIndex(k).Interface()),

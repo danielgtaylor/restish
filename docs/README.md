@@ -2,7 +2,7 @@
 
 <div style="text-align: center;">
 
-[![Works With Restish](https://img.shields.io/badge/Works%20With-Restish-ff5f87)](https://rest.sh/) [![User Guide](https://img.shields.io/badge/Docs-Guide-5fafd7)](https://rest.sh/#/guide) [![CI](https://github.com/danielgtaylor/restish/workflows/CI/badge.svg?branch=master)](https://github.com/danielgtaylor/restish/actions?query=workflow%3ACI+branch%3Amaster++) [![codecov](https://codecov.io/gh/danielgtaylor/restish/branch/master/graph/badge.svg)](https://codecov.io/gh/danielgtaylor/restish) [![Docs](https://img.shields.io/badge/godoc-reference-5fafd7)](https://pkg.go.dev/github.com/danielgtaylor/restish?tab=subdirectories) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/restish)](https://goreportcard.com/report/github.com/danielgtaylor/restish)
+[![Works With Restish](https://img.shields.io/badge/Works%20With-Restish-ff5f87)](https://rest.sh/) [![User Guide](https://img.shields.io/badge/Docs-Guide-5fafd7)](https://rest.sh/#/guide) [![CI](https://github.com/danielgtaylor/restish/workflows/CI/badge.svg?branch=master)](https://github.com/danielgtaylor/restish/actions?query=workflow%3ACI+branch%3Amaster++) [![codecov](https://codecov.io/gh/danielgtaylor/restish/branch/master/graph/badge.svg)](https://codecov.io/gh/danielgtaylor/restish) [![Docs](https://img.shields.io/badge/godoc-reference-5fafd7)](https://pkg.go.dev/github.com/danielgtaylor/restish?tab=subdirectories) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/restish)](https://goreportcard.com/report/github.com/danielgtaylor/restish) [![GitHub Likes](https://img.shields.io/github/stars/danielgtaylor/restish?style=social)](https://github.com/danielgtaylor/restish)
 
 </div>
 

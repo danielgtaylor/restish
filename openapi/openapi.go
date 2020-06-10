@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -14,6 +15,9 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
 )
+
+// reOpenAPI3 is a regex used to detect OpenAPI files from their contents.
+var reOpenAPI3 = regexp.MustCompile(`['"]?openapi['"]?:\s*['"]?3`)
 
 // OpenAPI Extensions
 const (
@@ -475,7 +479,7 @@ func (l *loader) Detect(resp *http.Response) bool {
 	body, _ := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 
-	if strings.Contains(string(body), "openapi: 3") {
+	if reOpenAPI3.Match(body) {
 		return true
 	}
 

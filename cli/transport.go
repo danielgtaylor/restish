@@ -21,6 +21,27 @@ func cacheKey(req *http.Request) string {
 	return req.Method + " " + req.URL.String()
 }
 
+// shouldCache returns whether a response should be manually cached.
+func shouldCache(resp *http.Response) bool {
+	// Error responses should not be cached.
+	if resp.StatusCode >= 400 {
+		return false
+	}
+
+	// The older "Expires" header means we should not touch it.
+	if resp.Header.Get("expires") != "" {
+		return false
+	}
+
+	// There is a "Cache-Control" header *AND* it has a cache age set, so we
+	// should not touch it.
+	if strings.Contains(resp.Header.Get("cache-control"), "max-age") {
+		return false
+	}
+
+	return true
+}
+
 // CachedTransport returns an HTTP transport with caching abilities.
 func CachedTransport() *httpcache.Transport {
 	t := httpcache.NewTransport(diskcache.New(path.Join(cacheDir(), "responses")))
@@ -38,7 +59,9 @@ func (m minCachedTransport) RoundTrip(req *http.Request) (*http.Response, error)
 		return nil, err
 	}
 
-	if resp.Header.Get("expires") == "" && !strings.Contains(resp.Header.Get("cache-control"), "max-age") {
+	// Automatically cache for the minimum time if the request is successful and
+	// the response doesn't already have cache headers.
+	if shouldCache(resp) {
 		// Add the minimum max-age.
 		ma := fmt.Sprintf("max-age=%d", int(m.min.Seconds()))
 		if cc := resp.Header.Get("cache-control"); cc != "" {

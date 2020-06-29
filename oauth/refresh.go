@@ -37,6 +37,11 @@ func (ts RefreshTokenSource) Token() (*oauth2.Token, error) {
 		cli.LogDebug("Trying refresh token to get a new access token")
 		payload := fmt.Sprintf("grant_type=refresh_token&client_id=%s&refresh_token=%s", ts.ClientID, ts.RefreshToken)
 
+		params := ts.EndpointParams.Encode()
+		if len(params) > 0 {
+			payload += "&" + params
+		}
+
 		token, err := requestToken(ts.TokenURL, payload)
 		if err == nil {
 			return token, err

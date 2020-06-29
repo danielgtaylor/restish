@@ -38,7 +38,9 @@ func (m minCachedTransport) RoundTrip(req *http.Request) (*http.Response, error)
 		return nil, err
 	}
 
-	if resp.Header.Get("expires") == "" && !strings.Contains(resp.Header.Get("cache-control"), "max-age") {
+	// Automatically cache for the minimum time if the request is successful and
+	// the response doesn't already have cache headers.
+	if resp.StatusCode < 400 && resp.Header.Get("expires") == "" && !strings.Contains(resp.Header.Get("cache-control"), "max-age") {
 		// Add the minimum max-age.
 		ma := fmt.Sprintf("max-age=%d", int(m.min.Seconds()))
 		if cc := resp.Header.Get("cache-control"); cc != "" {

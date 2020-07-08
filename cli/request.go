@@ -311,6 +311,7 @@ func GetParsedResponse(req *http.Request) (Response, error) {
 			parsed.Proto = parsedNext.Proto
 			parsed.Status = parsedNext.Status
 			parsed.Headers = parsedNext.Headers
+			parsed.Links = parsedNext.Links
 			parsed.Body = append(parsed.Body.([]interface{}), l...)
 
 			// Update the total computed size to include the size of each individual

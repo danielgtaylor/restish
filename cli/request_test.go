@@ -8,6 +8,18 @@ import (
 	"gopkg.in/h2non/gock.v1"
 )
 
+func TestFixAddress(t *testing.T) {
+	assert.Equal(t, "https://example.com", fixAddress("example.com"))
+	assert.Equal(t, "http://localhost:8000", fixAddress(":8000"))
+	assert.Equal(t, "http://localhost:8000", fixAddress("localhost:8000"))
+
+	configs["test"] = &APIConfig{
+		Base: "https://example.com",
+	}
+	assert.Equal(t, "https://example.com/foo", fixAddress("test/foo"))
+	delete(configs, "test")
+}
+
 func TestRequestPagination(t *testing.T) {
 	defer gock.Off()
 

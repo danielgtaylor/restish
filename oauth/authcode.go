@@ -154,7 +154,7 @@ type AuthorizationCodeHandler struct{}
 func (h *AuthorizationCodeHandler) Parameters() []cli.AuthParam {
 	return []cli.AuthParam{
 		{Name: "client_id", Required: true, Help: "OAuth 2.0 Client ID"},
-		{Name: "authorization_url", Required: true, Help: "OAuth 2.0 authorization URL, e.g. https://api.example.com/oauth/authorize"},
+		{Name: "authorize_url", Required: true, Help: "OAuth 2.0 authorization URL, e.g. https://api.example.com/oauth/authorize"},
 		{Name: "token_url", Required: true, Help: "OAuth 2.0 token URL, e.g. https://api.example.com/oauth/token"},
 		{Name: "scopes", Help: "Optional scopes to request in the token"},
 	}

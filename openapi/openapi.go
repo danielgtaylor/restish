@@ -345,7 +345,9 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 	basePath := ""
 	prefix := location.Scheme + "://" + location.Host
 	for _, s := range swagger.Servers {
-		if strings.HasPrefix(s.URL, prefix) {
+		if strings.HasPrefix(s.URL, "/") {
+			basePath = s.URL
+		} else if strings.HasPrefix(s.URL, prefix) {
 			base, err := url.Parse(s.URL)
 			if err != nil {
 				return cli.API{}, err

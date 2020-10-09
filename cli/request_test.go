@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 
@@ -54,4 +55,33 @@ func TestRequestPagination(t *testing.T) {
 
 	// Response body should be a concatenation of all pages.
 	assert.Equal(t, []interface{}{1.0, 2.0, 3.0, 4.0, 5.0, 6.0}, resp.Body)
+}
+
+type authHookFailure struct{}
+
+func (a *authHookFailure) Parameters() []AuthParam {
+	return []AuthParam{}
+}
+
+func (a *authHookFailure) OnRequest(req *http.Request, key string, params map[string]string) error {
+	return errors.New("some-error")
+}
+
+func TestAuthHookFailure(t *testing.T) {
+	configs["auth-hook-fail"] = &APIConfig{
+		Profiles: map[string]*APIProfile{
+			"default": {
+				Auth: &APIAuth{
+					Name: "hook-fail",
+				},
+			},
+		},
+	}
+
+	authHandlers["hook-fail"] = &authHookFailure{}
+
+	r, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	assert.PanicsWithError(t, "some-error", func() {
+		MakeRequest(r)
+	})
 }

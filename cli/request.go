@@ -86,7 +86,10 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 	if profile.Auth != nil && profile.Auth.Name != "" {
 		auth, ok := authHandlers[profile.Auth.Name]
 		if ok {
-			auth.OnRequest(req, name+":"+viper.GetString("rsh-profile"), profile.Auth.Params)
+			err := auth.OnRequest(req, name+":"+viper.GetString("rsh-profile"), profile.Auth.Params)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 

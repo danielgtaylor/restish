@@ -82,6 +82,12 @@ func (o Operation) command() *cobra.Command {
 					continue
 				}
 
+				if param.Default == nil && reflect.ValueOf(flags[param.Name]).Elem().IsZero() {
+					// No explicit default, so the implied default is the zero value.
+					// Again no need to send that default, so we skip.
+					continue
+				}
+
 				for _, v := range param.Serialize(flags[param.Name]) {
 					query.Add(param.Name, v)
 				}

@@ -13,7 +13,7 @@ import (
 func TestOperation(t *testing.T) {
 	defer gock.Off()
 
-	gock.New("http://example.com").Get("/test/id1").Reply(200).JSON(map[string]interface{}{
+	gock.New("http://example.com").Get("/test/id1").MatchParam("search", "foo").Reply(200).JSON(map[string]interface{}{
 		"hello": "world",
 	})
 
@@ -36,6 +36,12 @@ func TestOperation(t *testing.T) {
 				Type:        "string",
 				Name:        "search",
 				DisplayName: "search",
+				Description: "desc",
+			},
+			{
+				Type:        "string",
+				Name:        "def",
+				DisplayName: "def",
 				Description: "desc",
 			},
 		},

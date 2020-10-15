@@ -23,7 +23,7 @@ archives:
       - goos: windows
         format: zip
 brews:
-  - github:
+  - tap:
       owner: danielgtaylor
       name: homebrew-restish
     homepage: https://rest.sh/

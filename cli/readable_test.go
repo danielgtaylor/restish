@@ -42,3 +42,21 @@ func TestReadableMarshal(t *testing.T) {
   value: 123
 }`, string(encoded))
 }
+
+func TestSingleItemWithNewlines(t *testing.T) {
+	data := []interface{}{
+		map[string]interface{}{
+			"id":      1234,
+			"created": "2020-08-12",
+		},
+	}
+
+	encoded, err := MarshalReadable(data)
+	assert.NoError(t, err)
+	assert.Equal(t, `[
+  {
+    created: "2020-08-12"
+    id: 1234
+  }
+]`, string(encoded))
+}

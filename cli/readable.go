@@ -90,6 +90,7 @@ func marshalReadable(indent string, v interface{}) ([]byte, error) {
 
 		// Otherwise, print out the slice.
 		length := 0
+		hasNewlines := false
 		lines := []string{}
 		for i := 0; i < rv.Len(); i++ {
 			encoded, err := marshalReadable(indent+"  ", rv.Index(i).Interface())
@@ -97,12 +98,15 @@ func marshalReadable(indent string, v interface{}) ([]byte, error) {
 				return nil, err
 			}
 			length += len(encoded) // TODO: handle multi-byte runes?
+			if strings.Contains(string(encoded), "\n") {
+				hasNewlines = true
+			}
 			lines = append(lines, string(encoded))
 		}
 
 		s := ""
-		if len(indent)+(len(lines)*2)+length < 80 {
-			// Special-case: short array gets inlined
+		if !hasNewlines && len(indent)+(len(lines)*2)+length < 80 {
+			// Special-case: short array gets inlined like [1, 2, 3]
 			s += "[" + strings.Join(lines, ", ") + "]"
 		} else {
 			s += "[\n" + indent + "  " + strings.Join(lines, "\n  "+indent) + "\n" + indent + "]"

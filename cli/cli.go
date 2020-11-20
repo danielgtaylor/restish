@@ -77,11 +77,11 @@ var au aurora.Aurora
 func generic(method string, addr string, args []string) {
 	var body io.Reader
 
-	if len(args) > 0 {
-		d, err := GetBody("application/json", args)
-		if err != nil {
-			panic(err)
-		}
+	d, err := GetBody("application/json", args)
+	if err != nil {
+		panic(err)
+	}
+	if len(d) > 0 {
 		body = strings.NewReader(d)
 	}
 

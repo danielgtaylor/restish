@@ -18,6 +18,7 @@
     - [RFC 5988](https://tools.ietf.org/html/rfc5988#section-6.2.2) `describedby` link relation
   - Supported formats
     - [OpenAPI 3](https://github.com/OAI/OpenAPI-Specification/blob/master/versions/3.0.3.md) and [JSON Schema](https://json-schema.org/)
+  - Automatic configuration of API auth if advertised by the API
 - Automatic pagination of resource collections via [RFC 5988](https://tools.ietf.org/html/rfc5988) `prev` and `next` hypermedia links
 - API endpoint-based auth built-in with support for profiles:
   - HTTP Basic

@@ -21,8 +21,8 @@ type APIAuth struct {
 
 // APIProfile contains account-specific API information
 type APIProfile struct {
-	Headers map[string]string `json:"headers"`
-	Query   map[string]string `json:"query"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Query   map[string]string `json:"query,omitempty"`
 	Auth    *APIAuth          `json:"auth"`
 }
 
@@ -76,7 +76,7 @@ func initAPIConfig() {
 		Aliases: []string{"config"},
 		Short:   "Initialize an API",
 		Long:    "Initializes an API with a short interactive prompt session to set up the base URI and auth if needed.",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.MinimumNArgs(1),
 		Run:     askInitAPIDefault,
 	})
 

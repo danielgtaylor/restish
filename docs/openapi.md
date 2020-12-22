@@ -34,6 +34,7 @@ Several extensions properties may be used to change the behavior of the CLI.
 | Name                | Description                                   |
 | ------------------- | --------------------------------------------- |
 | `x-cli-aliases`     | Sets up command aliases for operations.       |
+| `x-cli-config`      | Automatic CLI configuration settings.         |
 | `x-cli-description` | Provide an alternate description for the CLI. |
 | `x-cli-ignore`      | Ignore this path, operation, or parameter.    |
 | `x-cli-hidden`      | Hide this path, or operation.                 |
@@ -51,6 +52,87 @@ paths:
       x-cli-aliases:
         - ls
 ```
+
+### AutoConfiguration
+
+The `x-cli-config` extensions allows you to use OpenAPI to tell a CLI client like Restish how to set up its configuration profiles when talking to your API, including things like which auth settings to use, prompting the user for secrets, and setting up persistent headers.
+
+The extension goes at the top level of your OpenAPI document:
+
+```yaml
+components:
+  securitySchemes:
+    default:
+      type: http
+      scheme: basic
+x-cli-config:
+  # Reference scheme by name or use CLI name (e.g. http-basic, oauth-authorization-code, etc)
+  security: default
+  headers:
+    # Optional custom header key: value pairs.
+    accept: custom/type+json
+  prompt:
+    username:
+      description: User's namee
+      example: alice
+    password:
+      description: User's password
+      example: abc123
+```
+
+Valid types for the security setting when not using a security scheme defined within the same document:
+
+| Value                      | Description                               |
+| -------------------------- | ----------------------------------------- |
+| `http-basic`               | HTTP basic auth                           |
+| `oauth-client-credentials` | OAuth2 pre-shared client key/secret (m2m) |
+| `oauth-authorization-code` | OAuth2 authorization code (user login)    |
+
+By default, all prompt variables become auth parameters of the same name. Additionally, a template system can be used to augment the value or create new params. Any value within `{...}` will get replaced by the value of the param with the given name. For example:
+
+```yaml
+x-cli-config:
+  prompt:
+    org:
+      description: Organization ID
+      example: github
+  params:
+    audience: https://example.com/{org}
+    some_static_value: foo
+```
+
+The above will prompt the user for an `org` and then fill in the params using the value from the user when creating the API configuration profile.
+
+#### Auth Parameters
+
+Each auth scheme has different built-in parameters you can prompt for or provide directly in the API. Please do not put secrets into your API description!
+
+Any additional prompt or param values you specify will be passed along when making requests for tokens.
+
+HTTP Basic:
+
+| Variable   | Type     | Description                    |
+| ---------- | -------- | ------------------------------ |
+| `username` | `string` | User's name for logging in     |
+| `password` | `string` | User's password for logging in |
+
+OAuth2 Client Credentials:
+
+| Variable        | Type     | Description                                    |
+| --------------- | -------- | ---------------------------------------------- |
+| `client_id`     | `string` | Client identifier                              |
+| `client_secret` | `string` | Client secret, do not expose this!             |
+| `token_url`     | `string` | URL to fetch new bearer tokens                 |
+| `scopes`        | `string` | Comma-separated list of scope names to request |
+
+OAuth2 Authorization Code:
+
+| Variable        | Type     | Description                                    |
+| --------------- | -------- | ---------------------------------------------- |
+| `client_id`     | `string` | Client identifier                              |
+| `authorize_url` | `string` | URL to authorize a user and get a code         |
+| `token_url`     | `string` | URL to fetch new bearer tokens                 |
+| `scopes`        | `string` | Comma-separated list of scope names to request |
 
 ### Description
 

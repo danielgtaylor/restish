@@ -99,6 +99,7 @@ func Init(name string, version string) {
 	contentTypes = []contentTypeEntry{}
 	encodings = map[string]ContentEncoding{}
 	linkParsers = []LinkParser{}
+	loaders = []Loader{}
 
 	// Determine if we are using a TTY or colored output is forced-on.
 	tty = false

@@ -124,6 +124,19 @@ components:
           format: int32
         message:
           type: string
+  securitySchemes:
+    default:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://example.com/authorize
+          tokenUrl: https://example.com/token
+x-cli-config:
+  security: default
+  prompt:
+    client_id:
+      description: Client identifier
+      example: abc123
 `
 
 func TestLoadOpenAPI(t *testing.T) {
@@ -139,7 +152,16 @@ func TestLoadOpenAPI(t *testing.T) {
 
 	expected := cli.API{
 		Short: "Swagger Petstore",
-		Auth:  []cli.APIAuth{},
+		Auth: []cli.APIAuth{
+			{
+				Name: "oauth-authorization-code",
+				Params: map[string]string{
+					"client_id":     "",
+					"authorize_url": "https://example.com/authorize",
+					"token_url":     "https://example.com/token",
+				},
+			},
+		},
 		Operations: []cli.Operation{
 			{
 				Name:         "createpets",
@@ -182,6 +204,22 @@ func TestLoadOpenAPI(t *testing.T) {
 				},
 				QueryParams:  []*cli.Param{},
 				HeaderParams: []*cli.Param{},
+			},
+		},
+		AutoConfig: cli.AutoConfig{
+			Prompt: map[string]cli.AutoConfigVar{
+				"client_id": {
+					Description: "Client identifier",
+					Example:     "abc123",
+				},
+			},
+			Auth: cli.APIAuth{
+				Name: "oauth-authorization-code",
+				Params: map[string]string{
+					"client_id":     "",
+					"authorize_url": "https://example.com/authorize",
+					"token_url":     "https://example.com/token",
+				},
 			},
 		},
 	}

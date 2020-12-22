@@ -2,9 +2,11 @@ package openapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -37,6 +39,13 @@ const (
 	// but can still be called.
 	ExtHidden = "x-cli-hidden"
 )
+
+type autoConfig struct {
+	Security string                       `json:"security"`
+	Headers  map[string]string            `json:"headers,omitempty"`
+	Prompt   map[string]cli.AutoConfigVar `json:"prompt,omitempty"`
+	Params   map[string]string            `json:"params,omitempty"`
+}
 
 // Resolver is able to resolve relative URIs against a base.
 type Resolver interface {
@@ -450,7 +459,74 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		Auth:       authSchemes,
 	}
 
+	if swagger.Extensions["x-cli-config"] != nil {
+		loadAutoConfig(&api, swagger)
+	}
+
 	return api, nil
+}
+
+func loadAutoConfig(api *cli.API, swagger *openapi3.Swagger) {
+	var config *autoConfig
+
+	if cfg, ok := swagger.Extensions["x-cli-config"].(json.RawMessage); ok {
+		if err := json.Unmarshal(cfg, &config); err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to unmarshal x-cli-config: %v", err)
+			return
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "Unknown type for x-cli-config")
+	}
+
+	authName := config.Security
+	params := map[string]string{}
+
+	if swagger.Components.SecuritySchemes != nil {
+		ref := swagger.Components.SecuritySchemes[config.Security]
+		if ref != nil && ref.Value != nil {
+			// The config references a named security scheme.
+			scheme := ref.Value
+
+			// Conver it to the Restish security type and set some default params.
+			switch scheme.Type {
+			case "http":
+				if scheme.Scheme == "basic" {
+					authName = "http-basic"
+				}
+			case "oauth2":
+				if scheme.Flows != nil {
+					if scheme.Flows.AuthorizationCode != nil {
+						// Prefer auth code if multiple auth types are available.
+						authName = "oauth-authorization-code"
+						ac := scheme.Flows.AuthorizationCode
+						params["client_id"] = ""
+						params["authorize_url"] = ac.AuthorizationURL
+						params["token_url"] = ac.TokenURL
+					} else if scheme.Flows.ClientCredentials != nil {
+						authName = "oauth-client-credentials"
+						cc := scheme.Flows.ClientCredentials
+						params["client_id"] = ""
+						params["client_secret"] = ""
+						params["token_url"] = cc.TokenURL
+					}
+				}
+			}
+		}
+	}
+
+	// Params can override the values above if needed.
+	for k, v := range config.Params {
+		params[k] = v
+	}
+
+	api.AutoConfig = cli.AutoConfig{
+		Headers: config.Headers,
+		Prompt:  config.Prompt,
+		Auth: cli.APIAuth{
+			Name:   authName,
+			Params: params,
+		},
+	}
 }
 
 type loader struct {

@@ -72,33 +72,92 @@ func (a defaultAsker) askSelect(message string, options []string, def interface{
 func askBaseURI(a asker, config *APIConfig) {
 	config.Base = a.askInput("Base URI", config.Base, true, "The entrypoint of the API, where Restish can look for an API description document and apply authentication.\nExample: https://api.example.com")
 
+	askLoadBaseAPI(a, config)
+}
+
+func askLoadBaseAPI(a asker, config *APIConfig) {
+	var auth APIAuth
+
 	dummy := &cobra.Command{}
 	if api, err := Load(config.Base, dummy); err == nil {
 		// Found an API, auto-load settings.
-		if len(api.Auth) > 0 {
-			auth := api.Auth[0]
 
-			if config.Profiles == nil {
-				config.Profiles = map[string]*APIProfile{}
-			}
+		if api.AutoConfig.Auth.Name != "" {
+			// Found auto-configuration settings.
+			fmt.Println("Found API auto-configuration, setting up default profile...")
+			ac := api.AutoConfig
+			responses := map[string]string{}
 
-			def := config.Profiles["default"]
-
-			if def == nil {
-				def = &APIProfile{}
-				config.Profiles["default"] = def
-			}
-
-			if def.Auth == nil {
-				def.Auth = &APIAuth{}
-			}
-
-			if def.Auth.Name == "" {
-				def.Auth.Name = auth.Name
-				def.Auth.Params = map[string]string{}
-				for k, v := range auth.Params {
-					def.Auth.Params[k] = v
+			// Get inputs from the user.
+			for name, v := range ac.Prompt {
+				def := ""
+				if v.Default != nil {
+					def = fmt.Sprintf("%v", v.Default)
 				}
+
+				if len(v.Enum) > 0 {
+					enumStr := []string{}
+					for val := range v.Enum {
+						enumStr = append(enumStr, fmt.Sprintf("%v", val))
+					}
+					responses[name] = a.askSelect(name, enumStr, def, v.Description)
+				} else {
+					responses[name] = a.askInput(name, def, v.Default == nil, v.Description)
+				}
+			}
+
+			// Generate params from user inputs.
+			params := map[string]string{}
+			for name, resp := range responses {
+				params[name] = resp
+			}
+
+			for name, template := range ac.Auth.Params {
+				rendered := template
+
+				// Render by replacing `{name}` with the value.
+				for rn, rv := range responses {
+					rendered = strings.ReplaceAll(rendered, "{"+rn+"}", rv)
+				}
+
+				params[name] = rendered
+			}
+
+			// Setup auth for the profile based on the rendered params.
+			auth = APIAuth{
+				Name:   ac.Auth.Name,
+				Params: params,
+			}
+		}
+
+		if auth.Name == "" && len(api.Auth) > 0 {
+			// No auto-configuration present or successful, so fall back to the first
+			// available defined security scheme.
+			auth = api.Auth[0]
+		}
+
+		if config.Profiles == nil {
+			config.Profiles = map[string]*APIProfile{}
+		}
+
+		// Setup the default profile, taking care not to blast away any existing
+		// custom configuration if we are just updating the values.
+		def := config.Profiles["default"]
+
+		if def == nil {
+			def = &APIProfile{}
+			config.Profiles["default"] = def
+		}
+
+		if def.Auth == nil {
+			def.Auth = &APIAuth{}
+		}
+
+		if auth.Name != "" {
+			def.Auth.Name = auth.Name
+			def.Auth.Params = map[string]string{}
+			for k, v := range auth.Params {
+				def.Auth.Params[k] = v
 			}
 		}
 	}
@@ -229,10 +288,19 @@ func askInitAPI(a asker, cmd *cobra.Command, args []string) {
 		configs[args[0]] = config
 
 		// Do an initial setup with a default profile first.
-		askBaseURI(a, config)
-		fmt.Println("Setting up a `default` profile")
-		config.Profiles["default"] = &APIProfile{}
-		askEditProfile(a, "default", config.Profiles["default"])
+		if len(args) == 1 {
+			askBaseURI(a, config)
+		} else {
+			config.Base = args[1]
+			askLoadBaseAPI(a, config)
+		}
+
+		if config.Profiles["default"] == nil {
+			fmt.Println("Setting up a `default` profile")
+			config.Profiles["default"] = &APIProfile{}
+
+			askEditProfile(a, "default", config.Profiles["default"])
+		}
 	}
 
 	for {

@@ -53,12 +53,14 @@ Should TTY autodetection for colored output cause any problems, you can manually
 Adding or editing an API is possible via an interactive terminal UI:
 
 ```bash
-$ restish api configure $NAME
+$ restish api configure $NAME [$BASE_URI]
 ```
 
 You should see something like the following, which enables you to create and edit profiles, headers, query params, and auth, eventually saving the data to `~/.restish/apis.json`:
 
 <img alt="Screen Shot" src="https://user-images.githubusercontent.com/106826/83099522-79dd3200-a062-11ea-8a78-b03a2fecf030.png">
+
+If the API offers autoconfiguration data (e.g. through the [`x-cli-config` OpenAPI extension](/openapi.md#AutoConfiguration)) then you may be prompted for other values and some settings may already be configured for you.
 
 Once an API is configured, you can start using it by using its short name. For example, given an API named `example`:
 

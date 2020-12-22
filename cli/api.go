@@ -21,6 +21,7 @@ type API struct {
 	Long       string      `json:"long,omitempty"`
 	Operations []Operation `json:"operations,omitempty"`
 	Auth       []APIAuth   `json:"auth,omitempty"`
+	AutoConfig AutoConfig  `json:"autoconfig,omitempty"`
 }
 
 // Merge two APIs together. Takes the description if none is set and merges

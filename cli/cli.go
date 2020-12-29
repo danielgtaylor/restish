@@ -50,6 +50,50 @@ var Stdout io.Writer = os.Stdout
 var Stderr io.Writer = os.Stderr
 
 var useColor bool
+
+// Ugh, see https://github.com/spf13/cobra/issues/836
+var usageTemplate = `Usage:
+{{- if .Runnable}}
+	{{.UseLine}}
+{{- end}}
+{{- if .HasAvailableSubCommands}}
+	{{.CommandPath}} [command]
+{{- end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if (not .Parent)}}{{if (gt (len .Commands) 9)}}
+
+Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{else}}{{if .HasAvailableSubCommands}}
+
+Available Commands:
+{{range .Commands -}}
+	{{- if (or .IsAvailableCommand (eq .Name "help")) -}}
+	{{.Name }}
+    [ {{.Short}} ]
+  {{end}}
+{{end}}
+{{end}}{{end}}{{if .HasAvailableLocalFlags -}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
+var tty bool
 var au aurora.Aurora
 
 // Keeps track of currently selected API for shell completions

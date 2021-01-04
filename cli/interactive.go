@@ -95,21 +95,32 @@ func askLoadBaseAPI(a asker, config *APIConfig) {
 					def = fmt.Sprintf("%v", v.Default)
 				}
 
+				// If a description is present, prefer to display it over the variable
+				// name used a server arguments or in templates, since you don't
+				// always have control over that value.
+				promptText := name
+				if v.Description != "" {
+					promptText = v.Description
+				}
+
 				if len(v.Enum) > 0 {
 					enumStr := []string{}
 					for val := range v.Enum {
 						enumStr = append(enumStr, fmt.Sprintf("%v", val))
 					}
-					responses[name] = a.askSelect(name, enumStr, def, v.Description)
+					responses[name] = a.askSelect(promptText, enumStr, def, "")
 				} else {
-					responses[name] = a.askInput(name, def, v.Default == nil, v.Description)
+					responses[name] = a.askInput(promptText, def, v.Default == nil, "")
 				}
 			}
 
 			// Generate params from user inputs.
 			params := map[string]string{}
 			for name, resp := range responses {
-				params[name] = resp
+				// Only include the param if the variable wasn't excluded.
+				if !ac.Prompt[name].Exclude {
+					params[name] = resp
+				}
 			}
 
 			for name, template := range ac.Auth.Params {

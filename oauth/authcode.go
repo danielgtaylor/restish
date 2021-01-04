@@ -71,6 +71,7 @@ func (h authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // used to make requests against the API.
 type AuthorizationCodeTokenSource struct {
 	ClientID       string
+	ClientSecret   string
 	AuthorizeURL   string
 	TokenURL       string
 	EndpointParams *url.Values
@@ -86,6 +87,7 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	verifier := base64.RawURLEncoding.EncodeToString(verifierBytes)
+	var url string
 
 	// Generate a code challenge. Only the challenge is sent when requesting a
 	// code which allows us to keep it secret for now.
@@ -93,8 +95,7 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	challenge := base64.RawURLEncoding.EncodeToString(shaBytes[:])
 
 	// Generate a URL with the challenge to have the user log in.
-	url := fmt.Sprintf("%s?response_type=code&code_challenge=%s&code_challenge_method=S256&client_id=%s&redirect_uri=http://localhost:8484/&scope=%s", ac.AuthorizeURL, challenge, ac.ClientID, strings.Join(ac.Scopes, `%20`))
-
+	url = fmt.Sprintf("%s?response_type=code&code_challenge=%s&code_challenge_method=S256&client_id=%s&redirect_uri=http://localhost:8484/&scope=%s", ac.AuthorizeURL, challenge, ac.ClientID, strings.Join(ac.Scopes, `%20`))
 	if len(*ac.EndpointParams) > 0 {
 		url += "&" + ac.EndpointParams.Encode()
 	}
@@ -140,8 +141,12 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	}
 	fmt.Println("")
 	s.Shutdown(context.Background())
+	var payload string
 
-	payload := fmt.Sprintf("grant_type=authorization_code&client_id=%s&code_verifier=%s&code=%s&redirect_uri=http://localhost:8484/", ac.ClientID, verifier, code)
+	payload = fmt.Sprintf("grant_type=authorization_code&client_id=%s&code_verifier=%s&code=%s&redirect_uri=http://localhost:8484/", ac.ClientID, verifier, code)
+	if ac.ClientSecret != "" {
+		payload += fmt.Sprintf("&client_secret=%s", ac.ClientSecret)
+	}
 
 	return requestToken(ac.TokenURL, payload)
 }
@@ -154,6 +159,7 @@ type AuthorizationCodeHandler struct{}
 func (h *AuthorizationCodeHandler) Parameters() []cli.AuthParam {
 	return []cli.AuthParam{
 		{Name: "client_id", Required: true, Help: "OAuth 2.0 Client ID"},
+		{Name: "client_secret", Required: false, Help: "OAuth 2.0 Client Secret if exists"},
 		{Name: "authorize_url", Required: true, Help: "OAuth 2.0 authorization URL, e.g. https://api.example.com/oauth/authorize"},
 		{Name: "token_url", Required: true, Help: "OAuth 2.0 token URL, e.g. https://api.example.com/oauth/token"},
 		{Name: "scopes", Help: "Optional scopes to request in the token"},
@@ -175,6 +181,7 @@ func (h *AuthorizationCodeHandler) OnRequest(request *http.Request, key string, 
 
 		source := &AuthorizationCodeTokenSource{
 			ClientID:       params["client_id"],
+			ClientSecret:   params["client_secret"],
 			AuthorizeURL:   params["authorize_url"],
 			TokenURL:       params["token_url"],
 			EndpointParams: &endpointParams,

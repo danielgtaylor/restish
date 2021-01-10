@@ -73,7 +73,7 @@ x-cli-config:
     accept: custom/type+json
   prompt:
     username:
-      description: User's namee
+      description: User's name
       example: alice
     password:
       description: User's password

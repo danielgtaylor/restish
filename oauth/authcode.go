@@ -201,7 +201,6 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	verifier := base64.RawURLEncoding.EncodeToString(verifierBytes)
-	var url string
 
 	// Generate a code challenge. Only the challenge is sent when requesting a
 	// code which allows us to keep it secret for now.
@@ -209,10 +208,24 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	challenge := base64.RawURLEncoding.EncodeToString(shaBytes[:])
 
 	// Generate a URL with the challenge to have the user log in.
-	url = fmt.Sprintf("%s?response_type=code&code_challenge=%s&code_challenge_method=S256&client_id=%s&redirect_uri=http://localhost:8484/&scope=%s", ac.AuthorizeURL, challenge, ac.ClientID, strings.Join(ac.Scopes, `%20`))
-	if len(*ac.EndpointParams) > 0 {
-		url += "&" + ac.EndpointParams.Encode()
+	authorizeURL, err := url.Parse(ac.AuthorizeURL)
+	if err != nil {
+		panic(err)
 	}
+
+	aq := authorizeURL.Query()
+	aq.Set("response_type", "code")
+	aq.Set("code_challenge", challenge)
+	aq.Set("code_challenge_method", "S256")
+	aq.Set("client_id", ac.ClientID)
+	aq.Set("redirect_uri", "http://localhost:8484/")
+	aq.Set("scope", strings.Join(ac.Scopes, " "))
+	if ac.EndpointParams != nil {
+		for k, v := range *ac.EndpointParams {
+			aq.Set(k, v[0])
+		}
+	}
+	authorizeURL.RawQuery = aq.Encode()
 
 	// Run server before opening the user's browser so we are ready for any redirect.
 	codeChan := make(chan string)
@@ -237,8 +250,8 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 
 	// Open auth URL in browser, print for manual use in case open fails.
 	fmt.Println("Open your browser to log in using the URL:")
-	fmt.Println(url)
-	open(url)
+	fmt.Println(authorizeURL.String())
+	open(authorizeURL.String())
 
 	// Provide a way to manually enter the code, e.g. for remote SSH sessions.
 	fmt.Print("Alternatively, enter the code manually: ")
@@ -261,12 +274,17 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 		os.Exit(1)
 	}
 
-	payload := fmt.Sprintf("grant_type=authorization_code&client_id=%s&code_verifier=%s&code=%s&redirect_uri=http://localhost:8484/", ac.ClientID, verifier, code)
+	payload := url.Values{}
+	payload.Set("grant_type", "authorization_code")
+	payload.Set("client_id", ac.ClientID)
+	payload.Set("code_verifier", verifier)
+	payload.Set("code", code)
+	payload.Set("redirect_uri", "http://localhost:8484/")
 	if ac.ClientSecret != "" {
-		payload += fmt.Sprintf("&client_secret=%s", ac.ClientSecret)
+		payload.Set("client_secret", ac.ClientSecret)
 	}
 
-	return requestToken(ac.TokenURL, payload)
+	return requestToken(ac.TokenURL, payload.Encode())
 }
 
 // AuthorizationCodeHandler sets up the OAuth 2.0 authorization code with PKCE authentication
@@ -289,7 +307,7 @@ func (h *AuthorizationCodeHandler) OnRequest(request *http.Request, key string, 
 	if request.Header.Get("Authorization") == "" {
 		endpointParams := url.Values{}
 		for k, v := range params {
-			if k == "client_id" || k == "scopes" || k == "authorize_url" || k == "token_url" {
+			if k == "client_id" || k == "client_secret" || k == "scopes" || k == "authorize_url" || k == "token_url" {
 				// Not a custom param...
 				continue
 			}

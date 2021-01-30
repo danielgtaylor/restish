@@ -132,6 +132,20 @@ func Init(name string, version string) {
   # Specify verb, header, and body shorthand
   $ %s post :8888/users -H authorization:abc123 name: Kari, role: admin`, name, name),
 		Args: cobra.MinimumNArgs(1),
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			settings := viper.AllSettings()
+			LogDebug("Configuration: %v", settings)
+
+			if viper.GetBool("rsh-insecure") {
+				if t, ok := http.DefaultTransport.(*http.Transport); ok {
+					LogWarning("Disabling TLS security checks")
+					if t.TLSClientConfig == nil {
+						t.TLSClientConfig = &tls.Config{}
+					}
+					t.TLSClientConfig.InsecureSkipVerify = true
+				}
+			}
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodGet, args[0], args[1:])
 		},
@@ -313,6 +327,7 @@ Not after (expires): %s (%s)
 	AddGlobalFlag("rsh-no-paginate", "", "Disable auto-pagination", false, false)
 	AddGlobalFlag("rsh-profile", "p", "API auth profile", "default", false)
 	AddGlobalFlag("rsh-no-cache", "", "Disable HTTP cache", false, false)
+	AddGlobalFlag("rsh-insecure", "", "Disable SSL verification", false, false)
 
 	initAPIConfig()
 }
@@ -422,9 +437,6 @@ func Run() {
 	// Now that flags are parsed we can enable verbose mode if requested.
 	if enableVerbose || viper.GetBool("rsh-verbose") {
 		enableVerbose = true
-
-		settings := viper.AllSettings()
-		LogDebug("Configuration: %v", settings)
 	}
 
 	// Load the API commands if we can.

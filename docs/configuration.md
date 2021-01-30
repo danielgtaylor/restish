@@ -19,6 +19,7 @@ The global options in addition to `--help` and `--version` are:
 | --------------------------- | ------------------- | ----------------- | -------------------------------------------------------------------------------- |
 | `-f`, `--rsh-filter`        | `RSH_FILTER`        | `body.users[].id` | [JMESPath Plus](https://github.com/danielgtaylor/go-jmespath-plus#readme) filter |
 | `-H`, `--rsh-header`        | `RSH_HEADER`        | `Version:2020-05` | Set a header name/value                                                          |
+| `--rsh-insecure`            | `RSH_INSECURE`      |                   | Disable TLS certificate checks                                                   |
 | `--rsh-no-cache`            | `RSH_NO_CACHE`      |                   | Disable HTTP caching                                                             |
 | `--rsh-no-paginate`         | `RSH_NO_PAGINATE`   |                   | Disable automatic `next` link pagination                                         |
 | `-o`, `--rsh-output-format` | `RSH_OUTPUT_FORMAT` | `json`            | [Output format](/output.md), defaults to `auto`                                  |

@@ -10,6 +10,7 @@ require (
 	github.com/amzn/ion-go v1.1.0
 	github.com/andybalholm/brotli v1.0.1
 	github.com/creack/pty v1.1.11 // indirect
+	github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3
 	github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba
 	github.com/danielgtaylor/openapi-cli-generator v0.0.0-20200904035210-47cad525a9e0
 	github.com/dlclark/regexp2 v1.4.0 // indirect
@@ -41,7 +42,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9
 	github.com/twpayne/httpcache v1.0.0 // indirect
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad

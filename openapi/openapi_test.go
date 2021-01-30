@@ -164,7 +164,8 @@ func TestLoadOpenAPI(t *testing.T) {
 		},
 		Operations: []cli.Operation{
 			{
-				Name:         "createpets",
+				Name:         "create-pets",
+				Aliases:      []string{"createpets"},
 				Short:        "Create a pet",
 				Long:         "\n## Response 201\n\nNull response\n\n## Response default (application/json)\n\nunexpected error\n\n```schema\n{\n  code*: (integer format:int32) \n  message*: (string) \n}\n```\n",
 				Method:       "POST",
@@ -174,7 +175,8 @@ func TestLoadOpenAPI(t *testing.T) {
 				HeaderParams: []*cli.Param{},
 			},
 			{
-				Name:        "listpets",
+				Name:        "list-pets",
+				Aliases:     []string{"listpets"},
 				Short:       "List all pets",
 				Long:        "\n## Response 200 (application/json)\n\nA paged array of pets\n\n```schema\n[\n  {\n    id*: (integer format:int64) \n    name*: (string) \n    tag: (string) \n  }\n]\n```\n\n## Response default (application/json)\n\nunexpected error\n\n```schema\n{\n  code*: (integer format:int32) \n  message*: (string) \n}\n```\n",
 				Method:      "GET",
@@ -190,7 +192,8 @@ func TestLoadOpenAPI(t *testing.T) {
 				HeaderParams: []*cli.Param{},
 			},
 			{
-				Name:        "showpetbyid",
+				Name:        "show-pet-by-id",
+				Aliases:     []string{"showpetbyid"},
 				Short:       "Info for a specific pet",
 				Long:        "\n## Response 200 (application/json)\n\nExpected response to a valid request\n\n```schema\n{\n  id*: (integer format:int64) \n  name*: (string) \n  tag: (string) \n}\n```\n\n## Response default (application/json)\n\nunexpected error\n\n```schema\n{\n  code*: (integer format:int32) \n  message*: (string) \n}\n```\n",
 				Method:      "GET",

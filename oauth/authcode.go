@@ -20,6 +20,111 @@ import (
 	"golang.org/x/oauth2"
 )
 
+var htmlSuccess = `
+<html>
+  <style>
+    @keyframes bg {
+      from {background: white;}
+      to {background: #5fafd7;}
+    }
+    @keyframes x {
+      from {transform: rotate(0deg) skew(30deg, 20deg);}
+      to {transform: rotate(-45deg);}
+    }
+    @keyframes fade {
+      from {opacity: 0;}
+      to {opacity: 1;}
+    }
+    body { font-family: sans-serif; margin-top: 8%; animation: bg 1.5s ease-out; animation-fill-mode: forwards; }
+    p { width: 80%; }
+    .check {
+      margin: auto;
+      width: 18%;
+      height: 15%;
+      border-left: 16px solid white;
+      border-bottom: 16px solid white;
+      animation: x 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      animation-fill-mode: forwards;
+    }
+    .msg {
+      margin: auto;
+      margin-top: 180px;
+      width: 40%;
+      background: white;
+      padding: 20px 32px;
+      border-radius: 10px;
+      animation: fade 2s;
+      animation-fill-mode: forwards;
+      box-shadow: 0px 15px 15px -15px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+  <body>
+    <div class="check"></div>
+    <div class="msg">
+        <h1>Login Successful!</h1>
+        Please return to the terminal. You may now close this window.
+      </p>
+    </div>
+  </body>
+</html>
+`
+
+var htmlError = `
+<html>
+  <style>
+    @keyframes bg {
+      from {background: white;}
+      to {background: #E94F37;}
+    }
+    @keyframes x {
+      from {transform: scaleY(0);}
+      to {transform: scaleY(1) rotate(-90deg);}
+    }
+    @keyframes fade {
+      from {opacity: 0;}
+      to {opacity: 1;}
+    }
+    body { font-family: sans-serif; margin-top: 15%; animation: bg 1.5s ease-out; animation-fill-mode: forwards; }
+    p { width: 80%; }
+    .x, .x:after {
+      margin: auto;
+      background: white;
+      width: 20%;
+      height: 16px;
+      border-radius: 3px;
+      transform: rotate(-45deg);
+      animation: x 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      animation-fill-mode: forwards;
+    }
+    .x:after {
+      content: "";
+      display: block;
+      width: 100%;
+      transform: rotate(90deg);
+    }
+    .msg {
+      margin: auto;
+      margin-top: 200px;
+      width: 40%;
+      background: white;
+      padding: 20px 32px;
+      border-radius: 10px;
+      animation: fade 2s;
+      animation-fill-mode: forwards;
+      box-shadow: 0px 15px 15px -15px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+  <body>
+    <div style="transform: rotate(-45deg);"><div class="x"></div></div>
+    <div class="msg">
+        <h1>Error: $ERROR</h1>
+        $DETAILS
+      </p>
+    </div>
+  </body>
+</html>
+`
+
 // open opens the specified URL in the default browser regardless of OS.
 func open(url string) error {
 	var cmd string
@@ -57,9 +162,18 @@ type authHandler struct {
 }
 
 func (h authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.c <- r.URL.Query().Get("code")
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte("<html><body><p>Login successful. Please return to the terminal. You may now close this window.</p></body></html>"))
+
+	if err := r.URL.Query().Get("error"); err != "" {
+		details := r.URL.Query().Get("error_description")
+		rendered := strings.Replace(strings.Replace(htmlError, "$ERROR", err, 1), "$DETAILS", details, 1)
+		w.Write([]byte(rendered))
+		h.c <- ""
+		return
+	}
+
+	h.c <- r.URL.Query().Get("code")
+	w.Write([]byte(htmlSuccess))
 }
 
 // AuthorizationCodeTokenSource with PKCE as described in:
@@ -107,7 +221,7 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	s := &http.Server{
-		Addr:           ":8484",
+		Addr:           "localhost:8484",
 		Handler:        handler,
 		ReadTimeout:    5 * time.Second,
 		WriteTimeout:   5 * time.Second,
@@ -141,9 +255,13 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	}
 	fmt.Println("")
 	s.Shutdown(context.Background())
-	var payload string
 
-	payload = fmt.Sprintf("grant_type=authorization_code&client_id=%s&code_verifier=%s&code=%s&redirect_uri=http://localhost:8484/", ac.ClientID, verifier, code)
+	if code == "" {
+		fmt.Println("Unable to get a code. See browser for details. Aborting!")
+		os.Exit(1)
+	}
+
+	payload := fmt.Sprintf("grant_type=authorization_code&client_id=%s&code_verifier=%s&code=%s&redirect_uri=http://localhost:8484/", ac.ClientID, verifier, code)
 	if ac.ClientSecret != "" {
 		payload += fmt.Sprintf("&client_secret=%s", ac.ClientSecret)
 	}

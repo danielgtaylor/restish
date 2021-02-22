@@ -19,11 +19,17 @@ import (
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 // Root command (entrypoint) of the CLI.
 var Root *cobra.Command
+
+// GlobalFlags contains all the fixed up front flags
+// This allows us to parse them before we hand over control
+// to cobra
+var GlobalFlags *pflag.FlagSet
 
 // Cache is used to store temporary data between runs.
 var Cache *viper.Viper
@@ -135,16 +141,6 @@ func Init(name string, version string) {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			settings := viper.AllSettings()
 			LogDebug("Configuration: %v", settings)
-
-			if viper.GetBool("rsh-insecure") {
-				if t, ok := http.DefaultTransport.(*http.Transport); ok {
-					LogWarning("Disabling TLS security checks")
-					if t.TLSClientConfig == nil {
-						t.TLSClientConfig = &tls.Config{}
-					}
-					t.TLSClientConfig.InsecureSkipVerify = true
-				}
-			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodGet, args[0], args[1:])
@@ -317,6 +313,14 @@ Not after (expires): %s (%s)
 	}
 	Root.AddCommand(linkCmd)
 
+	GlobalFlags = pflag.NewFlagSet("eager-flags", pflag.ContinueOnError)
+	GlobalFlags.ParseErrorsWhitelist.UnknownFlags = true
+	// GlobalFlags are 'hidden', don't print anything on error
+	GlobalFlags.Usage = func() {}
+	// Ensure parsing doesn't stop if the help flag is set
+	// (help seems to be special cased from ParseErrorsWhitelist.UnknownFlags)
+	GlobalFlags.BoolP("help", "h", false, "")
+
 	AddGlobalFlag("rsh-verbose", "v", "Enable verbose log output", false, false)
 	AddGlobalFlag("rsh-output-format", "o", "Output format [auto, json, yaml]", "auto", false)
 	AddGlobalFlag("rsh-filter", "f", "Filter / project results using JMESPath Plus", "", false)
@@ -328,6 +332,9 @@ Not after (expires): %s (%s)
 	AddGlobalFlag("rsh-profile", "p", "API auth profile", "default", false)
 	AddGlobalFlag("rsh-no-cache", "", "Disable HTTP cache", false, false)
 	AddGlobalFlag("rsh-insecure", "", "Disable SSL verification", false, false)
+	AddGlobalFlag("rsh-client-cert", "", "Path to a PEM encoded client certificate", "", false)
+	AddGlobalFlag("rsh-client-key", "", "Path to a PEM encoded private key", "", false)
+	AddGlobalFlag("rsh-ca-cert", "", "Path to a PEM encoded CA cert", "", false)
 
 	initAPIConfig()
 }
@@ -427,15 +434,34 @@ func Run() {
 		if !strings.HasPrefix(arg, "-") {
 			args = append(args, arg)
 		}
-
-		// Try to detect if verbose mode is enabled via a flag.
-		if arg == "-v" || arg == "--rsh-verbose" {
-			enableVerbose = true
-		}
 	}
 
-	// Now that flags are parsed we can enable verbose mode if requested.
-	if enableVerbose || viper.GetBool("rsh-verbose") {
+	// Because we may be doing HTTP calls before cobra has parsed the flags
+	// we parse the GlobalFlags here and already set some config values
+	// to ensure they are available
+	if err := GlobalFlags.Parse(os.Args[1:]); err != nil {
+		if err != pflag.ErrHelp {
+			panic(err)
+		}
+	}
+	if verbose, _ := GlobalFlags.GetBool("rsh-verbose"); verbose {
+		viper.Set("rsh-verbose", true)
+	}
+	if insecure, _ := GlobalFlags.GetBool("rsh-insecure"); insecure {
+		viper.Set("rsh-insecure", true)
+	}
+	if cert, _ := GlobalFlags.GetString("rsh-client-cert"); cert != "" {
+		viper.Set("rsh-client-cert", cert)
+	}
+	if key, _ := GlobalFlags.GetString("rsh-client-key"); key != "" {
+		viper.Set("rsh-client-key", key)
+	}
+	if caCert, _ := GlobalFlags.GetString("rsh-ca-cert"); caCert != "" {
+		viper.Set("rsh-ca-cert", caCert)
+	}
+
+	// Now that global flags are parsed we can enable verbose mode if requested.
+	if viper.GetBool("rsh-verbose") {
 		enableVerbose = true
 	}
 

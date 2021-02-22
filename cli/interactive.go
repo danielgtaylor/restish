@@ -8,6 +8,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var surveyOpts = []survey.AskOpt{}
@@ -291,11 +292,83 @@ func askAddProfile(a asker, config *APIConfig) {
 	askEditProfile(a, name, config.Profiles[name])
 }
 
+func askTLSConfig(a asker, config *APIConfig) {
+	if config.TLS == nil {
+		config.TLS = &TLSConfig{}
+	}
+
+	for {
+		options := make([]string, 0, 7)
+
+		if config.TLS.InsecureSkipVerify {
+			options = append(options, "Delete insecure")
+		} else {
+			options = append(options, "Set insecure")
+		}
+
+		if config.TLS.Cert == "" {
+			options = append(options, "Set certificate")
+		} else {
+			options = append(options, "Edit certificate", "Delete certificate")
+		}
+
+		if config.TLS.Key == "" {
+			options = append(options, "Set key")
+		} else {
+			options = append(options, "Edit key", "Delete key")
+		}
+
+		if config.TLS.CACert == "" {
+			options = append(options, "Set CA certificate")
+		} else {
+			options = append(options, "Edit CA certificate", "Delete CA certificate")
+		}
+
+		options = append(options, "Finished with TLS configuration")
+
+		switch choice := a.askSelect("Select TLS configuration options", options, nil, ""); choice {
+		case "Delete insecure":
+			config.TLS.InsecureSkipVerify = false
+		case "Set insecure":
+			config.TLS.InsecureSkipVerify = true
+		case "Set certificate":
+			config.TLS.Cert = a.askInput("Certificate path", "", false, "")
+		case "Edit certificate":
+			config.TLS.Cert = a.askInput("Certificate path", config.TLS.Cert, false, "")
+		case "Delete certificate":
+			config.TLS.Cert = ""
+		case "Set key":
+			config.TLS.Key = a.askInput("Key path", "", false, "")
+		case "Edit key":
+			config.TLS.Key = a.askInput("Key path", config.TLS.Key, false, "")
+		case "Delete key":
+			config.TLS.Key = ""
+		case "Set CA certificate":
+			config.TLS.CACert = a.askInput("CA Certificate path", "", false, "")
+		case "Edit CA certificate":
+			config.TLS.CACert = a.askInput("CA Certificate path", config.TLS.CACert, false, "")
+		case "Delete CA certificate":
+			config.TLS.CACert = ""
+		case "Finished with TLS configuration":
+			return
+		}
+	}
+}
+
 func askInitAPI(a asker, cmd *cobra.Command, args []string) {
 	var config *APIConfig = configs[args[0]]
 
 	if config == nil {
-		config = &APIConfig{name: args[0], Profiles: map[string]*APIProfile{}}
+		config = &APIConfig{
+			name:     args[0],
+			Profiles: map[string]*APIProfile{},
+			TLS: &TLSConfig{
+				InsecureSkipVerify: viper.GetBool("rsh-insecure"),
+				Cert:               viper.GetString("rsh-client-cert"),
+				Key:                viper.GetString("rsh-client-key"),
+				CACert:             viper.GetString("rsh-ca-cert"),
+			},
+		}
 		configs[args[0]] = config
 
 		// Do an initial setup with a default profile first.
@@ -324,6 +397,10 @@ func askInitAPI(a asker, cmd *cobra.Command, args []string) {
 			options = append(options, "Edit profile "+k)
 		}
 
+		if (config.TLS != nil) && (*config.TLS != TLSConfig{}) {
+			options = append(options, "Edit TLS configuration")
+		}
+
 		options = append(options, "Save and exit")
 
 		choice := a.askSelect("Select option", options, nil, "")
@@ -336,6 +413,8 @@ func askInitAPI(a asker, cmd *cobra.Command, args []string) {
 		case strings.HasPrefix(choice, "Edit profile"):
 			profile := strings.SplitN(choice, " ", 3)[2]
 			askEditProfile(a, profile, config.Profiles[profile])
+		case choice == "Edit TLS configuration":
+			askTLSConfig(a, config)
 		case choice == "Save and exit":
 			config.Save()
 			return

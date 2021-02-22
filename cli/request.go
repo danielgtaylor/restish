@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -158,6 +160,58 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 
 		if option.disableLog {
 			log = false
+		}
+	}
+
+	// The assumption is that all Transport implementations eventually use the
+	// default HTTP transport.
+	// We can therefore inject the TLS config once here, along with all the other
+	// config options, instead of modifying all the places where Transports are
+	// created
+	LogDebug("Adding TLS configuration")
+	if t, ok := http.DefaultTransport.(*http.Transport); ok {
+		if t.TLSClientConfig == nil {
+			t.TLSClientConfig = &tls.Config{}
+		}
+		if config.TLS == nil {
+			config.TLS = &TLSConfig{}
+		}
+
+		// CLI flags overwrite profile options
+		if viper.GetBool("rsh-insecure") {
+			config.TLS.InsecureSkipVerify = true
+		}
+		if cert := viper.GetString("rsh-client-cert"); cert != "" {
+			config.TLS.Cert = cert
+		}
+		if key := viper.GetString("rsh-client-key"); key != "" {
+			config.TLS.Key = key
+		}
+		if caCert := viper.GetString("rsh-ca-cert"); caCert != "" {
+			config.TLS.CACert = caCert
+		}
+
+		if config.TLS.InsecureSkipVerify {
+			LogWarning("Disabling TLS security checks")
+			t.TLSClientConfig.InsecureSkipVerify = config.TLS.InsecureSkipVerify
+		}
+		if config.TLS.Cert != "" {
+			cert, err := tls.LoadX509KeyPair(config.TLS.Cert, config.TLS.Key)
+			if err != nil {
+				return nil, err
+			}
+			t.TLSClientConfig.Certificates = append(t.TLSClientConfig.Certificates, cert)
+		}
+		if config.TLS.CACert != "" {
+			caCert, err := ioutil.ReadFile(config.TLS.CACert)
+			if err != nil {
+				return nil, err
+			}
+			systemCerts := BestEffortSystemCertPool()
+			if !systemCerts.AppendCertsFromPEM(caCert) {
+				return nil, fmt.Errorf("Failed to append CACert %s RootCA list", config.TLS.CACert)
+			}
+			t.TLSClientConfig.RootCAs = systemCerts
 		}
 	}
 
@@ -347,4 +401,13 @@ func MakeRequestAndFormat(req *http.Request) {
 	if err := Formatter.Format(parsed); err != nil {
 		panic(err)
 	}
+}
+
+// BestEffortSystemCertPool returns system cert pool as best effort, otherwise an empty cert pool
+func BestEffortSystemCertPool() *x509.CertPool {
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		return x509.NewCertPool()
+	}
+	return rootCAs
 }

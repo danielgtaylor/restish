@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/danielgtaylor/restish/cli"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -232,4 +233,132 @@ func TestLoadOpenAPI(t *testing.T) {
 	})
 
 	assert.Equal(t, expected, api)
+}
+
+func TestGetBasePath(t *testing.T) {
+	cases := []struct {
+		name     string
+		location *url.URL
+		servers  openapi3.Servers
+		output   string
+		hasError bool
+	}{
+		{
+			name:     "Should return location if server is only a path",
+			location: parseURL("http://localhost:12345/api"),
+			servers:  openapi3.Servers{{URL: "/api"}},
+			output:   "/api",
+		},
+		{
+			name:     "Should return the empty string if no matches can be found",
+			location: parseURL("http://localhost:1245"),
+			servers:  openapi3.Servers{{URL: "http://my-api.foo.bar/foo"}},
+			output:   "",
+		},
+		{
+			name:     "Should return the prefix of the matched URL 1",
+			location: parseURL("http://my-api.foo.bar"),
+			servers:  openapi3.Servers{{URL: "http://my-api.foo.bar/mount/api"}},
+			output:   "/mount/api",
+		},
+		{
+			name:     "Should return the prefix of the matched URL 2",
+			location: parseURL("http://my-api.foo.bar/mount/api"),
+			servers:  openapi3.Servers{{URL: "http://my-api.foo.bar/mount/api"}},
+			output:   "/mount/api",
+		},
+		{
+			name:     "Should use default value for expanded url parameter 1",
+			location: parseURL("http://my-api.foo.bar"),
+			servers: openapi3.Servers{
+				{
+					URL: "http://my-api.foo.bar/{mount}/api",
+					Variables: map[string]*openapi3.ServerVariable{
+						"mount": {Default: "point"},
+					},
+				},
+			},
+			output: "/point/api",
+		},
+		{
+			name:     "Should use default value for expanded url parameter 2",
+			location: parseURL("http://my-api.foo.bar"),
+			servers: openapi3.Servers{
+				{URL: "http://my-api.some.other.domain:12456"},
+				{
+					URL: "http://my-api.foo.bar/{mount}/api",
+					Variables: map[string]*openapi3.ServerVariable{
+						"mount": {Default: "point"},
+					},
+				},
+			},
+			output: "/point/api",
+		},
+		{
+			name:     "Should match with enum values over default for expanded url parameter 1",
+			location: parseURL("http://my-api.foo.bar"),
+			servers: openapi3.Servers{
+				{
+					URL: "http://my-api.foo.bar/{mount}/api",
+					Variables: map[string]*openapi3.ServerVariable{
+						"mount": {Default: "point", Enum: []interface{}{"vec", "point"}},
+					},
+				},
+			},
+			output: "/vec/api",
+		},
+		{
+			name:     "Should match with enum values over default for expanded url parameter 2",
+			location: parseURL("http://my-api.foo.bar"),
+			servers: openapi3.Servers{
+				{URL: "http://my-api.some.other.domain:12456"},
+				{
+					URL: "http://my-api.foo.bar/{mount}/api",
+					Variables: map[string]*openapi3.ServerVariable{
+						"mount": {Default: "point", Enum: []interface{}{"vec", "point"}},
+					},
+				},
+			},
+			output: "/vec/api",
+		},
+		{
+			name:     "Should match against all expanded parameters",
+			location: parseURL("http://ppmy-api.foo.bar/vec"),
+			servers: openapi3.Servers{
+				{
+					URL: "http://{env}my-api.foo.bar/{mount}/api",
+					Variables: map[string]*openapi3.ServerVariable{
+						"env":   {Default: "pp"},
+						"mount": {Default: "point", Enum: []interface{}{"vec", "point"}},
+					},
+				},
+			},
+			output: "/vec/api",
+		},
+		{
+			name:     "Should return an error if the openapi server can't be parsed",
+			location: parseURL("http://localhost"),
+			servers:  openapi3.Servers{{URL: "http://localhost@1224:foo"}},
+			hasError: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := getBasePath(tc.location, tc.servers)
+			if !tc.hasError {
+				if assert.NoError(t, err) {
+					assert.Equal(t, tc.output, output)
+				}
+			} else {
+				assert.Error(t, err)
+			}
+		})
+	}
+}
+
+// parseURL parses the input as a URL ignoring any errors
+func parseURL(s string) *url.URL {
+	output, _ := url.Parse(s)
+	return output
 }

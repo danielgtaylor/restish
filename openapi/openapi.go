@@ -341,6 +341,61 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 	}
 }
 
+// getBasePath returns the basePath to which the operation paths need to be appended (if any)
+// It assumes the open-api description has been validated before: the casts should always succeed
+// if the description adheres to the openapi spec schema.
+func getBasePath(location *url.URL, servers openapi3.Servers) (string, error) {
+	prefix := fmt.Sprintf("%s://%s", location.Scheme, location.Host)
+
+	for _, s := range servers {
+		// Interprete all operation paths as relative to the provided location
+		if strings.HasPrefix(s.URL, "/") {
+			return s.URL, nil
+		}
+
+		// localhost special casing?
+
+		// Create a list with all possible parametrised server names
+		endpoints := []string{s.URL}
+		for k, v := range s.Variables {
+			key := fmt.Sprintf("{%s}", k)
+			if len(v.Enum) == 0 {
+				for i := range endpoints {
+					endpoints[i] = strings.ReplaceAll(
+						endpoints[i],
+						key,
+						v.Default.(string),
+					)
+				}
+			} else {
+				nEndpoints := make([]string, len(v.Enum)*len(endpoints))
+				for j := range v.Enum {
+					val := v.Enum[j].(string)
+					for i := range endpoints {
+						nEndpoints[i+j*len(endpoints)] = strings.ReplaceAll(
+							endpoints[i],
+							key,
+							val,
+						)
+					}
+				}
+				endpoints = nEndpoints
+			}
+		}
+
+		for i := range endpoints {
+			if strings.HasPrefix(endpoints[i], prefix) {
+				base, err := url.Parse(endpoints[i])
+				if err != nil {
+					return "", err
+				}
+				return base.Path, nil
+			}
+		}
+	}
+	return "", nil
+}
+
 func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *http.Response) (cli.API, error) {
 	loader := openapi3.NewSwaggerLoader()
 
@@ -356,19 +411,9 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 	// spew.Dump(swagger)
 
 	// See if this server has any base path prefix we need to account for.
-	// TODO: handle variables in the server path?
-	basePath := ""
-	prefix := location.Scheme + "://" + location.Host
-	for _, s := range swagger.Servers {
-		if strings.HasPrefix(s.URL, "/") {
-			basePath = s.URL
-		} else if strings.HasPrefix(s.URL, prefix) {
-			base, err := url.Parse(s.URL)
-			if err != nil {
-				return cli.API{}, err
-			}
-			basePath = base.Path
-		}
+	basePath, err := getBasePath(location, swagger.Servers)
+	if err != nil {
+		return cli.API{}, err
 	}
 
 	operations := []cli.Operation{}

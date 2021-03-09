@@ -19,6 +19,14 @@ type APIAuth struct {
 	Params map[string]string `json:"params"`
 }
 
+// TLSConfig contains the TLS setup for the HTTP client
+type TLSConfig struct {
+	InsecureSkipVerify bool   `json:"insecure" mapstructure:"insecure"`
+	Cert               string `json:"cert"`
+	Key                string `json:"key"`
+	CACert             string `json:"ca_cert" mapstructure:"ca_cert"`
+}
+
 // APIProfile contains account-specific API information
 type APIProfile struct {
 	Headers map[string]string `json:"headers,omitempty"`
@@ -33,6 +41,7 @@ type APIConfig struct {
 	Base      string                 `json:"base"`
 	SpecFiles []string               `json:"spec_files,omitempty" mapstructure:"spec_files,omitempty"`
 	Profiles  map[string]*APIProfile `json:"profiles,omitempty" mapstructure:",omitempty"`
+	TLS       *TLSConfig             `json:"tls,omitempty" mapstructure:",omitempty"`
 }
 
 // Save the API configuration to disk.

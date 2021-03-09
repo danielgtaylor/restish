@@ -15,19 +15,21 @@ Global configuration affects all commands and can be set in one of three ways, g
 
 The global options in addition to `--help` and `--version` are:
 
-| Argument                    | Env Var             | Example           | Description                                                                      |
-| --------------------------- | ------------------- | ----------------- | -------------------------------------------------------------------------------- |
-| `-f`, `--rsh-filter`        | `RSH_FILTER`        | `body.users[].id` | [JMESPath Plus](https://github.com/danielgtaylor/go-jmespath-plus#readme) filter |
-| `-H`, `--rsh-header`        | `RSH_HEADER`        | `Version:2020-05` | Set a header name/value                                                          |
-| `--rsh-insecure`            | `RSH_INSECURE`      |                   | Disable TLS certificate checks                                                   |
-| `--rsh-no-cache`            | `RSH_NO_CACHE`      |                   | Disable HTTP caching                                                             |
-| `--rsh-no-paginate`         | `RSH_NO_PAGINATE`   |                   | Disable automatic `next` link pagination                                         |
-| `-o`, `--rsh-output-format` | `RSH_OUTPUT_FORMAT` | `json`            | [Output format](/output.md), defaults to `auto`                                  |
-| `-p`, `--rsh-profile`       | `RSH_PROFILE`       | `testing`         | Auth profile name, defaults to `default`                                         |
-| `-q`, `--rsh-query`         | `RSH_QUERY`         | `search=foo`      | Set a query parameter                                                            |
-| `-r`, `--rsh-raw`           | `RSH_RAW`           |                   | Raw output for shell processing                                                  |
-| `-s`, `--rsh-server`        | `RSH_SERVER`        | `https://foo.com` | Override API server base URL                                                     |
-| `-v`, `--rsh-verbose`       | `RSH_VERBOSE`       |                   | Enable verbose output                                                            |
+| Argument                    | Env Var             | Example             | Description                                                                      |
+| --------------------------- | ------------------- | ------------------- | -------------------------------------------------------------------------------- |
+| `-f`, `--rsh-filter`        | `RSH_FILTER`        | `body.users[].id`   | [JMESPath Plus](https://github.com/danielgtaylor/go-jmespath-plus#readme) filter |
+| `-H`, `--rsh-header`        | `RSH_HEADER`        | `Version:2020-05`   | Set a header name/value                                                          |
+| `--rsh-insecure`            | `RSH_INSECURE`      |                     | Disable TLS certificate checks                                                   |
+| `--rsh-client-cert`         | `RSH_CLIENT_CERT`   | `/etc/ssl/cert.pem` | Path to a PEM encoded client certificate                                         |
+| `--rsh-client-key`          | `RSH_CLIENT_KEY`    | `/etc/ssl/key.pem`  | Path to a PEM encoded private key                                                |
+| `--rsh-ca-cert`             | `RSH_CA_CERT`       | `/etc/ssl/ca.pem`   | Path to a PEM encoded CA certificate                                             |
+| `--rsh-no-paginate`         | `RSH_NO_PAGINATE`   |                     | Disable automatic `next` link pagination                                         |
+| `-o`, `--rsh-output-format` | `RSH_OUTPUT_FORMAT` | `json`              | [Output format](/output.md), defaults to `auto`                                  |
+| `-p`, `--rsh-profile`       | `RSH_PROFILE`       | `testing`           | Auth profile name, defaults to `default`                                         |
+| `-q`, `--rsh-query`         | `RSH_QUERY`         | `search=foo`        | Set a query parameter                                                            |
+| `-r`, `--rsh-raw`           | `RSH_RAW`           |                     | Raw output for shell processing                                                  |
+| `-s`, `--rsh-server`        | `RSH_SERVER`        | `https://foo.com`   | Override API server base URL                                                     |
+| `-v`, `--rsh-verbose`       | `RSH_VERBOSE`       |                     | Enable verbose output                                                            |
 
 Configuration file keys are the same as long-form arguments without the `--` prefix.
 

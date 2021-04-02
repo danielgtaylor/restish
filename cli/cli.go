@@ -459,6 +459,12 @@ func Run() {
 	if caCert, _ := GlobalFlags.GetString("rsh-ca-cert"); caCert != "" {
 		viper.Set("rsh-ca-cert", caCert)
 	}
+	if query, _ := GlobalFlags.GetStringSlice("rsh-query"); len(query) > 0 {
+		viper.Set("rsh-query", query)
+	}
+	if headers, _ := GlobalFlags.GetStringSlice("rsh-header"); len(headers) > 0 {
+		viper.Set("rsh-header", headers)
+	}
 
 	// Now that global flags are parsed we can enable verbose mode if requested.
 	if viper.GetBool("rsh-verbose") {

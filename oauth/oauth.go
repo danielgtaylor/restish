@@ -25,7 +25,7 @@ func TokenHandler(source oauth2.TokenSource, key string, request *http.Request) 
 
 	expiry := cli.Cache.GetTime(expiresKey)
 	if !expiry.IsZero() {
-		cli.LogDebug("Loading token from cache.")
+		cli.LogDebug("Loading OAuth2 token from cache.")
 		cached = &oauth2.Token{
 			AccessToken:  cli.Cache.GetString(tokenKey),
 			RefreshToken: cli.Cache.GetString(refreshKey),

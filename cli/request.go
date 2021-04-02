@@ -85,6 +85,45 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		profile = &APIProfile{}
 	}
 
+	// Now that we have the profile, set up profile-based headers/params.
+	query := req.URL.Query()
+	for k, v := range profile.Headers {
+		if req.Header.Get(k) == "" {
+			req.Header.Add(k, v)
+		}
+	}
+
+	for k, v := range profile.Query {
+		if query.Get(k) == "" {
+			query.Add(k, v)
+		}
+	}
+
+	// Allow env vars and commandline arguments to override config.
+	for _, h := range viper.GetStringSlice("rsh-header") {
+		parts := strings.SplitN(h, ":", 2)
+		value := ""
+		if len(parts) > 1 {
+			value = parts[1]
+		}
+
+		req.Header.Add(parts[0], value)
+	}
+
+	for _, q := range viper.GetStringSlice("rsh-query") {
+		parts := strings.SplitN(q, "=", 2)
+		value := ""
+		if len(parts) > 1 {
+			value = parts[1]
+		}
+
+		query.Add(parts[0], value)
+	}
+
+	// Save modified query string arguments.
+	req.URL.RawQuery = query.Encode()
+
+	// Add auth if needed.
 	if profile.Auth != nil && profile.Auth.Name != "" {
 		auth, ok := authHandlers[profile.Auth.Name]
 		if ok {
@@ -99,22 +138,6 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		req.Header.Set("user-agent", "restish-"+Root.Version)
 	}
 
-	for _, h := range viper.GetStringSlice("rsh-header") {
-		parts := strings.SplitN(h, ":", 2)
-		value := ""
-		if len(parts) > 1 {
-			value = parts[1]
-		}
-
-		req.Header.Add(parts[0], value)
-	}
-
-	for k, v := range profile.Headers {
-		if req.Header.Get(k) == "" {
-			req.Header.Add(k, v)
-		}
-	}
-
 	if req.Header.Get("accept") == "" {
 		req.Header.Set("accept", buildAcceptHeader())
 	}
@@ -127,25 +150,6 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		// We have a body but no content-type; default to JSON.
 		req.Header.Set("content-type", "application/json; charset=utf-8")
 	}
-
-	query := req.URL.Query()
-	for _, q := range viper.GetStringSlice("rsh-query") {
-		parts := strings.SplitN(q, "=", 2)
-		value := ""
-		if len(parts) > 1 {
-			value = parts[1]
-		}
-
-		query.Add(parts[0], value)
-	}
-
-	for k, v := range profile.Query {
-		if query.Get(k) == "" {
-			query.Add(k, v)
-		}
-	}
-
-	req.URL.RawQuery = query.Encode()
 
 	client := CachedTransport().Client()
 	if viper.GetBool("rsh-no-cache") {

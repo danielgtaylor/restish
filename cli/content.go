@@ -65,6 +65,7 @@ func Marshal(contentType string, value interface{}) ([]byte, error) {
 func Unmarshal(contentType string, data []byte, value interface{}) error {
 	for _, entry := range contentTypes {
 		if entry.ct.Detect(contentType) {
+			LogDebug("Unmarshalling from %s", entry.name)
 			return entry.ct.Unmarshal(data, value)
 		}
 	}

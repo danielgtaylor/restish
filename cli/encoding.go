@@ -51,6 +51,8 @@ func DecodeResponse(resp *http.Response) error {
 		return fmt.Errorf("unsupported content-encoding %s", contentEncoding)
 	}
 
+	LogDebug("Decoding response from %s", contentEncoding)
+
 	reader, err := encoding.Reader(resp.Body)
 	if err != nil {
 		return err

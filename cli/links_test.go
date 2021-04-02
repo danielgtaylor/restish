@@ -26,20 +26,6 @@ func TestLinkParserFailure(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestInvalidRelativeLink(t *testing.T) {
-	reset(false)
-	u, _ := url.Parse("https://example.com/test")
-	r := &Response{
-		Links:   Links{},
-		Headers: map[string]string{},
-		Body: map[string]interface{}{
-			"self": ":bad",
-		},
-	}
-	err := ParseLinks(u, r)
-	assert.Error(t, err)
-}
-
 func TestLinkHeaderParser(t *testing.T) {
 	r := &Response{
 		Links: Links{},
@@ -106,6 +92,11 @@ func TestTerrificallySimpleJSONParser(t *testing.T) {
 					},
 				},
 			},
+			"other": map[string]interface{}{
+				"self": map[string]interface{}{
+					"foo": "bar",
+				},
+			},
 		},
 	}
 
@@ -116,6 +107,8 @@ func TestTerrificallySimpleJSONParser(t *testing.T) {
 	assert.Equal(t, r.Links["things-item"][0].URI, "/foo")
 	assert.Equal(t, r.Links["things-item"][1].URI, "/bar")
 	assert.Equal(t, r.Links["5"][0].URI, "/weird")
+	assert.NotContains(t, r.Links, "other")
+	assert.NotContains(t, r.Links, "foo")
 }
 
 func TestSirenParser(t *testing.T) {

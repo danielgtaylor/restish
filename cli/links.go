@@ -132,11 +132,19 @@ func (t TerrificallySimpleJSONParser) walk(resp *Response, key string, value int
 			if s, ok := k.Interface().(string); ok {
 				kStr = s
 				if s == "self" {
-					resp.Links[key] = append(resp.Links[key], &Link{
-						Rel: key,
-						URI: fmt.Sprintf("%v", v.MapIndex(k).Interface()),
-					})
-					continue
+					// Only try to process if the value is a string.
+					if uri, ok := v.MapIndex(k).Interface().(string); ok {
+						// Only consider this a link if the URI is valid. If not, then
+						// we ignore it.
+						_, err := url.Parse(uri)
+						if err == nil {
+							resp.Links[key] = append(resp.Links[key], &Link{
+								Rel: key,
+								URI: uri,
+							})
+							continue
+						}
+					}
 				}
 			} else {
 				kStr = fmt.Sprintf("%v", k)

@@ -306,6 +306,7 @@ func ParseResponse(resp *http.Response) (Response, error) {
 	}
 
 	if err := ParseLinks(resp.Request.URL, &output); err != nil {
+		LogWarning("Parse links failed")
 		return Response{}, err
 	}
 
@@ -323,6 +324,7 @@ func GetParsedResponse(req *http.Request) (Response, error) {
 
 	parsed, err := ParseResponse(resp)
 	if err != nil {
+		LogError("Parse response error")
 		return Response{}, err
 	}
 

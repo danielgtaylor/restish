@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/danielgtaylor/restish/cli"
+	"github.com/cgardens/restish/cli"
 	"golang.org/x/oauth2"
 )
 

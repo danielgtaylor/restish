@@ -118,8 +118,8 @@ github.com/fxamacker/cbor/v2 v2.2.0/go.mod h1:TA1xS00nchWmaBnEIxPSE5oHLuJBAVvqrt
 github.com/gbl08ma/httpcache v1.0.2 h1:c0KlIIUEPrauRjvKyzsogEDSweSLYHLNgjwICpKs3CM=
 github.com/gbl08ma/httpcache v1.0.2/go.mod h1:pUnTdMCYyeNuhfm10h0vkodXia9VNFb2tgBZ0Ee+5Fc=
 github.com/getkin/kin-openapi v0.0.0-20190303141616-e6aa6352832d/go.mod h1:V1z9xl9oF5Wt7v32ne4FmiF1alpS4dM6mNzoywPOXlk=
-github.com/getkin/kin-openapi v0.53.0 h1:7WzP+MZRRe7YQz2Kc74Ley3dukJmXDvifVbElGmQfoA=
-github.com/getkin/kin-openapi v0.53.0/go.mod h1:7Yn5whZr5kJi6t+kShccXS8ae1APpYTW6yheSwk8Yi4=
+github.com/getkin/kin-openapi v0.61.0 h1:6awGqF5nG5zkVpMsAih1QH4VgzS8phTxECUWIFo7zko=
+github.com/getkin/kin-openapi v0.61.0/go.mod h1:7Yn5whZr5kJi6t+kShccXS8ae1APpYTW6yheSwk8Yi4=
 github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=

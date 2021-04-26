@@ -16,7 +16,7 @@ $ brew tap danielgtaylor/restish
 $ brew install restish
 ```
 
-If you don't have Homebrew, you can grab a [release](https://github.com/danielgtaylor/restish/releases) for your platform and manually copy the executable to the right location (e.g. `/usr/local/bin/restish`), otherwise if you have Go installed:
+If you don't have Homebrew, you can grab a [release](https://github.com/cgardens/restish/releases) for your platform and manually copy the executable to the right location (e.g. `/usr/local/bin/restish`), otherwise if you have Go installed:
 
 ```bash
 # Download / build / install

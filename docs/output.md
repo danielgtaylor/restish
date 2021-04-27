@@ -43,7 +43,7 @@ Date: Thu, 28 May 2020 05:56:31 GMT
 }
 ```
 
-Unlike JSON and similar to YAML, object property names have no quotes and there are no commas. This is powered by a custom [marshaller](https://github.com/cgardens/restish/blob/master/cli/readable.go) and [lexer](https://github.com/cgardens/restish/blob/master/cli/lexer.go) to enable syntax highlighting.
+Unlike JSON and similar to YAML, object property names have no quotes and there are no commas. This is powered by a custom [marshaller](https://github.com/danielgtaylor/restish/blob/master/cli/readable.go) and [lexer](https://github.com/danielgtaylor/restish/blob/master/cli/lexer.go) to enable syntax highlighting.
 
 The following types are supported & syntax highlighted:
 

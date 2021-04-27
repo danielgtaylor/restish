@@ -13,7 +13,7 @@ import (
 
 	"github.com/danielgtaylor/casing"
 	"github.com/danielgtaylor/openapi-cli-generator/shorthand"
-	"github.com/cgardens/restish/cli"
+	"github.com/danielgtaylor/restish/cli"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
@@ -214,7 +214,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		name = override
 	} else if oldName := slug.Make(op.OperationID); oldName != name {
 		// For backward-compatibility, add the old naming scheme as an alias
-		// if it is different. See https://github.com/cgardens/restish/issues/29
+		// if it is different. See https://github.com/danielgtaylor/restish/issues/29
 		// for additional context; we prefer kebab casing for readability.
 		aliases = append(aliases, oldName)
 	}

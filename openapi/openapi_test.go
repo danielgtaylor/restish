@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cgardens/restish/cli"
+	"github.com/danielgtaylor/restish/cli"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/stretchr/testify/assert"
 )

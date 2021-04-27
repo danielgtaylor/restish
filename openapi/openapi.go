@@ -364,13 +364,13 @@ func getBasePath(location *url.URL, servers openapi3.Servers) (string, error) {
 					endpoints[i] = strings.ReplaceAll(
 						endpoints[i],
 						key,
-						v.Default.(string),
+						v.Default,
 					)
 				}
 			} else {
 				nEndpoints := make([]string, len(v.Enum)*len(endpoints))
 				for j := range v.Enum {
-					val := v.Enum[j].(string)
+					val := v.Enum[j]
 					for i := range endpoints {
 						nEndpoints[i+j*len(endpoints)] = strings.ReplaceAll(
 							endpoints[i],
@@ -397,14 +397,14 @@ func getBasePath(location *url.URL, servers openapi3.Servers) (string, error) {
 }
 
 func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *http.Response) (cli.API, error) {
-	loader := openapi3.NewSwaggerLoader()
+	loader := openapi3.NewLoader()
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return cli.API{}, err
 	}
 
-	swagger, err := loader.LoadSwaggerFromDataWithPath(data, location)
+	swagger, err := loader.LoadFromDataWithPath(data, location)
 	if err != nil {
 		return cli.API{}, err
 	}
@@ -517,7 +517,7 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 	return api, nil
 }
 
-func loadAutoConfig(api *cli.API, swagger *openapi3.Swagger) {
+func loadAutoConfig(api *cli.API, swagger *openapi3.T) {
 	var config *autoConfig
 
 	if cfg, ok := swagger.Extensions["x-cli-config"].(json.RawMessage); ok {

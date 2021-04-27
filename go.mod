@@ -18,7 +18,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/fxamacker/cbor/v2 v2.2.0
 	github.com/gbl08ma/httpcache v1.0.2
-	github.com/getkin/kin-openapi v0.53.0
+	github.com/getkin/kin-openapi v0.61.0
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect

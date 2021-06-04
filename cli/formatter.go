@@ -19,8 +19,8 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 	"gopkg.in/yaml.v2"
 
-	"github.com/eliukblau/pixterm/pkg/ansimage"
 	"github.com/alexeyco/simpletable"
+	"github.com/eliukblau/pixterm/pkg/ansimage"
 )
 
 func init() {
@@ -163,6 +163,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 	handled := false
 	kind := reflect.ValueOf(data).Kind()
 
+	// Handle table formatting
 	if viper.GetBool("rsh-table") && kind == reflect.Slice {
 		d, ok := data.([]interface{})
 		if ok {

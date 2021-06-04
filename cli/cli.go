@@ -335,6 +335,7 @@ Not after (expires): %s (%s)
 	AddGlobalFlag("rsh-client-cert", "", "Path to a PEM encoded client certificate", "", false)
 	AddGlobalFlag("rsh-client-key", "", "Path to a PEM encoded private key", "", false)
 	AddGlobalFlag("rsh-ca-cert", "", "Path to a PEM encoded CA cert", "", false)
+	AddGlobalFlag("rsh-table", "t", "Enable table formatted output for array of objects", false, false)
 
 	initAPIConfig()
 }

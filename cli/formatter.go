@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image/color"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/eliukblau/pixterm/pkg/ansimage"
+	"github.com/alexeyco/simpletable"
 )
 
 func init() {
@@ -160,6 +162,21 @@ func (f *DefaultFormatter) Format(resp Response) error {
 
 	handled := false
 	kind := reflect.ValueOf(data).Kind()
+
+	if viper.GetBool("rsh-table") && kind == reflect.Slice {
+		d, ok := data.([]interface{})
+		if ok {
+			ret, err := setTable(d)
+			if err != nil {
+				return err
+			}
+			encoded = *ret
+			handled = true
+		} else {
+			return errors.New("error building table. Collection not supported. Must be array of objects")
+		}
+	}
+
 	if viper.GetBool("rsh-raw") && kind == reflect.String {
 		handled = true
 		dStr := data.(string)
@@ -310,4 +327,50 @@ func (f *DefaultFormatter) Format(resp Response) error {
 	fmt.Fprint(Stdout, string(encoded))
 
 	return nil
+}
+
+// Only applicable to collection of repeating objects.
+// Filter down to a collection of objects first then apply --table.
+// Simpletable has much more styling that can be applied.
+func setTable(data []interface{}) (*[]byte, error) {
+	table := simpletable.New()
+
+	var headerCells []*simpletable.Cell
+	defineHeader := true
+	for _, maps := range data {
+		var bodyCells []*simpletable.Cell
+		if mapData, ok := maps.(map[string]interface{}); ok {
+			// Discover headers for repeating objects
+			// Iterate first instance of one of the repeating objects
+			if defineHeader {
+				for k, _ := range mapData {
+					headerCells = append(headerCells, &simpletable.Cell{Align: simpletable.AlignCenter, Text: k})
+				}
+			}
+			defineHeader = false
+
+			// Add body cells based on order of header cells
+			// Will gt out of order otherwise
+			for _, cellKey := range headerCells {
+				if val, ok := mapData[cellKey.Text]; ok {
+					bodyCells = append(bodyCells, &simpletable.Cell{Align: simpletable.AlignRight, Text: fmt.Sprintf("%v", val)})
+				} else {
+					return nil, fmt.Errorf("error building table. Header Key not found in repeating object: %s", cellKey.Text)
+				}
+			}
+			table.Body.Cells = append(table.Body.Cells, bodyCells)
+		} else {
+			// Defensive just in case
+			return nil, errors.New("error building table. Collection not supported")
+		}
+	}
+
+	table.Header = &simpletable.Header{
+		Cells: headerCells,
+	}
+
+	table.SetStyle(simpletable.StyleCompactLite)
+
+	ret := []byte(table.String())
+	return &ret, nil
 }

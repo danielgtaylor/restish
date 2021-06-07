@@ -301,7 +301,7 @@ func TestGetBasePath(t *testing.T) {
 				{
 					URL: "http://my-api.foo.bar/{mount}/api",
 					Variables: map[string]*openapi3.ServerVariable{
-						"mount": {Default: "point", Enum: []interface{}{"vec", "point"}},
+						"mount": {Default: "point", Enum: []string{"vec", "point"}},
 					},
 				},
 			},
@@ -315,7 +315,7 @@ func TestGetBasePath(t *testing.T) {
 				{
 					URL: "http://my-api.foo.bar/{mount}/api",
 					Variables: map[string]*openapi3.ServerVariable{
-						"mount": {Default: "point", Enum: []interface{}{"vec", "point"}},
+						"mount": {Default: "point", Enum: []string{"vec", "point"}},
 					},
 				},
 			},
@@ -329,7 +329,7 @@ func TestGetBasePath(t *testing.T) {
 					URL: "http://{env}my-api.foo.bar/{mount}/api",
 					Variables: map[string]*openapi3.ServerVariable{
 						"env":   {Default: "pp"},
-						"mount": {Default: "point", Enum: []interface{}{"vec", "point"}},
+						"mount": {Default: "point", Enum: []string{"vec", "point"}},
 					},
 				},
 			},

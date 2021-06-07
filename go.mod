@@ -7,6 +7,7 @@ require (
 	github.com/Netflix/go-expect v0.0.0-20201125194554-85d881c3777e // indirect
 	github.com/alecthomas/chroma v0.8.2
 	github.com/alecthomas/repr v0.0.0-20210301060118-828286944d6a // indirect
+	github.com/alexeyco/simpletable v1.0.0
 	github.com/amzn/ion-go v1.1.0
 	github.com/andybalholm/brotli v1.0.1
 	github.com/creack/pty v1.1.11 // indirect

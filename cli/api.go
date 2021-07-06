@@ -91,13 +91,13 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 	desc := API{}
 	found := false
 
-	fromFileOrUrl := func(uri string) ([]byte,error){
+	fromFileOrUrl := func(uri string) ([]byte, error) {
 		uriLower := strings.ToLower(uri)
 		if strings.Index(uriLower, "http") == 0 {
 			resp, err := http.Get(uri)
 			if err != nil {
 				return []byte{}, err
-			 }
+			}
 			return ioutil.ReadAll(resp.Body)
 		} else {
 			return ioutil.ReadFile(uri)
@@ -172,8 +172,6 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 	for _, l := range resp.Links["describedby"] {
 		uris = append(uris, l.URI)
 	}
-
-	
 
 	// Try hints from loaders next. These are likely places for API descriptions
 	// to be on the server, like e.g. `/openapi.json`.

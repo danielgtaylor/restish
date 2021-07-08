@@ -109,7 +109,7 @@ func marshalReadable(indent string, v interface{}) ([]byte, error) {
 			// Special-case: short array gets inlined like [1, 2, 3]
 			s += "[" + strings.Join(lines, ", ") + "]"
 		} else {
-			s += "[\n" + indent + "  " + strings.Join(lines, "\n  "+indent) + "\n" + indent + "]"
+			s += "[\n" + indent + "  " + strings.Join(lines, ",\n  "+indent) + "\n" + indent + "]"
 		}
 
 		return []byte(s), nil
@@ -140,7 +140,7 @@ func marshalReadable(indent string, v interface{}) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			m += indent + "  " + k + ": " + string(encoded) + "\n"
+			m += indent + "  " + k + ": " + string(encoded) + ",\n"
 		}
 
 		m += indent + "}"

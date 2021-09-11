@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"net/url"
 	"strings"
 	"time"
@@ -100,7 +101,7 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 			 }
 			return ioutil.ReadAll(resp.Body)
 		} else {
-			return ioutil.ReadFile(uri)
+			return ioutil.ReadFile(os.ExpandEnv(uri))
 		}
 	}
 	if name != "" && len(config.SpecFiles) > 0 {

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -89,7 +90,7 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 	query := req.URL.Query()
 	for k, v := range profile.Headers {
 		if req.Header.Get(k) == "" {
-			req.Header.Add(k, v)
+			req.Header.Add(k, os.ExpandEnv(v))
 		}
 	}
 

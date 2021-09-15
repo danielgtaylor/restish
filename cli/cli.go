@@ -445,6 +445,9 @@ func Run() {
 			panic(err)
 		}
 	}
+	if noCache, _ := GlobalFlags.GetBool("rsh-no-cache"); noCache {
+		viper.Set("rsh-no-cache", true)
+	}
 	if verbose, _ := GlobalFlags.GetBool("rsh-verbose"); verbose {
 		viper.Set("rsh-verbose", true)
 	}

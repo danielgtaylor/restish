@@ -71,7 +71,10 @@ func initAPIConfig() {
 		}
 	}
 
-	apis.ReadInConfig()
+	err := apis.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
 
 	// Register api init sub-command to register the API.
 	apiCommand = &cobra.Command{

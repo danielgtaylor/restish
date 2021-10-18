@@ -6,6 +6,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.9
 	github.com/Netflix/go-expect v0.0.0-20201125194554-85d881c3777e // indirect
 	github.com/alecthomas/chroma v0.8.2
+	github.com/alecthomas/colour v0.1.0 // indirect
 	github.com/alecthomas/repr v0.0.0-20210301060118-828286944d6a // indirect
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/amzn/ion-go v1.1.0
@@ -13,7 +14,6 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3
 	github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba
-	github.com/danielgtaylor/openapi-cli-generator v0.0.0-20200904035210-47cad525a9e0
 	github.com/danielgtaylor/shorthand v1.0.0
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/eliukblau/pixterm v1.3.1
@@ -31,6 +31,7 @@ require (
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/mapstructure v1.4.1
+	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/shamaton/msgpack v1.2.1
 	github.com/smartystreets/assertions v1.2.0 // indirect
 	github.com/spf13/cobra v1.2.1

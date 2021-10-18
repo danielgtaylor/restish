@@ -7,28 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/danielgtaylor/openapi-cli-generator/shorthand"
+	"github.com/danielgtaylor/shorthand"
 	yaml "gopkg.in/yaml.v2"
 )
-
-// DeepAssign recursively merges a source map into the target.
-func DeepAssign(target, source map[string]interface{}) {
-	for k, v := range source {
-		if vm, ok := v.(map[string]interface{}); ok {
-			if _, ok := target[k]; ok {
-				if tkm, ok := target[k].(map[string]interface{}); ok {
-					DeepAssign(tkm, vm)
-				} else {
-					target[k] = vm
-				}
-			} else {
-				target[k] = vm
-			}
-		} else {
-			target[k] = v
-		}
-	}
-}
 
 // GetBody returns the request body if one was passed either as shorthand
 // arguments or via stdin.
@@ -65,7 +46,7 @@ func GetBody(mediaType string, args []string) (string, error) {
 					return "", err
 				}
 
-				DeepAssign(curBody, result)
+				shorthand.DeepAssign(curBody, result)
 				result = curBody
 			}
 
@@ -83,7 +64,7 @@ func GetBody(mediaType string, args []string) (string, error) {
 					return "", err
 				}
 
-				DeepAssign(curBody, result)
+				shorthand.DeepAssign(curBody, result)
 				result = curBody
 			}
 

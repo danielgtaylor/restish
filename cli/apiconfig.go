@@ -60,7 +60,7 @@ func initAPIConfig() {
 	apis = viper.New()
 
 	apis.SetConfigName("apis")
-	apis.AddConfigPath("$HOME/." + viper.GetString("app-name") + "/")
+	apis.AddConfigPath(viper.GetString("config-directory"))
 
 	// Write a blank cache if no file is already there. Later you can use
 	// configs.SaveConfig() to write new values.
@@ -71,7 +71,10 @@ func initAPIConfig() {
 		}
 	}
 
-	apis.ReadInConfig()
+	err := apis.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
 
 	// Register api init sub-command to register the API.
 	apiCommand = &cobra.Command{

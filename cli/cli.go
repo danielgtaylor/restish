@@ -384,7 +384,7 @@ func initConfig(appName, envPrefix string) {
 func initCache(appName string) {
 	Cache = viper.New()
 	Cache.SetConfigName("cache")
-	Cache.AddConfigPath("$HOME/." + appName + "/")
+	Cache.AddConfigPath(viper.GetString("config-directory"))
 
 	// Write a blank cache if no file is already there. Later you can use
 	// cli.Cache.SaveConfig() to write new values.

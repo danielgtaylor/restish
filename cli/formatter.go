@@ -56,14 +56,19 @@ func init() {
 // encoding to JSON (or YAML) works. Some unmarshallers (e.g. CBOR) will
 // create map[interface{}]interface{} which causes problems marshalling.
 // See https://github.com/fxamacker/cbor/issues/206
-func makeJSONSafe(obj interface{}) interface{} {
+func makeJSONSafe(obj interface{}, normalizeNumbers bool) interface{} {
 	value := reflect.ValueOf(obj)
 
 	switch value.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32:
+		if normalizeNumbers {
+			// Normalize all numbers to float64 for filtering.
+			return value.Convert(reflect.TypeOf(float64(0))).Interface()
+		}
 	case reflect.Slice:
 		returnSlice := make([]interface{}, value.Len())
 		for i := 0; i < value.Len(); i++ {
-			returnSlice[i] = makeJSONSafe(value.Index(i).Interface())
+			returnSlice[i] = makeJSONSafe(value.Index(i).Interface(), normalizeNumbers)
 		}
 		return returnSlice
 	case reflect.Map:
@@ -75,7 +80,7 @@ func makeJSONSafe(obj interface{}) interface{} {
 			} else {
 				kStr = fmt.Sprintf("%v", k.Interface())
 			}
-			tmpData[kStr] = makeJSONSafe(value.MapIndex(k).Interface())
+			tmpData[kStr] = makeJSONSafe(value.MapIndex(k).Interface(), normalizeNumbers)
 		}
 		return tmpData
 	// case reflect.Struct:
@@ -90,7 +95,7 @@ func makeJSONSafe(obj interface{}) interface{} {
 	// 		}
 	// 	}
 	case reflect.Ptr:
-		return makeJSONSafe(value.Elem().Interface())
+		return makeJSONSafe(value.Elem().Interface(), normalizeNumbers)
 	}
 
 	return obj
@@ -136,7 +141,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 	if filter != "" {
 		// JMESPath can't support maps with arbitrary key types, so we convert
 		// to map[string]interface{} before filtering.
-		data = makeJSONSafe(data)
+		data = makeJSONSafe(data, true)
 		result, err := jmespath.Search(filter, data)
 
 		if err != nil {
@@ -287,7 +292,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 				encoded = append(encoded, e...)
 			}
 		} else if outFormat == "yaml" {
-			data = makeJSONSafe(data)
+			data = makeJSONSafe(data, false)
 			encoded, err = yaml.Marshal(data)
 
 			if err != nil {
@@ -296,7 +301,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 
 			lexer = "yaml"
 		} else {
-			data = makeJSONSafe(data)
+			data = makeJSONSafe(data, false)
 			encoded, err = json.MarshalIndent(data, "", "  ")
 
 			if err != nil {

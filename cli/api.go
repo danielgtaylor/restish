@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -155,7 +155,7 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 		client = &http.Client{Transport: InvalidateCachedTransport()}
 	}
 
-	httpResp, err := MakeRequest(req, WithClient(client), WithoutLog())
+	httpResp, err := MakeRequest(req, WithClient(client))
 	if err != nil {
 		return API{}, err
 	}
@@ -190,7 +190,12 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 		resolved := uri.ResolveReference(parsed)
 		LogDebug("Checking %s", resolved)
 
-		resp, err := client.Get(resolved.String())
+		req, err := http.NewRequest(http.MethodGet, resolved.String(), nil)
+		if err != nil {
+			return API{}, err
+		}
+
+		resp, err := MakeRequest(req, WithClient(client))
 		if err != nil {
 			return API{}, err
 		}

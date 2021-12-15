@@ -398,6 +398,7 @@ func getBasePath(location *url.URL, servers openapi3.Servers) (string, error) {
 
 func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *http.Response) (cli.API, error) {
 	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
 
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

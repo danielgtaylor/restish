@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -213,12 +214,20 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 		panic(err)
 	}
 
+	// bind to an automatically chosen port
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+	addr := listener.Addr()
+	redirectURL := fmt.Sprintf("http://%s", addr)
+
 	aq := authorizeURL.Query()
 	aq.Set("response_type", "code")
 	aq.Set("code_challenge", challenge)
 	aq.Set("code_challenge_method", "S256")
 	aq.Set("client_id", ac.ClientID)
-	aq.Set("redirect_uri", "http://localhost:8484/")
+	aq.Set("redirect_uri", redirectURL)
 	aq.Set("scope", strings.Join(ac.Scopes, " "))
 	if ac.EndpointParams != nil {
 		for k, v := range *ac.EndpointParams {
@@ -234,7 +243,6 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	s := &http.Server{
-		Addr:           "localhost:8484",
 		Handler:        handler,
 		ReadTimeout:    5 * time.Second,
 		WriteTimeout:   5 * time.Second,
@@ -243,7 +251,7 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 
 	go func() {
 		// Run in a goroutine until the server is closed or we get an error.
-		if err := s.ListenAndServe(); err != http.ErrServerClosed {
+		if err := s.Serve(listener); err != http.ErrServerClosed {
 			panic(err)
 		}
 	}()
@@ -279,7 +287,7 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	payload.Set("client_id", ac.ClientID)
 	payload.Set("code_verifier", verifier)
 	payload.Set("code", code)
-	payload.Set("redirect_uri", "http://localhost:8484/")
+	payload.Set("redirect_uri", redirectURL)
 	if ac.ClientSecret != "" {
 		payload.Set("client_secret", ac.ClientSecret)
 	}
@@ -307,7 +315,7 @@ func (h *AuthorizationCodeHandler) OnRequest(request *http.Request, key string, 
 	if request.Header.Get("Authorization") == "" {
 		endpointParams := url.Values{}
 		for k, v := range params {
-			if k == "client_id" || k == "client_secret" || k == "scopes" || k == "authorize_url" || k == "token_url" {
+			if k == "client_id" || k == "client_secret" || k == "scopes" || k == "authorize_url" || k == "token_url" || k == "redirect_uri" {
 				// Not a custom param...
 				continue
 			}

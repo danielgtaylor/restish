@@ -102,6 +102,24 @@ func (o Operation) command() *cobra.Command {
 				uri += queryEncoded
 			}
 
+			headers := http.Header{}
+			for _, param := range o.HeaderParams {
+				if reflect.ValueOf(flags[param.Name]).Elem().Interface() == param.Default {
+					// No need to send the default value. Just skip it.
+					continue
+				}
+
+				if param.Default == nil && reflect.ValueOf(flags[param.Name]).Elem().IsZero() {
+					// No explicit default, so the implied default is the zero value.
+					// Again no need to send that default, so we skip.
+					continue
+				}
+
+				for _, v := range param.Serialize(flags[param.Name]) {
+					headers.Add(param.Name, v)
+				}
+			}
+
 			var body io.Reader
 
 			if o.BodyMediaType != "" {
@@ -113,6 +131,7 @@ func (o Operation) command() *cobra.Command {
 			}
 
 			req, _ := http.NewRequest(o.Method, uri, body)
+			req.Header = headers
 			MakeRequestAndFormat(req)
 		},
 	}

@@ -249,12 +249,12 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	}()
 
 	// Open auth URL in browser, print for manual use in case open fails.
-	fmt.Println("Open your browser to log in using the URL:")
-	fmt.Println(authorizeURL.String())
+	fmt.Fprintln(os.Stderr, "Open your browser to log in using the URL:")
+	fmt.Fprintln(os.Stderr, authorizeURL.String())
 	open(authorizeURL.String())
 
 	// Provide a way to manually enter the code, e.g. for remote SSH sessions.
-	fmt.Print("Alternatively, enter the code manually: ")
+	fmt.Fprint(os.Stderr, "Alternatively, enter the code manually: ")
 	manualCodeChan := make(chan string)
 	go getInput(manualCodeChan)
 
@@ -266,11 +266,11 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	case code = <-codeChan:
 	case code = <-manualCodeChan:
 	}
-	fmt.Println("")
+	fmt.Fprintln(os.Stderr, "")
 	s.Shutdown(context.Background())
 
 	if code == "" {
-		fmt.Println("Unable to get a code. See browser for details. Aborting!")
+		fmt.Fprintln(os.Stderr, "Unable to get a code. See browser for details. Aborting!")
 		os.Exit(1)
 	}
 

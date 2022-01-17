@@ -104,15 +104,24 @@ func (o Operation) command() *cobra.Command {
 
 			headers := http.Header{}
 			for _, param := range o.HeaderParams {
-				if reflect.ValueOf(flags[param.Name]).Elem().Interface() == param.Default {
+				rv := reflect.ValueOf(flags[param.Name]).Elem()
+				if rv.Interface() == param.Default {
 					// No need to send the default value. Just skip it.
 					continue
 				}
 
-				if param.Default == nil && reflect.ValueOf(flags[param.Name]).Elem().IsZero() {
-					// No explicit default, so the implied default is the zero value.
-					// Again no need to send that default, so we skip.
-					continue
+				if param.Default == nil {
+					if rv.IsZero() {
+						// No explicit default, so the implied default is the zero value.
+						// Again no need to send that default, so we skip.
+						continue
+					}
+
+					if rv.Kind() == reflect.Slice && rv.Len() == 0 {
+						// IsZero() above fails for empty arrays, so if it's empty let's
+						// ignore it.
+						continue
+					}
 				}
 
 				for _, v := range param.Serialize(flags[param.Name]) {

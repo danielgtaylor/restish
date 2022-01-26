@@ -28,7 +28,7 @@ func typeConvert(from, to interface{}) interface{} {
 type Param struct {
 	Type        string      `json:"type"`
 	Name        string      `json:"name"`
-	DisplayName string      `json:"displayName,omitEmpty"`
+	DisplayName string      `json:"displayName,omitempty"`
 	Description string      `json:"description,omitempty"`
 	Style       Style       `json:"style,omitempty"`
 	Explode     bool        `json:"explode,omitempty"`
@@ -103,7 +103,7 @@ func (p Param) AddFlag(flags *pflag.FlagSet) interface{} {
 	if p.DisplayName != "" {
 		name = p.DisplayName
 	}
-	name = strcase.ToDelimited(p.Name, '-')
+	name = strcase.ToDelimited(name, '-')
 
 	def := p.Default
 

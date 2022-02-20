@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -35,10 +34,12 @@ type Operation struct {
 func (o Operation) command() *cobra.Command {
 	flags := map[string]interface{}{}
 
-	use := slug.Make(o.Name)
-	for _, p := range o.PathParams {
-		use += " " + slug.Make(p.Name)
-	}
+	// use := slug.Make(o.Name)
+	// for _, p := range o.PathParams {
+	// 	use += " " + slug.Make(p.Name)
+	// }
+
+	use := o.Name
 
 	argSpec := cobra.ExactArgs(len(o.PathParams))
 	if o.BodyMediaType != "" {

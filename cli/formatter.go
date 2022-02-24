@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/alecthomas/chroma"
 	"github.com/alecthomas/chroma/quick"
@@ -22,6 +24,12 @@ import (
 	"github.com/alexeyco/simpletable"
 	"github.com/eliukblau/pixterm/pkg/ansimage"
 )
+
+// DisplayRanges includes all viewable Unicode characters along with white
+// space.
+var DisplayRanges = []*unicode.RangeTable{
+	unicode.L, unicode.M, unicode.N, unicode.P, unicode.S, unicode.White_Space,
+}
 
 func init() {
 	// Simple 256-color theme for JSON/YAML output in a terminal.
@@ -99,6 +107,42 @@ func makeJSONSafe(obj interface{}, normalizeNumbers bool) interface{} {
 	}
 
 	return obj
+}
+
+// printable returns true if the given body can be printed to a terminal
+// based on displayable unicode character ranges and whitespace. If true,
+// then the body is also returned as a byte slice ready to be written to
+// stdout.
+func printable(body interface{}) ([]byte, bool) {
+	if b, ok := body.([]byte); ok {
+		// This was not a known format we could parse, and was not likely an
+		// image. If it looks like displayable text, then let's try to display
+		// it as such, up to 100KiB.
+		if len(b) < 102400 && utf8.Valid(b) {
+			display := true
+			for i, r := range string(b) {
+				if i == 0 && r == '\uFEFF' {
+					// Skip unicode BOM
+					continue
+				}
+				if i > 100 {
+					// Only examine the first 100 bytes, which is long enough to
+					// detect non-printable characters in most file preambles or
+					// magic number file signatures.
+					break
+				}
+				if !unicode.In(r, DisplayRanges...) {
+					display = false
+					break
+				}
+			}
+
+			if display {
+				return b, true
+			}
+		}
+	}
+	return nil, false
 }
 
 // Highlight a block of data with the given lexer.
@@ -250,6 +294,11 @@ func (f *DefaultFormatter) Format(resp Response) error {
 				} else {
 					LogWarning("Unable to display image: %v", err)
 				}
+			}
+
+			if b, ok := printable(resp.Body); ok {
+				e = b
+				handled = true
 			}
 
 			if !handled {

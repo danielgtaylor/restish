@@ -17,6 +17,7 @@ import (
 	"context"
 
 	"github.com/danielgtaylor/restish/cli"
+	"github.com/mattn/go-isatty"
 	"golang.org/x/oauth2"
 )
 
@@ -254,9 +255,13 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	open(authorizeURL.String())
 
 	// Provide a way to manually enter the code, e.g. for remote SSH sessions.
-	fmt.Fprint(os.Stderr, "Alternatively, enter the code manually: ")
+	// Only read from stdin if it is a live terminal, if a file or command has
+	// been piped in it is likely the request body to use after auth.
 	manualCodeChan := make(chan string)
-	go getInput(manualCodeChan)
+	if isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd()) {
+		fmt.Fprint(os.Stderr, "Alternatively, enter the code manually: ")
+		go getInput(manualCodeChan)
+	}
 
 	// Get code from handler, exchange it for a token, and then return it. This
 	// select blocks until one code becomes available.

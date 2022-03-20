@@ -50,12 +50,13 @@ func init() {
 		chroma.NameFunction:  "#ff5f87",
 		chroma.NameNamespace: "#b2b2b2",
 
-		// Used for Markdown
+		// Used for Markdown & diffs
 		chroma.GenericHeading:    "#5fafd7",
 		chroma.GenericSubheading: "#5fafd7",
 		chroma.GenericEmph:       "italic #ffd7d7",
 		chroma.GenericStrong:     "bold #af87af",
-		chroma.GenericDeleted:    "#3a3a3a",
+		chroma.GenericDeleted:    "#ff5f87",
+		chroma.GenericInserted:   "#afd787",
 		chroma.NameAttribute:     "underline",
 	}))
 }

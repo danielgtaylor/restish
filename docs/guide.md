@@ -104,6 +104,22 @@ $ restish example.com/users
 
 If you have persistent headers or query params you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Read on to find out how.
 
+### Editing Resources
+
+If an API supports both a `GET` and a `PUT` for a resource, there is an `edit` convenience operation which allows you to edit the resource similar to how you might use a `PATCH` if the API were available.
+
+```bash
+# Modify a field on the command line via CLI shorthand
+$ restish edit example.com/users/12345 nickname: Daniel
+
+# Modify a resource interactively in your editor
+$ restish edit -i example.com/users/12345
+```
+
+To use interactive mode you must have the `VISUAL` or `EDITOR` environment variable set to an editor, for example `export VISUAL="code --wait"` for VSCode.
+
+Editing resources will make use of [conditional requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests) if any relevant headers are found on the `GET` response.
+
 ## API Operation Commands
 
 APIs can be registered in order to provide API description auto-discovery with convenience commands and authentication. APIs are registered with a short nickname. For example the GitHub v3 API might be called `github` or the Digital Ocean API might be called `do`.

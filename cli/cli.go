@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 // Root command (entrypoint) of the CLI.
@@ -56,10 +57,10 @@ Aliases:
 Examples:
 {{.Example}}{{end}}{{if (not .Parent)}}{{if (gt (len .Commands) 9)}}
 
-Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links")))}}
+Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links") (eq .Name "edit") (eq .Name "completion")))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
-Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links"))}}
+Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links") (eq .Name "edit") (eq .Name "completion"))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{else}}{{if .HasAvailableSubCommands}}
 
 Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
@@ -224,6 +225,30 @@ func Init(name string, version string) {
 		},
 	}
 	Root.AddCommand(delete)
+
+	var interactive *bool
+	var noPrompt *bool
+	var editFormat *string
+	edit := &cobra.Command{
+		Use:   "edit uri [-i] [body...]",
+		Short: "Edit a resource by URI",
+		Long:  "Convenience function which combines a GET, edit, and PUT operation into one command",
+		Args:  cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			switch *editFormat {
+			case "json":
+				edit(args[0], args[1:], *interactive, *noPrompt, os.Exit, func(v interface{}) ([]byte, error) {
+					return json.MarshalIndent(v, "", "  ")
+				}, json.Unmarshal, ".json")
+			case "yaml":
+				edit(args[0], args[1:], *interactive, *noPrompt, os.Exit, yaml.Marshal, yaml.Unmarshal, ".yaml")
+			}
+		},
+	}
+	interactive = edit.Flags().BoolP("rsh-interactive", "i", false, "Open an interactive editor")
+	noPrompt = edit.Flags().BoolP("rsh-yes", "y", false, "Disable prompt (answer yes automatically)")
+	editFormat = edit.Flags().StringP("rsh-edit-format", "e", "json", "Format to edit (default: json) [json, yaml]")
+	Root.AddCommand(edit)
 
 	cert := &cobra.Command{
 		Use:   "cert uri",
@@ -485,7 +510,7 @@ func Run() {
 			apiName = args[2]
 		}
 
-		if apiName != "help" && apiName != "head" && apiName != "options" && apiName != "get" && apiName != "post" && apiName != "put" && apiName != "patch" && apiName != "delete" && apiName != "api" && apiName != "links" {
+		if apiName != "help" && apiName != "head" && apiName != "options" && apiName != "get" && apiName != "post" && apiName != "put" && apiName != "patch" && apiName != "delete" && apiName != "api" && apiName != "links" && apiName != "edit" {
 			// Try to find the registered config for this API. If not found,
 			// there is no need to do anything since the normal flow will catch
 			// the command being missing and print help.

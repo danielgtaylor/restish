@@ -163,4 +163,27 @@ You can even use the short nickname in place of the full API domain, so for exam
 $ restish example/items?search=active
 ```
 
+### Shell Command Line Completion
+
+Restish has support for dynamic shell completion built-in. See the help for your shell for how to enable this:
+
+```bash
+$ restish completion bash --help
+$ restish completion zsh --help
+$ restish completion powershell --help
+```
+
+Once set up, you can use the `tab` key to discover API commands. For example:
+
+```go
+# Tab completion example
+$ restish <tab>
+example
+
+$ restish example list-<tab>
+list-items
+list-users
+list-permissions
+```
+
 That's it for the guide! Hopefully this gave you a quick overview of what is possible with Restish. See the more in-depth topics in the side navigation bar to go deep on how all the above works and is used. Thanks for reading! :tada:

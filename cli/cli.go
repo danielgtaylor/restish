@@ -269,6 +269,50 @@ func Init(name string, version string) {
 	editFormat = edit.Flags().StringP("rsh-edit-format", "e", "json", "Format to edit (default: json) [json, yaml]")
 	Root.AddCommand(edit)
 
+	authHeader := &cobra.Command{
+		Use:   "auth-header uri",
+		Short: "Get an auth header for a given API",
+		Long:  "Get an OAuth2 bearer token in an Authorization header capable of being passed to other commands. Uses a cached token when possible, renewing as needed if it has expired.",
+		Example: fmt.Sprintf(`  # Using API short name
+  $ %s auth-header my-api
+
+  # Using a full URI
+  $ %s auth-header https://my-api.example.com/
+
+  # Example usage with curl
+  $ curl https://my-apiexample.com/ -H "Authorization: $(%s auth-header my-api)"`, name, name, name),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeAPINames,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			addr := fixAddress(args[0])
+			name, config := findAPI(addr)
+
+			if config == nil {
+				return fmt.Errorf("No matched API for URL %s", args[0])
+			}
+
+			profile := config.Profiles[viper.GetString("rsh-profile")]
+			if profile == nil {
+				return fmt.Errorf("Invalid profile %s", viper.GetString("rsh-profile"))
+			}
+
+			if profile.Auth == nil || profile.Auth.Name == "" {
+				return fmt.Errorf("No auth set up for API")
+			}
+
+			if auth, ok := authHandlers[profile.Auth.Name]; ok {
+				req, _ := http.NewRequest(http.MethodGet, addr, nil)
+				err := auth.OnRequest(req, name+":"+viper.GetString("rsh-profile"), profile.Auth.Params)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Fprintln(Stdout, req.Header.Get("Authorization"))
+			}
+			return nil
+		},
+	}
+	Root.AddCommand(authHeader)
+
 	cert := &cobra.Command{
 		Use:               "cert uri",
 		Short:             "Get cert info",

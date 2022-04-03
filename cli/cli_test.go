@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -30,6 +31,10 @@ func run(cmd string, color ...bool) string {
 		reset(true)
 	}
 
+	return runNoReset(cmd)
+}
+
+func runNoReset(cmd string) string {
 	capture := &strings.Builder{}
 	Stdout = capture
 	Stderr = capture
@@ -80,6 +85,50 @@ func TestPutURI400(t *testing.T) {
 	expectJSON(t, "put http://example.com/foo/1 value: 123", `{
 		"detail": "Invalid input"
 	}`)
+}
+
+type TestAuth struct{}
+
+// Parameters returns a list of OAuth2 Authorization Code inputs.
+func (h *TestAuth) Parameters() []AuthParam {
+	return []AuthParam{}
+}
+
+// OnRequest gets run before the request goes out on the wire.
+func (h *TestAuth) OnRequest(request *http.Request, key string, params map[string]string) error {
+	request.Header.Set("Authorization", "abc123")
+	return nil
+}
+
+func TestAuthHeader(t *testing.T) {
+	reset(false)
+
+	AddAuth("test-auth", &TestAuth{})
+
+	configs["test-auth-header"] = &APIConfig{
+		name: "test-auth-header",
+		Base: "https://auth-header-test.example.com",
+		Profiles: map[string]*APIProfile{
+			"default": {
+				Auth: &APIAuth{
+					Name: "test-auth",
+				},
+			},
+			"no-auth": {},
+		},
+	}
+
+	captured := runNoReset("auth-header bad-api")
+	assert.Contains(t, captured, "No matched API")
+
+	captured = runNoReset("auth-header test-auth-header")
+	assert.Equal(t, "abc123\n", captured)
+
+	captured = runNoReset("auth-header test-auth-header -p bad")
+	assert.Contains(t, captured, "Invalid profile bad")
+
+	captured = runNoReset("auth-header test-auth-header -p no-auth")
+	assert.Contains(t, captured, "No auth set up")
 }
 
 func TestLinks(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -57,10 +58,10 @@ Aliases:
 Examples:
 {{.Example}}{{end}}{{if (not .Parent)}}{{if (gt (len .Commands) 9)}}
 
-Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links") (eq .Name "edit") (eq .Name "completion")))}}
+Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links") (eq .Name "edit") (eq .Name "completion") (eq .Name "auth-header")))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
 
-Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links") (eq .Name "edit") (eq .Name "completion"))}}
+Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links") (eq .Name "edit") (eq .Name "completion") (eq .Name "auth-header"))}}
   {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{else}}{{if .HasAvailableSubCommands}}
 
 Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
@@ -81,6 +82,9 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 var tty bool
 var au aurora.Aurora
 
+// Keeps track of currently selected API for shell completions
+var currentConfig *APIConfig
+
 func generic(method string, addr string, args []string) {
 	var body io.Reader
 
@@ -94,6 +98,56 @@ func generic(method string, addr string, args []string) {
 
 	req, _ := http.NewRequest(method, fixAddress(addr), body)
 	MakeRequestAndFormat(req)
+}
+
+func completeCurrentConfig(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	possible := []string{}
+	if currentConfig != nil {
+		for _, cmd := range Root.Commands() {
+			if cmd.Use == currentConfig.name {
+				api, _ := Load(currentConfig.Base, cmd)
+				for _, op := range api.Operations {
+					template := op.URITemplate
+					if strings.HasPrefix(toComplete, currentConfig.name) {
+						template = strings.Replace(template, currentConfig.Base, currentConfig.name, 1)
+					}
+					possible = append(possible, template)
+				}
+			}
+		}
+		return possible, cobra.ShellCompDirectiveNoFileComp
+	}
+	return []string{}, cobra.ShellCompDirectiveDefault
+}
+
+func completeGenericCmd(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	possible, directive := completeCurrentConfig(cmd, args, toComplete)
+	if directive != cobra.ShellCompDirectiveDefault {
+		return possible, directive
+	}
+	if currentConfig != nil {
+		for _, cmd := range Root.Commands() {
+			if cmd.Use == currentConfig.name {
+				api, _ := Load(currentConfig.Base, cmd)
+				for _, op := range api.Operations {
+					template := op.URITemplate
+					if strings.HasPrefix(toComplete, currentConfig.name) {
+						template = strings.Replace(template, currentConfig.Base, currentConfig.name, 1)
+					}
+					possible = append(possible, template)
+				}
+			}
+		}
+		return possible, cobra.ShellCompDirectiveNoFileComp
+	}
+
+	if len(args) == 0 {
+		for name := range configs {
+			possible = append(possible, name)
+		}
+	}
+
+	return possible, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
 }
 
 // Init will set up the CLI.
@@ -138,7 +192,8 @@ func Init(name string, version string) {
 
   # Specify verb, header, and body shorthand
   $ %s post :8888/users -H authorization:abc123 name: Kari, role: admin`, name, name),
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeCurrentConfig,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			settings := viper.AllSettings()
 			LogDebug("Configuration: %v", settings)
@@ -150,10 +205,11 @@ func Init(name string, version string) {
 	Root.SetUsageTemplate(usageTemplate)
 
 	head := &cobra.Command{
-		Use:   "head uri",
-		Short: "Head a URI",
-		Long:  "Perform an HTTP HEAD on the given URI",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "head uri",
+		Short:             "Head a URI",
+		Long:              "Perform an HTTP HEAD on the given URI",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodHead, args[0], args[1:])
 		},
@@ -161,10 +217,11 @@ func Init(name string, version string) {
 	Root.AddCommand(head)
 
 	options := &cobra.Command{
-		Use:   "options uri",
-		Short: "Options a URI",
-		Long:  "Perform an HTTP OPTIONS on the given URI",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "options uri",
+		Short:             "Options a URI",
+		Long:              "Perform an HTTP OPTIONS on the given URI",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodOptions, args[0], args[1:])
 		},
@@ -172,10 +229,11 @@ func Init(name string, version string) {
 	Root.AddCommand(options)
 
 	get := &cobra.Command{
-		Use:   "get uri",
-		Short: "Get a URI",
-		Long:  "Perform an HTTP GET on the given URI",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "get uri",
+		Short:             "Get a URI",
+		Long:              "Perform an HTTP GET on the given URI",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodGet, args[0], args[1:])
 		},
@@ -183,10 +241,11 @@ func Init(name string, version string) {
 	Root.AddCommand(get)
 
 	post := &cobra.Command{
-		Use:   "post uri [body...]",
-		Short: "Post a URI",
-		Long:  "Perform an HTTP POST on the given URI",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "post uri [body...]",
+		Short:             "Post a URI",
+		Long:              "Perform an HTTP POST on the given URI",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodPost, args[0], args[1:])
 		},
@@ -194,10 +253,11 @@ func Init(name string, version string) {
 	Root.AddCommand(post)
 
 	put := &cobra.Command{
-		Use:   "put uri [body...]",
-		Short: "Put a URI",
-		Long:  "Perform an HTTP PUT on the given URI",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "put uri [body...]",
+		Short:             "Put a URI",
+		Long:              "Perform an HTTP PUT on the given URI",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodPut, args[0], args[1:])
 		},
@@ -205,10 +265,11 @@ func Init(name string, version string) {
 	Root.AddCommand(put)
 
 	patch := &cobra.Command{
-		Use:   "patch uri [body...]",
-		Short: "Patch a URI",
-		Long:  "Perform an HTTP PATCH on the given URI",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "patch uri [body...]",
+		Short:             "Patch a URI",
+		Long:              "Perform an HTTP PATCH on the given URI",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodPatch, args[0], args[1:])
 		},
@@ -216,10 +277,11 @@ func Init(name string, version string) {
 	Root.AddCommand(patch)
 
 	delete := &cobra.Command{
-		Use:   "delete uri [body...]",
-		Short: "Delete a URI",
-		Long:  "Perform an HTTP DELETE on the given URI",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "delete uri [body...]",
+		Short:             "Delete a URI",
+		Long:              "Perform an HTTP DELETE on the given URI",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodDelete, args[0], args[1:])
 		},
@@ -230,10 +292,11 @@ func Init(name string, version string) {
 	var noPrompt *bool
 	var editFormat *string
 	edit := &cobra.Command{
-		Use:   "edit uri [-i] [body...]",
-		Short: "Edit a resource by URI",
-		Long:  "Convenience function which combines a GET, edit, and PUT operation into one command",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "edit uri [-i] [body...]",
+		Short:             "Edit a resource by URI",
+		Long:              "Convenience function which combines a GET, edit, and PUT operation into one command",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch *editFormat {
 			case "json":
@@ -250,13 +313,62 @@ func Init(name string, version string) {
 	editFormat = edit.Flags().StringP("rsh-edit-format", "e", "json", "Format to edit (default: json) [json, yaml]")
 	Root.AddCommand(edit)
 
+	authHeader := &cobra.Command{
+		Use:   "auth-header uri",
+		Short: "Get an auth header for a given API",
+		Long:  "Get an OAuth2 bearer token in an Authorization header capable of being passed to other commands. Uses a cached token when possible, renewing as needed if it has expired.",
+		Example: fmt.Sprintf(`  # Using API short name
+  $ %s auth-header my-api
+
+  # Using a full URI
+  $ %s auth-header https://my-api.example.com/
+
+  # Example usage with curl
+  $ curl https://my-apiexample.com/ -H "Authorization: $(%s auth-header my-api)"`, name, name, name),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeGenericCmd,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			addr := fixAddress(args[0])
+			name, config := findAPI(addr)
+
+			if config == nil {
+				return fmt.Errorf("No matched API for URL %s", args[0])
+			}
+
+			profile := config.Profiles[viper.GetString("rsh-profile")]
+			if profile == nil {
+				return fmt.Errorf("Invalid profile %s", viper.GetString("rsh-profile"))
+			}
+
+			if profile.Auth == nil || profile.Auth.Name == "" {
+				return fmt.Errorf("No auth set up for API")
+			}
+
+			if auth, ok := authHandlers[profile.Auth.Name]; ok {
+				req, _ := http.NewRequest(http.MethodGet, addr, nil)
+				err := auth.OnRequest(req, name+":"+viper.GetString("rsh-profile"), profile.Auth.Params)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Fprintln(Stdout, req.Header.Get("Authorization"))
+			}
+			return nil
+		},
+	}
+	Root.AddCommand(authHeader)
+
 	cert := &cobra.Command{
-		Use:   "cert uri",
-		Short: "Get cert info",
-		Long:  "Get TLS certificate information including expiration date",
-		Args:  cobra.ExactArgs(1),
+		Use:               "cert uri",
+		Short:             "Get cert info",
+		Long:              "Get TLS certificate information including expiration date",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
-			addr := args[0]
+			u, err := url.Parse(fixAddress(args[0]))
+			if err != nil {
+				panic(err)
+			}
+			addr := u.Host
 
 			if !strings.Contains(addr, ":") {
 				addr += ":443"
@@ -298,10 +410,11 @@ Not after (expires): %s (%s)
 	Root.AddCommand(cert)
 
 	linkCmd := &cobra.Command{
-		Use:   "links uri [rel1 rel2...]",
-		Short: "Get link relations from the given URI, with optional filtering",
-		Long:  "Returns a list of resolved references to the link relations after making an HTTP GET request to the given URI. Additional arguments filter down the set of returned relationship names.",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "links uri [rel1 rel2...]",
+		Short:             "Get link relations from the given URI, with optional filtering",
+		Long:              "Returns a list of resolved references to the link relations after making an HTTP GET request to the given URI. Additional arguments filter down the set of returned relationship names.",
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			req, _ := http.NewRequest(http.MethodGet, fixAddress(args[0]), nil)
 			resp, err := GetParsedResponse(req)
@@ -361,6 +474,20 @@ Not after (expires): %s (%s)
 	AddGlobalFlag("rsh-client-key", "", "Path to a PEM encoded private key", "", false)
 	AddGlobalFlag("rsh-ca-cert", "", "Path to a PEM encoded CA cert", "", false)
 	AddGlobalFlag("rsh-table", "t", "Enable table formatted output for array of objects", false, false)
+
+	Root.RegisterFlagCompletionFunc("rsh-output-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"auto", "json", "yaml"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	Root.RegisterFlagCompletionFunc("rsh-profile", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		profiles := []string{}
+		if currentConfig != nil {
+			for profile := range currentConfig.Profiles {
+				profiles = append(profiles, profile)
+			}
+		}
+		return profiles, cobra.ShellCompDirectiveNoFileComp
+	})
 
 	initAPIConfig()
 }
@@ -457,7 +584,7 @@ func Run() {
 	// if it isn't from a well-known set try to load that API.
 	args := []string{}
 	for _, arg := range os.Args {
-		if !strings.HasPrefix(arg, "-") {
+		if !strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "__") {
 			args = append(args, arg)
 		}
 	}
@@ -510,19 +637,34 @@ func Run() {
 			apiName = args[2]
 		}
 
-		if apiName != "help" && apiName != "head" && apiName != "options" && apiName != "get" && apiName != "post" && apiName != "put" && apiName != "patch" && apiName != "delete" && apiName != "api" && apiName != "links" && apiName != "edit" {
+		loaded := false
+		if apiName != "help" && apiName != "head" && apiName != "options" && apiName != "get" && apiName != "post" && apiName != "put" && apiName != "patch" && apiName != "delete" && apiName != "api" && apiName != "links" && apiName != "edit" && apiName != "auth-header" {
 			// Try to find the registered config for this API. If not found,
 			// there is no need to do anything since the normal flow will catch
 			// the command being missing and print help.
 			if cfg, ok := configs[apiName]; ok {
+				currentConfig = cfg
 				for _, cmd := range Root.Commands() {
 					if cmd.Use == apiName {
 						if _, err := Load(cfg.Base, cmd); err != nil {
 							panic(err)
 						}
+						loaded = true
 						break
 					}
 				}
+			}
+		}
+
+		if !loaded {
+			// This could be a URL or short-name as part of a URL for generic
+			// commands. We should load the config for shell completion.
+			if apiName == "head" || apiName == "options" || apiName == "get" || apiName == "post" || apiName == "put" || apiName == "patch" || apiName == "delete" && len(args) > 2 {
+				apiName = args[2]
+			}
+			apiName = fixAddress(apiName)
+			if name, _ := findAPI(apiName); name != "" {
+				currentConfig = configs[name]
 			}
 		}
 	}

@@ -99,19 +99,21 @@ func initAPIConfig() {
 	}
 
 	for apiName, config := range configs {
-		config.name = apiName
-		configs[apiName] = config
+		func(config *APIConfig) {
+			config.name = apiName
+			configs[apiName] = config
 
-		n := apiName
-		c := config
-		cmd := &cobra.Command{
-			Use:   n,
-			Short: c.Base,
-			Run: func(cmd *cobra.Command, args []string) {
-				cmd.Help()
-			},
-		}
-		Root.AddCommand(cmd)
+			n := apiName
+			c := config
+			cmd := &cobra.Command{
+				Use:   n,
+				Short: c.Base,
+				Run: func(cmd *cobra.Command, args []string) {
+					cmd.Help()
+				},
+			}
+			Root.AddCommand(cmd)
+		}(config)
 	}
 }
 

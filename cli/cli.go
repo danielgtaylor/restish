@@ -100,13 +100,53 @@ func generic(method string, addr string, args []string) {
 	MakeRequestAndFormat(req)
 }
 
-func completeAPINames(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func completeCurrentConfig(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	possible := []string{}
+	if currentConfig != nil {
+		for _, cmd := range Root.Commands() {
+			if cmd.Use == currentConfig.name {
+				api, _ := Load(currentConfig.Base, cmd)
+				for _, op := range api.Operations {
+					template := op.URITemplate
+					if strings.HasPrefix(toComplete, currentConfig.name) {
+						template = strings.Replace(template, currentConfig.Base, currentConfig.name, 1)
+					}
+					possible = append(possible, template)
+				}
+			}
+		}
+		return possible, cobra.ShellCompDirectiveNoFileComp
+	}
+	return []string{}, cobra.ShellCompDirectiveDefault
+}
+
+func completeGenericCmd(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	possible, directive := completeCurrentConfig(cmd, args, toComplete)
+	if directive != cobra.ShellCompDirectiveDefault {
+		return possible, directive
+	}
+	if currentConfig != nil {
+		for _, cmd := range Root.Commands() {
+			if cmd.Use == currentConfig.name {
+				api, _ := Load(currentConfig.Base, cmd)
+				for _, op := range api.Operations {
+					template := op.URITemplate
+					if strings.HasPrefix(toComplete, currentConfig.name) {
+						template = strings.Replace(template, currentConfig.Base, currentConfig.name, 1)
+					}
+					possible = append(possible, template)
+				}
+			}
+		}
+		return possible, cobra.ShellCompDirectiveNoFileComp
+	}
+
 	if len(args) == 0 {
 		for name := range configs {
 			possible = append(possible, name)
 		}
 	}
+
 	return possible, cobra.ShellCompDirectiveNoFileComp | cobra.ShellCompDirectiveNoSpace
 }
 
@@ -152,7 +192,8 @@ func Init(name string, version string) {
 
   # Specify verb, header, and body shorthand
   $ %s post :8888/users -H authorization:abc123 name: Kari, role: admin`, name, name),
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: completeCurrentConfig,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			settings := viper.AllSettings()
 			LogDebug("Configuration: %v", settings)
@@ -168,7 +209,7 @@ func Init(name string, version string) {
 		Short:             "Head a URI",
 		Long:              "Perform an HTTP HEAD on the given URI",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodHead, args[0], args[1:])
 		},
@@ -180,7 +221,7 @@ func Init(name string, version string) {
 		Short:             "Options a URI",
 		Long:              "Perform an HTTP OPTIONS on the given URI",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodOptions, args[0], args[1:])
 		},
@@ -192,7 +233,7 @@ func Init(name string, version string) {
 		Short:             "Get a URI",
 		Long:              "Perform an HTTP GET on the given URI",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodGet, args[0], args[1:])
 		},
@@ -204,7 +245,7 @@ func Init(name string, version string) {
 		Short:             "Post a URI",
 		Long:              "Perform an HTTP POST on the given URI",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodPost, args[0], args[1:])
 		},
@@ -216,7 +257,7 @@ func Init(name string, version string) {
 		Short:             "Put a URI",
 		Long:              "Perform an HTTP PUT on the given URI",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodPut, args[0], args[1:])
 		},
@@ -228,7 +269,7 @@ func Init(name string, version string) {
 		Short:             "Patch a URI",
 		Long:              "Perform an HTTP PATCH on the given URI",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodPatch, args[0], args[1:])
 		},
@@ -240,7 +281,7 @@ func Init(name string, version string) {
 		Short:             "Delete a URI",
 		Long:              "Perform an HTTP DELETE on the given URI",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			generic(http.MethodDelete, args[0], args[1:])
 		},
@@ -255,7 +296,7 @@ func Init(name string, version string) {
 		Short:             "Edit a resource by URI",
 		Long:              "Convenience function which combines a GET, edit, and PUT operation into one command",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch *editFormat {
 			case "json":
@@ -285,7 +326,7 @@ func Init(name string, version string) {
   # Example usage with curl
   $ curl https://my-apiexample.com/ -H "Authorization: $(%s auth-header my-api)"`, name, name, name),
 		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			addr := fixAddress(args[0])
 			name, config := findAPI(addr)
@@ -321,7 +362,7 @@ func Init(name string, version string) {
 		Short:             "Get cert info",
 		Long:              "Get TLS certificate information including expiration date",
 		Args:              cobra.ExactArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			u, err := url.Parse(fixAddress(args[0]))
 			if err != nil {
@@ -373,7 +414,7 @@ Not after (expires): %s (%s)
 		Short:             "Get link relations from the given URI, with optional filtering",
 		Long:              "Returns a list of resolved references to the link relations after making an HTTP GET request to the given URI. Additional arguments filter down the set of returned relationship names.",
 		Args:              cobra.MinimumNArgs(1),
-		ValidArgsFunction: completeAPINames,
+		ValidArgsFunction: completeGenericCmd,
 		Run: func(cmd *cobra.Command, args []string) {
 			req, _ := http.NewRequest(http.MethodGet, fixAddress(args[0]), nil)
 			resp, err := GetParsedResponse(req)
@@ -596,6 +637,7 @@ func Run() {
 			apiName = args[2]
 		}
 
+		loaded := false
 		if apiName != "help" && apiName != "head" && apiName != "options" && apiName != "get" && apiName != "post" && apiName != "put" && apiName != "patch" && apiName != "delete" && apiName != "api" && apiName != "links" && apiName != "edit" && apiName != "auth-header" {
 			// Try to find the registered config for this API. If not found,
 			// there is no need to do anything since the normal flow will catch
@@ -607,9 +649,22 @@ func Run() {
 						if _, err := Load(cfg.Base, cmd); err != nil {
 							panic(err)
 						}
+						loaded = true
 						break
 					}
 				}
+			}
+		}
+
+		if !loaded {
+			// This could be a URL or short-name as part of a URL for generic
+			// commands. We should load the config for shell completion.
+			if apiName == "head" || apiName == "options" || apiName == "get" || apiName == "post" || apiName == "put" || apiName == "patch" || apiName == "delete" && len(args) > 2 {
+				apiName = args[2]
+			}
+			apiName = fixAddress(apiName)
+			if name, _ := findAPI(apiName); name != "" {
+				currentConfig = configs[name]
 			}
 		}
 	}

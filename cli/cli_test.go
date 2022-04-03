@@ -122,7 +122,7 @@ func TestAuthHeader(t *testing.T) {
 	assert.Contains(t, captured, "No matched API")
 
 	captured = runNoReset("auth-header test-auth-header")
-	assert.Equal(t, `abc123`, captured)
+	assert.Equal(t, "abc123\n", captured)
 
 	captured = runNoReset("auth-header test-auth-header -p bad")
 	assert.Contains(t, captured, "Invalid profile bad")

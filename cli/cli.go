@@ -82,6 +82,9 @@ Use "{{.CommandPath}} [command] --help" for more information about a command.{{e
 var tty bool
 var au aurora.Aurora
 
+// Keeps track of currently selected API for shell completions
+var currentConfig *APIConfig
+
 func generic(method string, addr string, args []string) {
 	var body io.Reader
 
@@ -431,6 +434,20 @@ Not after (expires): %s (%s)
 	AddGlobalFlag("rsh-ca-cert", "", "Path to a PEM encoded CA cert", "", false)
 	AddGlobalFlag("rsh-table", "t", "Enable table formatted output for array of objects", false, false)
 
+	Root.RegisterFlagCompletionFunc("rsh-output-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"auto", "json", "yaml"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
+	Root.RegisterFlagCompletionFunc("rsh-profile", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		profiles := []string{}
+		if currentConfig != nil {
+			for profile := range currentConfig.Profiles {
+				profiles = append(profiles, profile)
+			}
+		}
+		return profiles, cobra.ShellCompDirectiveNoFileComp
+	})
+
 	initAPIConfig()
 }
 
@@ -526,7 +543,7 @@ func Run() {
 	// if it isn't from a well-known set try to load that API.
 	args := []string{}
 	for _, arg := range os.Args {
-		if !strings.HasPrefix(arg, "-") {
+		if !strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "__") {
 			args = append(args, arg)
 		}
 	}
@@ -584,6 +601,7 @@ func Run() {
 			// there is no need to do anything since the normal flow will catch
 			// the command being missing and print help.
 			if cfg, ok := configs[apiName]; ok {
+				currentConfig = cfg
 				for _, cmd := range Root.Commands() {
 					if cmd.Use == apiName {
 						if _, err := Load(cfg.Base, cmd); err != nil {

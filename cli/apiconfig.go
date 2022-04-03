@@ -111,20 +111,6 @@ func initAPIConfig() {
 				Run: func(cmd *cobra.Command, args []string) {
 					cmd.Help()
 				},
-				ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-					possible := []string{}
-					if len(args) == 0 {
-						api, err := Load(config.Base, Root)
-						if err != nil {
-							panic(err)
-						}
-
-						for _, op := range api.Operations {
-							possible = append(possible, op.Name)
-						}
-					}
-					return possible, cobra.ShellCompDirectiveNoFileComp
-				},
 			}
 			Root.AddCommand(cmd)
 		}(config)

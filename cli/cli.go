@@ -183,6 +183,17 @@ func Init(name string, version string) {
 
 	Formatter = NewDefaultFormatter(tty)
 
+	cobra.AddTemplateFunc("highlight", func(s string) string {
+		// Highlighting is expensive, so only do this when the user actually asks
+		// for help via this template func and a custom help template.
+		if tty {
+			if l, err := Highlight("markdown", []byte(s)); err == nil {
+				return string(l)
+			}
+		}
+		return s
+	})
+
 	Root = &cobra.Command{
 		Use:     filepath.Base(os.Args[0]),
 		Long:    "A generic client for REST-ish APIs <https://rest.sh/>",
@@ -203,6 +214,9 @@ func Init(name string, version string) {
 		},
 	}
 	Root.SetUsageTemplate(usageTemplate)
+	Root.SetHelpTemplate(`{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces | highlight}}
+
+{{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`)
 
 	head := &cobra.Command{
 		Use:               "head uri",

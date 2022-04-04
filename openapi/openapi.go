@@ -302,6 +302,9 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 
 		if len(resp.Content) > 0 {
 			for ct, typeInfo := range resp.Content {
+				if len(desc) > 0 && !strings.HasSuffix(desc, "\n") {
+					desc += "\n"
+				}
 				desc += "\n## Response " + code + " (" + ct + ")\n"
 				if resp.Description != nil && *resp.Description != "" {
 					desc += "\n" + *resp.Description + "\n"
@@ -312,6 +315,9 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 				}
 			}
 		} else {
+			if len(desc) > 0 && !strings.HasSuffix(desc, "\n") {
+				desc += "\n"
+			}
 			desc += "\n## Response " + code + "\n"
 			if resp.Description != nil && *resp.Description != "" {
 				desc += "\n" + *resp.Description + "\n"

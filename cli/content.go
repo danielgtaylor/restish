@@ -8,7 +8,7 @@ import (
 
 	"github.com/amzn/ion-go/ion"
 	"github.com/fxamacker/cbor/v2"
-	"github.com/shamaton/msgpack"
+	"github.com/shamaton/msgpack/v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -216,12 +216,12 @@ func (m MsgPack) Detect(contentType string) bool {
 
 // Marshal the value to encoded YAML.
 func (m MsgPack) Marshal(value interface{}) ([]byte, error) {
-	return msgpack.Encode(value)
+	return msgpack.Marshal(value)
 }
 
 // Unmarshal the value from encoded YAML.
 func (m MsgPack) Unmarshal(data []byte, value interface{}) error {
-	return msgpack.Decode(data, value)
+	return msgpack.Unmarshal(data, value)
 }
 
 // Ion describes content types like `application/ion`.

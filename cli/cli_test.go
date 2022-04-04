@@ -5,7 +5,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
@@ -38,6 +40,7 @@ func runNoReset(cmd string) string {
 	capture := &strings.Builder{}
 	Stdout = capture
 	Stderr = capture
+	Root.SetOut(capture)
 	os.Args = strings.Split("restish "+cmd, " ")
 	Run()
 
@@ -156,4 +159,64 @@ func TestDefaultOutput(t *testing.T) {
 
 	captured := run("http://example.com/foo", true)
 	assert.Equal(t, "\x1b[38;5;204mHTTP\x1b[0m/\x1b[38;5;172m1.1\x1b[0m \x1b[38;5;172m200\x1b[0m \x1b[38;5;74mOK\x1b[0m\n\x1b[38;5;74mContent-Type\x1b[0m: application/json\n\n\x1b[38;5;247m{\x1b[0m\n  \x1b[38;5;74mhello\x1b[0m\x1b[38;5;247m:\x1b[0m \x1b[38;5;150m\"world\"\x1b[0m\x1b[38;5;247m\n}\x1b[0m\n", captured)
+}
+
+func TestHelp(t *testing.T) {
+	captured := run("--help", false)
+	assert.Contains(t, captured, "api")
+	assert.Contains(t, captured, "get")
+	assert.Contains(t, captured, "put")
+	assert.Contains(t, captured, "delete")
+	assert.Contains(t, captured, "edit")
+}
+
+func TestHelpHighlight(t *testing.T) {
+	captured := run("--help", true)
+	assert.Contains(t, captured, "api")
+	assert.Contains(t, captured, "get")
+	assert.Contains(t, captured, "put")
+	assert.Contains(t, captured, "delete")
+	assert.Contains(t, captured, "edit")
+}
+
+func TestLoadCache(t *testing.T) {
+	// Invalidate any existin cache.
+	Cache.Set("cache-test.expires", time.Now().Add(-24*time.Hour))
+	Cache.WriteConfig()
+	defer gock.Off()
+
+	// Only *one* set of remote requests should be made. After that it should be
+	// using the cache.
+	gock.New("https://example.com/").Reply(404)
+	gock.New("https://example.com/openapi.json").Reply(200).JSON(map[string]interface{}{
+		"openapi": "3.0.0",
+	})
+
+	reset(false)
+	configs["cache-test"] = &APIConfig{
+		name: "cache-test",
+		Base: "https://example.com",
+		Profiles: map[string]*APIProfile{
+			"default": {},
+		},
+	}
+	cmd := &cobra.Command{
+		Use: "cache-test",
+	}
+	Root.AddCommand(cmd)
+
+	AddLoader(&testLoader{
+		API: API{
+			Short:      "Cache Test API",
+			Operations: []Operation{},
+		},
+	})
+
+	// First run will generate the cache.
+	runNoReset("cache-test --help")
+
+	// These runs should *not* make any remote requests. If they do, then
+	// gock will panic as only one call is mocked above.
+	runNoReset("cache-test --help")
+	runNoReset("cache-test --help")
 }

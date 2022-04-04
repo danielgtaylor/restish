@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strings"
 	"time"
 
+	"github.com/fxamacker/cbor/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -53,12 +55,7 @@ func AddLoader(loader Loader) {
 	loaders = append(loaders, loader)
 }
 
-func load(root *cobra.Command, entrypoint, spec url.URL, resp *http.Response, name string, loader Loader) (API, error) {
-	api, err := loader.Load(entrypoint, spec, resp)
-	if err != nil {
-		return API{}, err
-	}
-
+func setupRootFromAPI(root *cobra.Command, api *API) {
 	if root.Short == "" {
 		root.Short = api.Short
 	}
@@ -70,13 +67,43 @@ func load(root *cobra.Command, entrypoint, spec url.URL, resp *http.Response, na
 	for _, op := range api.Operations {
 		root.AddCommand(op.command())
 	}
+}
 
+func load(root *cobra.Command, entrypoint, spec url.URL, resp *http.Response, name string, loader Loader) (API, error) {
+	api, err := loader.Load(entrypoint, spec, resp)
+	if err != nil {
+		return API{}, err
+	}
+
+	setupRootFromAPI(root, &api)
 	return api, nil
+}
+
+func cacheAPI(name string, api *API) {
+	if name == "" {
+		return
+	}
+
+	Cache.Set(name+".expires", time.Now().Add(24*time.Hour))
+	Cache.WriteConfig()
+
+	b, err := cbor.Marshal(api)
+	if err != nil {
+		LogError("Could not marshal API cache %s", err)
+	}
+	filename := path.Join(viper.GetString("config-directory"), name+".cbor")
+	if err := ioutil.WriteFile(filename, b, 0o600); err != nil {
+		LogError("Could not write API cache %s", err)
+	}
 }
 
 // Load will hydrate the command tree for an API, possibly refreshing the
 // API spec if the cache is out of date.
 func Load(entrypoint string, root *cobra.Command) (API, error) {
+	start := time.Now()
+	defer func() {
+		LogDebug("API loading took %s", time.Now().Sub(start))
+	}()
 	uris := []string{}
 
 	if !strings.HasSuffix(entrypoint, "/") {
@@ -91,6 +118,19 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 	name, config := findAPI(entrypoint)
 	desc := API{}
 	found := false
+
+	// See if there is a cache we can quickly load.
+	expires := Cache.GetTime(name + ".expires")
+	if !viper.GetBool("rsh-no-cache") && !expires.IsZero() && expires.After(time.Now()) {
+		var cached API
+		filename := path.Join(viper.GetString("config-directory"), name+".cbor")
+		if data, err := ioutil.ReadFile(filename); err == nil {
+			if err := cbor.Unmarshal(data, &cached); err == nil {
+				setupRootFromAPI(root, &cached)
+				return cached, nil
+			}
+		}
+	}
 
 	fromFileOrUrl := func(uri string) ([]byte, error) {
 		uriLower := strings.ToLower(uri)
@@ -128,7 +168,6 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 					if err != nil {
 						return API{}, err
 					}
-					LogDebug("Loaded %s", filename)
 					desc.Merge(tmp)
 					break
 				}
@@ -136,6 +175,7 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 		}
 
 		if found {
+			cacheAPI(name, &desc)
 			return desc, nil
 		}
 	}
@@ -215,7 +255,11 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 			if l.Detect(resp) {
 				resp.Body = ioutil.NopCloser(bytes.NewReader(body))
 
-				return load(root, *uri, *resolved, resp, name, l)
+				api, err := load(root, *uri, *resolved, resp, name, l)
+				if err == nil {
+					cacheAPI(name, &api)
+				}
+				return api, err
 			}
 		}
 	}

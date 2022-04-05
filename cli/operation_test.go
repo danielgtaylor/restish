@@ -13,7 +13,7 @@ import (
 func TestOperation(t *testing.T) {
 	defer gock.Off()
 
-	gock.New("http://example.com").Get("/test/id1").MatchParam("search", "foo").Reply(200).JSON(map[string]interface{}{
+	gock.New("http://example2.com").Get("/prefix/test/id1").MatchParam("search", "foo").Reply(200).JSON(map[string]interface{}{
 		"hello": "world",
 	})
 
@@ -64,6 +64,7 @@ func TestOperation(t *testing.T) {
 	Stdout = capture
 	Stderr = capture
 	cmd.SetOut(Stdout)
+	viper.Set("rsh-server", "http://example2.com/prefix")
 	cmd.Flags().Parse([]string{"--search=foo"})
 	cmd.Run(cmd, []string{"id1"})
 

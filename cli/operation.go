@@ -11,6 +11,7 @@ import (
 
 	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // Operation represents an API action, e.g. list-things or create-user
@@ -60,6 +61,7 @@ func (o Operation) command() *cobra.Command {
 		Hidden:  o.Hidden,
 		Run: func(cmd *cobra.Command, args []string) {
 			uri := o.URITemplate
+
 			for i, param := range o.PathParams {
 				value, err := param.Parse(args[i])
 				if err != nil {
@@ -96,6 +98,22 @@ func (o Operation) command() *cobra.Command {
 					uri += "?"
 				}
 				uri += queryEncoded
+			}
+
+			customServer := viper.GetString("rsh-server")
+			if customServer != "" {
+				// Adjust the server based on the customized input.
+				orig, _ := url.Parse(uri)
+				custom, _ := url.Parse(customServer)
+
+				orig.Scheme = custom.Scheme
+				orig.Host = custom.Host
+
+				if custom.Path != "" && custom.Path != "/" {
+					orig.Path = strings.TrimSuffix(custom.Path, "/") + orig.Path
+				}
+
+				uri = orig.String()
 			}
 
 			headers := http.Header{}

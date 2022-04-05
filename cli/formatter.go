@@ -183,6 +183,15 @@ func (f *DefaultFormatter) Format(resp Response) error {
 	var data interface{} = resp.Map()
 
 	filter := viper.GetString("rsh-filter")
+	if filter == "" && viper.GetBool("rsh-raw") {
+		if b, ok := resp.Body.([]byte); ok {
+			// The response wasn't decoded so we have a bunch of bytes and the user
+			// asked for raw output, so just write it. This enables file downloads.
+			Stdout.Write(b)
+			return nil
+		}
+	}
+
 	if filter != "" {
 		// JMESPath can't support maps with arbitrary key types, so we convert
 		// to map[string]interface{} before filtering.

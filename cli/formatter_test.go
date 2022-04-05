@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bytes"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,4 +34,16 @@ func TestPrintable(t *testing.T) {
 	}
 	_, ok = printable(tmp)
 	assert.False(t, ok)
+}
+
+func TestFileDownload(t *testing.T) {
+	formatter := NewDefaultFormatter(false)
+	buf := &bytes.Buffer{}
+	Stdout = buf
+	viper.Set("rsh-raw", true)
+	viper.Set("rsh-filter", "")
+	formatter.Format(Response{
+		Body: []byte{0, 1, 2, 3},
+	})
+	assert.Equal(t, []byte{0, 1, 2, 3}, buf.Bytes())
 }

@@ -72,18 +72,19 @@ func (o Operation) command() *cobra.Command {
 
 			query := url.Values{}
 			for _, param := range o.QueryParams {
-				if reflect.ValueOf(flags[param.Name]).Elem().Interface() == param.Default {
+				flag := flags[param.Name]
+				if reflect.ValueOf(flag).Elem().Interface() == param.Default {
 					// No need to send the default value. Just skip it.
 					continue
 				}
 
-				if param.Default == nil && reflect.ValueOf(flags[param.Name]).Elem().IsZero() {
+				if param.Default == nil && reflect.ValueOf(flag).Elem().IsZero() {
 					// No explicit default, so the implied default is the zero value.
 					// Again no need to send that default, so we skip.
 					continue
 				}
 
-				for _, v := range param.Serialize(flags[param.Name]) {
+				for _, v := range param.Serialize(flag) {
 					query.Add(param.Name, v)
 				}
 			}

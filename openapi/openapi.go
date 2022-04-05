@@ -142,7 +142,9 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 
 			typ := "string"
 			if p.Value.Schema != nil && p.Value.Schema.Value != nil {
-				typ = p.Value.Schema.Value.Type
+				if p.Value.Schema.Value.Type != "" {
+					typ = p.Value.Schema.Value.Type
+				}
 
 				if typ == "array" {
 					// TODO: nil checks

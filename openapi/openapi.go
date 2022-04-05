@@ -397,7 +397,7 @@ func getBasePath(location *url.URL, servers openapi3.Servers) (string, error) {
 				if err != nil {
 					return "", err
 				}
-				return base.Path, nil
+				return strings.TrimSuffix(base.Path, "/"), nil
 			}
 		}
 	}

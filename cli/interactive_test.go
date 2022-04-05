@@ -37,6 +37,7 @@ func (a *mockAsker) askSelect(message string, options []string, def interface{},
 func TestInteractive(t *testing.T) {
 	// Remove existing config if present...
 	os.Remove(path.Join(userHomeDir(), ".test", "apis.json"))
+	os.Remove(path.Join(userHomeDir(), ".test", "cache.json"))
 
 	reset(false)
 
@@ -92,12 +93,14 @@ func (l *testLoader) Detect(resp *http.Response) bool {
 }
 
 func (l *testLoader) Load(entrypoint, spec url.URL, resp *http.Response) (API, error) {
+	LogInfo("Loading API %s", entrypoint.String())
 	return l.API, nil
 }
 
 func TestInteractiveAutoConfig(t *testing.T) {
 	// Remove existing config if present...
 	os.Remove(path.Join(userHomeDir(), ".test", "apis.json"))
+	os.Remove(path.Join(userHomeDir(), ".test", "cache.json"))
 
 	reset(false)
 	AddLoader(&testLoader{

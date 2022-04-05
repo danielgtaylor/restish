@@ -50,12 +50,13 @@ func TestOperation(t *testing.T) {
 	cmd := op.command()
 
 	viper.Reset()
+	viper.Set("nocolor", true)
 	Init("test", "1.0.0")
 	Defaults()
-	viper.Set("nocolor", true)
 	capture := &strings.Builder{}
 	Stdout = capture
 	Stderr = capture
+	cmd.SetOut(Stdout)
 	cmd.Flags().Parse([]string{"--search=foo"})
 	cmd.Run(cmd, []string{"id1"})
 

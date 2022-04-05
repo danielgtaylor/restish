@@ -44,11 +44,6 @@ func (o Operation) command() *cobra.Command {
 	}
 
 	long := o.Long
-	if tty {
-		if l, err := Highlight("markdown", []byte(o.Long)); err == nil {
-			long = string(l)
-		}
-	}
 
 	examples := ""
 	for _, ex := range o.Examples {

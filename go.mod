@@ -14,7 +14,7 @@ require (
 	github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba
 	github.com/danielgtaylor/shorthand v1.1.0
 	github.com/eliukblau/pixterm v1.3.1
-	github.com/fxamacker/cbor/v2 v2.3.0
+	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/gbl08ma/httpcache v1.0.2
 	github.com/getkin/kin-openapi v0.86.0
 	github.com/go-openapi/swag v0.19.15 // indirect
@@ -33,9 +33,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/mapstructure v1.4.3
-	github.com/mna/pigeon v1.1.0 // indirect
-	github.com/sergi/go-diff v1.2.0
-	github.com/shamaton/msgpack v1.2.1
+	github.com/shamaton/msgpack/v2 v2.1.0
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
@@ -46,10 +44,7 @@ require (
 	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
 	golang.org/x/net v0.0.0-20211215060638-4ddde0e984e9 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
-	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
-	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/tools v0.1.9 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/h2non/gock.v1 v1.0.16
 	gopkg.in/yaml.v2 v2.4.0

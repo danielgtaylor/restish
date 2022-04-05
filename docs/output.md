@@ -155,3 +155,15 @@ id3
 If the filtered output result doesn't match one of the above types, then `-r` is a no-op.
 
 This feature is mainly useful for shell scripting, where you don't want to have to parse the JSON and instead just want to loop through a list of IDs and run further commands.
+
+## Downloading Files & Saving Responses
+
+Raw mode in combination with redirected output can also be used to download files, and saving a structured data response (e.g. JSON, CBOR, YAML, etc) is simple as well:
+
+```bash
+# Save a zip file from the server.
+$ restish api.example.com/file.zip -r >file.zip
+
+# Save structured data
+$ restish api.example.com/items -f body >items.json
+```

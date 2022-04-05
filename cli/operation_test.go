@@ -44,6 +44,13 @@ func TestOperation(t *testing.T) {
 				DisplayName: "def",
 				Description: "desc",
 			},
+			{
+				Type:        "string",
+				Name:        "def2",
+				DisplayName: "def2",
+				Description: "desc",
+				Default:     "",
+			},
 		},
 	}
 

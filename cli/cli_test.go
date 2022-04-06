@@ -220,3 +220,22 @@ func TestLoadCache(t *testing.T) {
 	runNoReset("cache-test --help")
 	runNoReset("cache-test --help")
 }
+
+func TestAPISync(t *testing.T) {
+	defer gock.Off()
+
+	gock.New("https://sync-test.example.com/").Reply(404)
+	gock.New("https://sync-test.example.com/openapi.json").Reply(404)
+
+	reset(false)
+
+	configs["sync-test"] = &APIConfig{
+		name: "sync-test",
+		Base: "https://sync-test.example.com",
+		Profiles: map[string]*APIProfile{
+			"default": {},
+		},
+	}
+
+	runNoReset("api sync sync-test")
+}

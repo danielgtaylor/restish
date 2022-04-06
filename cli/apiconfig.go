@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -112,16 +113,20 @@ func initAPIConfig() {
 		panic(err)
 	}
 
+	seen := map[string]bool{}
 	for apiName, config := range configs {
 		func(config *APIConfig) {
+			if seen[config.Base] {
+				panic(fmt.Errorf("Multiple APIs configured with the same base URL: %s", config.Base))
+			}
+			seen[config.Base] = true
 			config.name = apiName
 			configs[apiName] = config
 
 			n := apiName
-			c := config
 			cmd := &cobra.Command{
 				Use:   n,
-				Short: c.Base,
+				Short: config.Base,
 				Run: func(cmd *cobra.Command, args []string) {
 					cmd.Help()
 				},

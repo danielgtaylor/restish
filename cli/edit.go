@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,27 +18,6 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/viper"
 )
-
-// emptyState implements a dummy fmt.State that passes through to a writer.
-type emptyState struct {
-	writer io.Writer
-}
-
-func (e *emptyState) Write(b []byte) (n int, err error) {
-	return e.writer.Write(b)
-}
-
-func (e *emptyState) Width() (wid int, ok bool) {
-	return 0, true
-}
-
-func (e *emptyState) Precision() (prec int, ok bool) {
-	return 0, true
-}
-
-func (e *emptyState) Flag(c int) bool {
-	return false
-}
 
 func panicOnErr(err error) {
 	if err != nil {
@@ -170,11 +148,7 @@ export EDITOR="vim"`)
 		exitFunc(0)
 		return
 	} else {
-		sb := &strings.Builder{}
-		s := &emptyState{writer: sb}
-		unified := gotextdiff.ToUnified("original", "modified", string(orig), edits)
-		unified.Format(s, ' ')
-		diff := sb.String()
+		diff := fmt.Sprint(gotextdiff.ToUnified("original", "modified", string(orig), edits))
 		if tty {
 			d, _ := Highlight("diff", []byte(diff))
 			diff = string(d)

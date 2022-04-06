@@ -177,3 +177,44 @@ func TestSchemaAdditionalProps(t *testing.T) {
 	out := renderSchema(s, "", modeRead)
 	assert.Equal(t, "{\n  <any>: <any>\n}", out)
 }
+
+func TestSchemaRecursiveObject(t *testing.T) {
+	s := &openapi3.Schema{
+		Type: "object",
+		Properties: map[string]*openapi3.SchemaRef{
+			"paths": {
+				Ref: "#/components/schemas/foo",
+			},
+		},
+	}
+	s.Properties["paths"].Value = s
+
+	out := renderSchema(s, "", modeRead)
+	assert.Equal(t, "{\n  paths: {\n    paths: <rescurive ref>\n  }\n}", out)
+}
+
+func TestSchemaRecursiveArray(t *testing.T) {
+	s := &openapi3.Schema{
+		Type: "array",
+		Items: &openapi3.SchemaRef{
+			Ref: "#/components/schemas/foo",
+		},
+	}
+	s.Items.Value = s
+
+	out := renderSchema(s, "", modeRead)
+	assert.Equal(t, "[\n  [<recursive ref>]\n]", out)
+}
+
+func TestSchemaRecursiveAdditional(t *testing.T) {
+	s := &openapi3.Schema{
+		Type: "object",
+		AdditionalProperties: &openapi3.SchemaRef{
+			Ref: "#/components/schemas/foo",
+		},
+	}
+	s.AdditionalProperties.Value = s
+
+	out := renderSchema(s, "", modeRead)
+	assert.Equal(t, "{\n  <any>: {\n    <any>: <rescurive ref>\n  }\n}", out)
+}

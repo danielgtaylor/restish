@@ -16,6 +16,10 @@ const (
 )
 
 func renderSchema(s *openapi3.Schema, indent string, mode schemaMode) string {
+	return renderSchemaInternal(s, indent, mode, map[*openapi3.Schema]bool{})
+}
+
+func renderSchemaInternal(s *openapi3.Schema, indent string, mode schemaMode, known map[*openapi3.Schema]bool) string {
 	doc := s.Title
 	if doc == "" {
 		doc = s.Description
@@ -100,8 +104,12 @@ func renderSchema(s *openapi3.Schema, indent string, mode schemaMode) string {
 
 		return fmt.Sprintf("(%s%s) %s", s.Type, tagStr, doc)
 	case "array":
-		arr := "[\n  " + indent + renderSchema(s.Items.Value, indent+"  ", mode) + "\n" + indent + "]"
-		return arr
+		if !known[s.Items.Value] {
+			known[s.Items.Value] = true
+			arr := "[\n  " + indent + renderSchemaInternal(s.Items.Value, indent+"  ", mode, known) + "\n" + indent + "]"
+			return arr
+		}
+		return "[<recursive ref>]"
 	case "object":
 		// Special case: object with nothing defined
 		if len(s.Properties) == 0 && (s.AdditionalProperties == nil || s.AdditionalProperties.Value == nil) && (s.AdditionalPropertiesAllowed == nil || !*s.AdditionalPropertiesAllowed) {
@@ -136,11 +144,21 @@ func renderSchema(s *openapi3.Schema, indent string, mode schemaMode) string {
 				}
 			}
 
-			obj += indent + "  " + name + ": " + renderSchema(prop, indent+"  ", mode) + "\n"
+			if !known[prop] {
+				known[prop] = true
+				obj += indent + "  " + name + ": " + renderSchemaInternal(prop, indent+"  ", mode, known) + "\n"
+			} else {
+				obj += indent + "  " + name + ": <rescurive ref>\n"
+			}
 		}
 
 		if s.AdditionalProperties != nil && s.AdditionalProperties.Value != nil && s.AdditionalProperties.Value.Type != "" {
-			obj += indent + "  " + "<any>: " + renderSchema(s.AdditionalProperties.Value, indent+"  ", mode) + "\n"
+			if !known[s.AdditionalProperties.Value] {
+				known[s.AdditionalProperties.Value] = true
+				obj += indent + "  " + "<any>: " + renderSchemaInternal(s.AdditionalProperties.Value, indent+"  ", mode, known) + "\n"
+			} else {
+				obj += indent + "  <any>: <rescurive ref>\n"
+			}
 		} else if s.AdditionalPropertiesAllowed != nil && *s.AdditionalPropertiesAllowed {
 			obj += indent + "  <any>: <any>\n"
 		}

@@ -64,16 +64,17 @@ func (p Param) Serialize(value interface{}) []string {
 		tmp := []string{}
 		switch p.Style {
 		case StyleForm:
-			for i, item := range value.([]interface{}) {
+			for i := 0; i < v.Len(); i++ {
+				item := v.Index(i)
 				if p.Explode {
-					tmp = append(tmp, fmt.Sprintf("%v", item))
+					tmp = append(tmp, fmt.Sprintf("%v", item.Interface()))
 				} else {
 					if len(tmp) == 0 {
 						tmp = append(tmp, "")
 					}
 
-					tmp[0] += fmt.Sprintf("%v", item)
-					if i < len(value.([]interface{})) {
+					tmp[0] += fmt.Sprintf("%v", item.Interface())
+					if i < v.Len()-1 {
 						tmp[0] += ","
 					}
 				}
@@ -82,9 +83,6 @@ func (p Param) Serialize(value interface{}) []string {
 			tmp = append(tmp, "")
 			for i := 0; i < v.Len(); i++ {
 				item := v.Index(i)
-				if item.Kind() == reflect.Ptr {
-					item = item.Elem()
-				}
 				tmp[0] += fmt.Sprintf("%v", item.Interface())
 				if i < v.Len()-1 {
 					tmp[0] += ","

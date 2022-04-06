@@ -92,6 +92,20 @@ func initAPIConfig() {
 		Run:     askInitAPIDefault,
 	})
 
+	apiCommand.AddCommand(&cobra.Command{
+		Use:   "sync short-name",
+		Short: "Sync an API",
+		Long:  "Force-fetch the latest API description and update the local cache.",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			viper.Set("rsh-no-cache", true)
+			_, err := Load(fixAddress(args[0]), Root)
+			if err != nil {
+				panic(err)
+			}
+		},
+	})
+
 	// Register API sub-commands
 	configs = apiConfigs{}
 	if err := apis.Unmarshal(&configs); err != nil {

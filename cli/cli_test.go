@@ -3,6 +3,7 @@ package cli
 import (
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -238,4 +239,34 @@ func TestAPISync(t *testing.T) {
 	}
 
 	runNoReset("api sync sync-test")
+}
+
+func TestDuplicateAPIBase(t *testing.T) {
+	defer func() {
+		os.Remove(path.Join(userHomeDir(), ".test", "apis.json"))
+		reset(false)
+	}()
+	reset(false)
+
+	configs["dupe1"] = &APIConfig{
+		name: "dupe1",
+		Base: "https://dupe.example.com",
+		Profiles: map[string]*APIProfile{
+			"default": {},
+		},
+	}
+	configs["dupe2"] = &APIConfig{
+		name: "dupe2",
+		Base: "https://dupe.example.com",
+		Profiles: map[string]*APIProfile{
+			"default": {},
+		},
+	}
+
+	configs["dupe1"].Save()
+	configs["dupe2"].Save()
+
+	assert.Panics(t, func() {
+		run("--help")
+	})
 }

@@ -270,3 +270,80 @@ func TestDuplicateAPIBase(t *testing.T) {
 		run("--help")
 	})
 }
+
+func TestCompletion(t *testing.T) {
+	defer gock.Off()
+
+	gock.New("https://api.example.com/").Reply(http.StatusNotFound)
+	gock.New("https://api.example.com/openapi.json").Reply(http.StatusOK)
+
+	Init("Completion test", "1.0.0")
+	Defaults()
+
+	configs["comptest"] = &APIConfig{
+		name: "comptest",
+		Base: "https://api.example.com",
+	}
+
+	Root.AddCommand(&cobra.Command{
+		Use: "comptest",
+	})
+
+	AddLoader(&testLoader{
+		API: API{
+			Operations: []Operation{
+				{
+					Method:      http.MethodGet,
+					URITemplate: "https://api.example.com/users",
+				},
+				{
+					Method:      http.MethodGet,
+					URITemplate: "https://api.example.com/users/{user-id}",
+				},
+				{
+					Short:       "List item tags",
+					Method:      http.MethodGet,
+					URITemplate: "https://api.example.com/items/{item-id}/tags",
+				},
+				{
+					Short:       "Get tag details",
+					Method:      http.MethodGet,
+					URITemplate: "https://api.example.com/items/{item-id}/tags/{tag-id}",
+				},
+				{
+					Method:      http.MethodDelete,
+					URITemplate: "https://api.example.com/items/{item-id}/tags/{tag-id}",
+				},
+			},
+		},
+	})
+
+	// Force a cache-reload if needed.
+	viper.Set("rsh-no-cache", true)
+	Load("https://api.example.com/", &cobra.Command{})
+	viper.Set("rsh-no-cache", false)
+
+	currentConfig = nil
+
+	// Show APIs
+	possible, _ := completeGenericCmd(http.MethodGet, true)(nil, []string{}, "")
+	assert.Equal(t, []string{
+		"comptest",
+	}, possible)
+
+	currentConfig = configs["comptest"]
+
+	// Short-name URL completion with variables filled in.
+	possible, _ = completeGenericCmd(http.MethodGet, false)(nil, []string{}, "comptest/items/my-item")
+	assert.Equal(t, []string{
+		"comptest/items/my-item/tags\tList item tags",
+		"comptest/items/my-item/tags/{tag-id}\tGet tag details",
+	}, possible)
+
+	// URL without scheme
+	possible, _ = completeGenericCmd(http.MethodGet, false)(nil, []string{}, "api.example.com/items/my-item")
+	assert.Equal(t, []string{
+		"api.example.com/items/my-item/tags\tList item tags",
+		"api.example.com/items/my-item/tags/{tag-id}\tGet tag details",
+	}, possible)
+}

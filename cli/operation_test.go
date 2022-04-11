@@ -13,9 +13,16 @@ import (
 func TestOperation(t *testing.T) {
 	defer gock.Off()
 
-	gock.New("http://example2.com").Get("/prefix/test/id1").MatchParam("search", "foo").Reply(200).JSON(map[string]interface{}{
-		"hello": "world",
-	})
+	gock.
+		New("http://example2.com").
+		Get("/prefix/test/id1").
+		MatchParam("search", "foo").
+		MatchParam("def3", "abc").
+		MatchHeader("Accept", "application/json").
+		Reply(200).
+		JSON(map[string]interface{}{
+			"hello": "world",
+		})
 
 	op := Operation{
 		Name:        "test",
@@ -51,6 +58,29 @@ func TestOperation(t *testing.T) {
 				Description: "desc",
 				Default:     "",
 			},
+			{
+				Type:        "string",
+				Name:        "def3",
+				DisplayName: "def3",
+				Description: "desc",
+				Default:     "abc",
+			},
+		},
+		HeaderParams: []*Param{
+			{
+				Type:        "string",
+				Name:        "Accept",
+				DisplayName: "Accept",
+				Description: "desc",
+				Default:     "application/json",
+			},
+			{
+				Type:        "string",
+				Name:        "Accept-Encoding",
+				DisplayName: "Accept-Encoding",
+				Description: "desc",
+				Default:     "gz",
+			},
 		},
 	}
 
@@ -63,9 +93,9 @@ func TestOperation(t *testing.T) {
 	capture := &strings.Builder{}
 	Stdout = capture
 	Stderr = capture
-	cmd.SetOut(Stdout)
+	cmd.SetOutput(Stdout)
 	viper.Set("rsh-server", "http://example2.com/prefix")
-	cmd.Flags().Parse([]string{"--search=foo"})
+	cmd.Flags().Parse([]string{"--search=foo", "--def-3=abc", "--accept=application/json"})
 	cmd.Run(cmd, []string{"id1"})
 
 	assert.Equal(t, "HTTP/1.1 200 OK\nContent-Type: application/json\n\n{\n  hello: \"world\"\n}\n", capture.String())

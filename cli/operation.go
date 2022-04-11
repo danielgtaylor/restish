@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
 
 	"github.com/gosimple/slug"
@@ -74,18 +73,13 @@ func (o Operation) command() *cobra.Command {
 
 			query := url.Values{}
 			for _, param := range o.QueryParams {
+				if !cmd.Flags().Changed(param.OptionName()) {
+					// This option was not passed from the shell, so there is no need to
+					// send it, even if it is the default or zero value.
+					continue
+				}
+
 				flag := flags[param.Name]
-				if reflect.ValueOf(flag).Elem().Interface() == param.Default {
-					// No need to send the default value. Just skip it.
-					continue
-				}
-
-				if param.Default == nil && reflect.ValueOf(flag).Elem().IsZero() {
-					// No explicit default, so the implied default is the zero value.
-					// Again no need to send that default, so we skip.
-					continue
-				}
-
 				for _, v := range param.Serialize(flag) {
 					query.Add(param.Name, v)
 				}
@@ -118,24 +112,10 @@ func (o Operation) command() *cobra.Command {
 
 			headers := http.Header{}
 			for _, param := range o.HeaderParams {
-				rv := reflect.ValueOf(flags[param.Name]).Elem()
-				if rv.Interface() == param.Default {
-					// No need to send the default value. Just skip it.
+				if !cmd.Flags().Changed(param.OptionName()) {
+					// This option was not passed from the shell, so there is no need to
+					// send it, even if it is the default or zero value.
 					continue
-				}
-
-				if param.Default == nil {
-					if rv.IsZero() {
-						// No explicit default, so the implied default is the zero value.
-						// Again no need to send that default, so we skip.
-						continue
-					}
-
-					if rv.Kind() == reflect.Slice && rv.Len() == 0 {
-						// IsZero() above fails for empty arrays, so if it's empty let's
-						// ignore it.
-						continue
-					}
 				}
 
 				for _, v := range param.Serialize(flags[param.Name]) {

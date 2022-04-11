@@ -95,14 +95,18 @@ func (p Param) Serialize(value interface{}) []string {
 	return nil
 }
 
-// AddFlag adds a new option flag to a command's flag set for this parameter.
-func (p Param) AddFlag(flags *pflag.FlagSet) interface{} {
+// OptionName returns the commandline option name for this parameter.
+func (p Param) OptionName() string {
 	name := p.Name
 	if p.DisplayName != "" {
 		name = p.DisplayName
 	}
-	name = strcase.ToDelimited(name, '-')
+	return strcase.ToDelimited(name, '-')
+}
 
+// AddFlag adds a new option flag to a command's flag set for this parameter.
+func (p Param) AddFlag(flags *pflag.FlagSet) interface{} {
+	name := p.OptionName()
 	def := p.Default
 
 	switch p.Type {

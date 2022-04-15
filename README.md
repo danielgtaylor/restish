@@ -43,4 +43,9 @@ Features include:
 - Colorized prettified readable output
 - Fast native zero-dependency binary
 
+Articles:
+
+- [A CLI for REST APIs](https://dev.to/danielgtaylor/a-cli-for-rest-apis-part-1-104b)
+- [Mapping OpenAPI to the CLI](https://dev.to/danielgtaylor/mapping-openapi-to-the-cli-37pb)
+
 This project started life as a fork of [OpenAPI CLI Generator](https://github.com/danielgtaylor/openapi-cli-generator).

@@ -2,6 +2,42 @@
 
 In general, OpenAPI 3 just works with Restish. There are a couple of things you can do to make sure your users can more easily use Restish with your API.
 
+## Anatomy of a CLI Command
+
+A CLI command generated from an OpenAPI 3 document has the form:
+
+<pre data-lang="sh"><code>$ restish <span class="token keyword">my-api</span> <span class="token key">my-operation</span> <span class="token string">--search=foo</span> <span class="token number">item-id</span> <span class="token date">key: value, ...</span>
+          <span class="token keyword">|</span>      <span class="token key">|</span>              <span class="token string">|</span>          <span class="token number">|</span>         <span class="token date">|</span>
+  <span class="token keyword">API short name</span> <span class="token key">Operation ID</span>   <span class="token string">Options?</span>   <span class="token number">Arguments</span> <span class="token date">Request body?</span>
+</code></pre>
+
+Here is how those components map to an example OpenAPI. Note that operation and parameter names will be transformed into CLI-friendly names using `kebab-casing`. Also, request parameters can be either options or arguments depending on whether they are required:
+
+<pre data-lang="yaml"><code>paths:
+  /items/{item-id}/tags:
+    get:
+      summary: Get the tags for an item
+      <span class="token key">operationId: myOperation</span>
+      parameters:
+        <span class="token number">- name: item-id</span>
+          <span class="token number">in: path</span>
+          <span class="token number">required: true</span>
+        <span class="token string">- name: search</span>
+          <span class="token string">in: query</span>
+      ...
+    post:
+      ...
+      requestBody:
+        content:
+          application/json:
+            <span class="token date">schema:</span>
+              <span class="token date">type: object</span>
+              <span class="token date">additionalProperties:</span>
+                <span class="token date">type: string</span>
+</code></pre>
+
+Other fields are used for documentation, including the summary & description fields as well as any responses and response schemas.
+
 ## Discoverability
 
 Restish looks for link relation headers at the API base URI as a way to discover your API description and provide convenience operations. It looks for:

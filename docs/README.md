@@ -47,7 +47,8 @@
 
 ## Articles
 
-- [A CLI for REST APIs Part 1](https://dev.to/danielgtaylor/a-cli-for-rest-apis-part-1-104b)
+- [A CLI for REST APIs](https://dev.to/danielgtaylor/a-cli-for-rest-apis-part-1-104b)
+- [Mapping OpenAPI to the CLI](https://dev.to/danielgtaylor/mapping-openapi-to-the-cli-37pb)
 
 ## Why use this?
 

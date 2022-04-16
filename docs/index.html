@@ -166,6 +166,15 @@
         subMaxLevel: 3,
         search: "auto",
         auto2top: true,
+        plugins: [
+          function (hook, vm) {
+            hook.beforeEach(function (html) {
+              return (
+                html + '<hr/><div style="text-align:center"><a href="https://github.com/danielgtaylor/restish/blob/main/docs/' + vm.route.file + '">Edit this page on Github</a></div>'
+              );
+            });
+          }
+        ]
       };
     </script>
     <script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
@@ -205,14 +214,14 @@
       };
 
       Prism.languages.bash = {
-        comment: /^#.*/m,
+        comment: /^\s*#.*/m,
         json: {
-          pattern: /^\{(.|\n)*\}/m,
+          pattern: /'?\{(.|\n)*\}'?/m,
           greedy: false,
           inside: Prism.languages.json,
         },
         uri: {
-          pattern: /(https?:\/\/)?[a-z0-9.-]+\.com\S*/,
+          pattern: /['"]?(https?:\/\/)?[a-z0-9.-]+\.(com|org|dev)\S*['"]?/,
         },
         variable: /[A-Z0-9_]+(?=[=])/,
         varuse: {
@@ -226,7 +235,7 @@
           },
         },
         queryparam: {
-          pattern: /-q [a-z0-9-]+=\S+/i,
+          pattern: /(-[qd] [a-z0-9-]+=\S+|[a-z0-9-]+==\S+)/i,
           inside: {
             property: /[a-z0-9-]+(?==)/i,
           },
@@ -235,11 +244,12 @@
           pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))|('(?:\\.|[^\\'\r\n])*'(?!\s*:))/,
           greedy: true,
         },
-        property: /[a-z0-9.\[\]-]+(?=:)/,
+        redirect: /2>\/dev\/null/,
+        property: /[A-Za-z0-9.\[\]-]+(?=:[a-z0-9. _-])/,
         number: /\b[0-9]+(\.[0-9]+)?/,
         boolean: /\b(?:true|false)\b/i,
         null: /\bnull\b/i,
-        keyword: /restish|</,
+        keyword: /restish|<|[|]|\b(for|do|done)(?!\/)\b/,
       };
     </script>
   </body>

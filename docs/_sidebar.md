@@ -1,5 +1,6 @@
 - [Home](/ "Restish")
 - [Guide](guide.md "Restish User Guide")
+- [Comparison](comparison.md "Comparison")
 - [Configuration](configuration.md "Configuring Restish")
 - [OpenAPI](openapi.md "OpenAPI 3 & Restish")
 - [Input](input.md "Restish Input")

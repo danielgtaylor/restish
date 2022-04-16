@@ -56,7 +56,7 @@ Will send the following request:
 
 ```http
 POST /items HTTP/2.0
-Content-Type: application/json; charset=utf-8
+Content-Type: application/json
 Host: example.com
 
 {

@@ -4,7 +4,7 @@
 
 [Restish](https://rest.sh/) is a CLI for interacting with [REST](https://apisyouwonthate.com/blog/rest-and-hypermedia-in-2019)-ish HTTP APIs with some nice features built-in, like always having the latest API resources, fields, and operations available when they go live on the API without needing to install or update anything.
 
-See the [user guide](https://rest.sh/#/guide) to get started.
+See the [user guide](https://rest.sh/#/guide) to get started, or how Restish [compares to cURL & HTTPie](https://rest.sh/#/comparison).
 
 Features include:
 

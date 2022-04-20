@@ -65,3 +65,20 @@ func TestRawLargeJSONNumbers(t *testing.T) {
 	})
 	assert.Equal(t, "null\n1000000000000000\n120000\n1.234\n5e-14\n", buf.String())
 }
+
+func TestFormatEmptyImage(t *testing.T) {
+	formatter := NewDefaultFormatter(false)
+	buf := &bytes.Buffer{}
+	Stdout = buf
+	viper.Set("rsh-raw", false)
+	viper.Set("rsh-filter", "")
+
+	// This should not panic!
+	formatter.Format(Response{
+		Headers: map[string]string{
+			"Content-Type":   "image/jpeg",
+			"Content-Length": "0",
+		},
+		Body: nil,
+	})
+}

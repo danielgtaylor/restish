@@ -293,7 +293,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 			var e []byte
 
 			ct := resp.Headers["Content-Type"]
-			if ct == "image/png" || ct == "image/jpeg" || ct == "image/webp" || ct == "image/gif" {
+			if resp.Body != nil && (ct == "image/png" || ct == "image/jpeg" || ct == "image/webp" || ct == "image/gif") {
 				// This is likely an image. Let's display it if we can! Get the window
 				// size, read and scale the image, and display it using unicode.
 				w, h, err := terminal.GetSize(0)

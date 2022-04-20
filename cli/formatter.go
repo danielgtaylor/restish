@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -264,6 +265,10 @@ func (f *DefaultFormatter) Format(resp Response) error {
 			for _, item := range data.([]interface{}) {
 				if item == nil {
 					encoded = append(encoded, []byte("null\n")...)
+				} else if f, ok := item.(float64); ok && f == float64(int64(f)) {
+					// This is likely an integer from JSON that was loaded as a float64!
+					// Prevent the use of scientific notation!
+					encoded = append(strconv.AppendFloat(encoded, f, 'f', -1, 64), '\n')
 				} else {
 					encoded = append(encoded, []byte(fmt.Sprintf("%v\n", item))...)
 				}

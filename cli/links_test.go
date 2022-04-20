@@ -70,6 +70,34 @@ func TestHALParser(t *testing.T) {
 	assert.Equal(t, r.Links["item"][0].URI, "/item")
 }
 
+func TestHALParserArray(t *testing.T) {
+	r := &Response{
+		Links: Links{},
+		Body: []interface{}{
+			map[string]interface{}{
+				"_links": map[string]interface{}{
+					"self": map[string]interface{}{
+						"href": "/one",
+					},
+				},
+			},
+			map[string]interface{}{
+				"_links": map[string]interface{}{
+					"self": map[string]interface{}{
+						"href": "/two",
+					},
+				},
+			},
+		},
+	}
+
+	p := HALParser{}
+	err := p.ParseLinks(r)
+	assert.NoError(t, err)
+	assert.Equal(t, r.Links["self"][0].URI, "/one")
+	assert.Equal(t, r.Links["self"][1].URI, "/two")
+}
+
 func TestTerrificallySimpleJSONParser(t *testing.T) {
 	r := &Response{
 		Links: Links{},

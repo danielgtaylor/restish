@@ -91,18 +91,27 @@ type HALParser struct{}
 
 // ParseLinks processes the links in a parsed response.
 func (h HALParser) ParseLinks(resp *Response) error {
-	hal := halBody{}
-	if err := mapstructure.Decode(resp.Body, &hal); err == nil {
-		for rel, link := range hal.Links {
-			if rel == "curies" {
-				// TODO: handle curies at some point?
-				continue
-			}
+	entries := []interface{}{}
+	if l, ok := resp.Body.([]interface{}); ok {
+		entries = l
+	} else {
+		entries = append(entries, resp.Body)
+	}
 
-			resp.Links[rel] = append(resp.Links[rel], &Link{
-				Rel: rel,
-				URI: link.Href,
-			})
+	for _, entry := range entries {
+		hal := halBody{}
+		if err := mapstructure.Decode(entry, &hal); err == nil {
+			for rel, link := range hal.Links {
+				if rel == "curies" {
+					// TODO: handle curies at some point?
+					continue
+				}
+
+				resp.Links[rel] = append(resp.Links[rel], &Link{
+					Rel: rel,
+					URI: link.Href,
+				})
+			}
 		}
 	}
 

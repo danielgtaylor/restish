@@ -82,3 +82,24 @@ func TestFormatEmptyImage(t *testing.T) {
 		Body: nil,
 	})
 }
+
+func TestJSONEscape(t *testing.T) {
+	formatter := NewDefaultFormatter(false)
+	buf := &bytes.Buffer{}
+	Stdout = buf
+	viper.Set("rsh-raw", false)
+	viper.Set("rsh-filter", "")
+	viper.Set("rsh-output-format", "json")
+	defer func() { viper.Set("rsh-output_format", "auto") }()
+
+	formatter.Format(Response{
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+		Body: map[string]string{
+			"test": "<em> and & shouldn't get escaped",
+		},
+	})
+
+	assert.Contains(t, buf.String(), "<em> and & shouldn't get escaped")
+}

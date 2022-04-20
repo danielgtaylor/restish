@@ -366,11 +366,19 @@ func (f *DefaultFormatter) Format(resp Response) error {
 			lexer = "yaml"
 		} else {
 			data = makeJSONSafe(data, false)
-			encoded, err = json.MarshalIndent(data, "", "  ")
 
-			if err != nil {
+			// The default encoder escapes '<', '>', and '&' which we don't want
+			// since we are not a browser. Disable this with an encoder instance.
+			// See https://stackoverflow.com/a/28596225/164268
+			buf := &bytes.Buffer{}
+			enc := json.NewEncoder(buf)
+			enc.SetEscapeHTML(false)
+			enc.SetIndent("", "  ")
+
+			if err := enc.Encode(data); err != nil {
 				return err
 			}
+			encoded = buf.Bytes()
 
 			lexer = "json"
 		}

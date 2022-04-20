@@ -20,7 +20,7 @@ If you don't have Homebrew, you can grab a [release](https://github.com/danielgt
 
 ```bash
 # Download / build / install
-$ go get -u github.com/danielgtaylor/restish
+$ go install github.com/danielgtaylor/restish@latest
 ```
 
 You can confirm the installation worked by trying to run Restish:

@@ -47,3 +47,21 @@ func TestFileDownload(t *testing.T) {
 	})
 	assert.Equal(t, []byte{0, 1, 2, 3}, buf.Bytes())
 }
+
+func TestRawLargeJSONNumbers(t *testing.T) {
+	formatter := NewDefaultFormatter(false)
+	buf := &bytes.Buffer{}
+	Stdout = buf
+	viper.Set("rsh-raw", true)
+	viper.Set("rsh-filter", "body")
+	formatter.Format(Response{
+		Body: []interface{}{
+			nil,
+			float64(1000000000000000),
+			float64(1.2e5),
+			float64(1.234),
+			float64(0.00000000000005), // This should still use scientific notation!
+		},
+	})
+	assert.Equal(t, "null\n1000000000000000\n120000\n1.234\n5e-14\n", buf.String())
+}

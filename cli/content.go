@@ -159,7 +159,7 @@ type YAML struct{}
 // Detect if the content type is YAML.
 func (y YAML) Detect(contentType string) bool {
 	first := strings.Split(contentType, ";")[0]
-	if first == "application/yaml" || first == "application/x-yaml" || strings.HasSuffix(first, "+yaml") {
+	if first == "application/yaml" || first == "application/x-yaml" || first == "text/yaml" || strings.HasSuffix(first, "+yaml") {
 		return true
 	}
 

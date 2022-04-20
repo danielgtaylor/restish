@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/danielgtaylor/restish/cli"
 	"github.com/danielgtaylor/restish/oauth"
 	"github.com/danielgtaylor/restish/openapi"
@@ -11,6 +13,13 @@ var commit string
 var date string
 
 func main() {
+	if version == "dev" {
+		// Try to add the executable modification time to the dev version.
+		if info, err := os.Stat(os.Args[0]); err == nil {
+			version += "-" + info.ModTime().Format("2006-01-02-15:04")
+		}
+	}
+
 	cli.Init("restish", version)
 
 	// Register default encodings, content type handlers, and link parsers.

@@ -9,7 +9,7 @@ There are two types of configuration in Restish:
 
 Global configuration affects all commands and can be set in one of three ways, going from highest to lowest precedence:
 
-1. Passing commandline arguments
+1. Command line arguments
 2. Environment variables
 3. Configuration files (`/etc/restish/config.json` or `~/.restish/config.json`)
 
@@ -33,17 +33,21 @@ The global options in addition to `--help` and `--version` are:
 
 Configuration file keys are the same as long-form arguments without the `--` prefix.
 
-The following three would be equivalent:
+The following three would be equivalent ways to configure restish:
 
 ```bash
-# Arguments
+# CLI arguments
 $ restish -v -p testing https://api.example.com/items
+```
 
-# Environment
+```bash
+# Environment variables
 $ RSH_VERBOSE=1 RSH_PROFILE=testing restish https://api.example.com/items
+```
 
-# Configuration
-$ echo '{"rsh-verbose": true, "rsh-profile": "testing"}' >~/.restish/config.json
+```bash
+# Configuration file
+$ echo '{"rsh-verbose": true, "rsh-profile": "testing"}' > ~/.restish/config.json
 $ restish https://api.example.com/items
 ```
 

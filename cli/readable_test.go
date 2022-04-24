@@ -8,9 +8,11 @@ import (
 )
 
 func TestReadableMarshal(t *testing.T) {
+	created, _ := time.Parse(time.RFC3339, "2020-01-01T12:34:56Z")
 	data := map[string]interface{}{
 		"binary":     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-		"created":    time.Time{},
+		"created":    created,
+		"date":       created.Truncate(24 * time.Hour),
 		"id":         "test",
 		"emptyMap":   map[string]interface{}{},
 		"emptyArray": []string{},
@@ -28,7 +30,8 @@ func TestReadableMarshal(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, `{
   binary: 0x00010203040506070809...
-  created: 0001-01-01T00:00:00Z
+  created: 2020-01-01T12:34:56Z
+  date: 2020-01-01
   emptyArray: []
   emptyMap: {}
   float: 1.2

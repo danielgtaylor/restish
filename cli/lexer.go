@@ -19,7 +19,7 @@ var ReadableLexer = lexers.Register(chroma.MustNewLexer(
 		},
 		"scalar": {
 			{`(true|false|null)\b`, chroma.KeywordConstant, nil},
-			{`"?0x[0-9a-f]+(...)?"?`, chroma.LiteralNumberHex, nil},
+			{`"?0x[0-9a-f]+(\\.\\.\\.)?"?`, chroma.LiteralNumberHex, nil},
 			{`"?[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9:+-.]+Z?)?"?`, chroma.LiteralDate, nil},
 			{`-?(0|[1-9]\d*)(\.\d+[eE](\+|-)?\d+|[eE](\+|-)?\d+|\.\d+)`, chroma.LiteralNumberFloat, nil},
 			{`-?(0|[1-9]\d*)`, chroma.LiteralNumberInteger, nil},

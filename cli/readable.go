@@ -148,6 +148,10 @@ func marshalReadable(indent string, v interface{}) ([]byte, error) {
 		return []byte(m), nil
 	case reflect.Struct:
 		if t, ok := v.(time.Time); ok {
+			if t.Hour() == 0 && t.Minute() == 0 && t.Second() == 0 && t.Nanosecond() == 0 {
+				// Special case: date only
+				return []byte(t.UTC().Format("2006-01-02")), nil
+			}
 			return []byte(t.UTC().Format(time.RFC3339Nano)), nil
 		}
 

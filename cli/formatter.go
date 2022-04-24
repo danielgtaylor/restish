@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,9 +19,9 @@ import (
 	"github.com/alecthomas/chroma/quick"
 	"github.com/alecthomas/chroma/styles"
 	jmespath "github.com/danielgtaylor/go-jmespath-plus"
+	"github.com/ghodss/yaml"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/ssh/terminal"
-	"gopkg.in/yaml.v2"
 
 	"github.com/alexeyco/simpletable"
 	"github.com/eliukblau/pixterm/pkg/ansimage"
@@ -76,6 +77,12 @@ func makeJSONSafe(obj interface{}, normalizeNumbers bool) interface{} {
 			return value.Convert(reflect.TypeOf(float64(0))).Interface()
 		}
 	case reflect.Slice:
+		if _, ok := obj.([]byte); ok {
+			// Special case: byte slices get special encoding rules in various
+			// formats, so keep them as-is. Without this is breaks the base64
+			// encoding for JSON and gives you an array of integers instead.
+			return obj
+		}
 		returnSlice := make([]interface{}, value.Len())
 		for i := 0; i < value.Len(); i++ {
 			returnSlice[i] = makeJSONSafe(value.Index(i).Interface(), normalizeNumbers)
@@ -251,16 +258,24 @@ func (f *DefaultFormatter) Format(resp Response) error {
 	} else if viper.GetBool("rsh-raw") && kind == reflect.Slice {
 		scalars := true
 
-		for _, item := range data.([]interface{}) {
-			switch item.(type) {
-			case nil, bool, int, int64, float64, string:
-				// The above are scalars used by decoders
-			default:
-				scalars = false
+		if d, ok := data.([]byte); ok {
+			// Special case: binary data which should be represented by base64.
+			handled = true
+			encoded = make([]byte, base64.StdEncoding.EncodedLen(len(d)))
+			base64.StdEncoding.Encode(encoded, d)
+		} else {
+			for _, item := range data.([]interface{}) {
+				switch item.(type) {
+				case nil, bool, int, int64, float64, string:
+					// The above are scalars used by decoders
+				default:
+					scalars = false
+					break
+				}
 			}
 		}
 
-		if scalars {
+		if !handled && scalars {
 			handled = true
 			for _, item := range data.([]interface{}) {
 				if item == nil {

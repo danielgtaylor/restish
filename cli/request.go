@@ -286,9 +286,14 @@ func ParseResponse(resp *http.Response) (Response, error) {
 	data, _ := ioutil.ReadAll(resp.Body)
 
 	if len(data) > 0 {
-		ct := resp.Header.Get("content-type")
-		if err := Unmarshal(ct, data, &parsed); err != nil {
+		if viper.GetBool("rsh-raw") && viper.GetString("rsh-filter") == "" {
+			// Raw mode without filtering, don't parse the response.
 			parsed = data
+		} else {
+			ct := resp.Header.Get("content-type")
+			if err := Unmarshal(ct, data, &parsed); err != nil {
+				parsed = data
+			}
 		}
 	}
 

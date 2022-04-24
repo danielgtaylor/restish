@@ -66,6 +66,37 @@ func TestRawLargeJSONNumbers(t *testing.T) {
 	assert.Equal(t, "null\n1000000000000000\n120000\n1.234\n5e-14\n", buf.String())
 }
 
+func TestBinary(t *testing.T) {
+	formatter := NewDefaultFormatter(false)
+	buf := &bytes.Buffer{}
+	Stdout = buf
+	viper.Set("rsh-raw", false)
+	viper.Set("rsh-filter", "")
+	viper.Set("rsh-output-format", "json")
+	formatter.Format(Response{
+		Body: []byte{0, 1, 2, 3, 4, 5},
+	})
+	assert.Contains(t, buf.String(), "AAECAwQF")
+
+	buf = &bytes.Buffer{}
+	Stdout = buf
+	viper.Set("rsh-raw", true)
+	viper.Set("rsh-filter", "body")
+	formatter.Format(Response{
+		Body: []byte{0, 1, 2, 3, 4, 5},
+	})
+	assert.Equal(t, "AAECAwQF\n", buf.String())
+
+	buf = &bytes.Buffer{}
+	Stdout = buf
+	viper.Set("rsh-raw", true)
+	viper.Set("rsh-filter", "")
+	formatter.Format(Response{
+		Body: []byte{0, 1, 2, 3, 4, 5},
+	})
+	assert.Equal(t, "\x00\x01\x02\x03\x04\x05", buf.String())
+}
+
 func TestFormatEmptyImage(t *testing.T) {
 	formatter := NewDefaultFormatter(false)
 	buf := &bytes.Buffer{}

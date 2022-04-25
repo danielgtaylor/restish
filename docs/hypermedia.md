@@ -5,7 +5,7 @@ Restish uses a standardized internal representation of hypermedia links to make 
 ```json
 {
   "rel": "next",
-  "uri": "https://api.example.com/items?cursor=abc123"
+  "uri": "https://api.rest.sh/images?cursor=abc123"
 }
 ```
 

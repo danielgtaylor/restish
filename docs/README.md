@@ -56,4 +56,4 @@ Every API deserves a CLI for quick access and for power users to script against 
 
 ## Getting started
 
-Start with the [guide](/guide?id=guide).
+Start with the [guide](/guide.md) to learn how to install and configure Restish as well as getting an overview of all of its features.

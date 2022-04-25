@@ -123,7 +123,8 @@
       .token.class-name,
       .token.constant,
       .token.symbol,
-      .token.key {
+      .token.key,
+      .token.keypress {
         color: #5fafd7;
       }
 
@@ -153,7 +154,7 @@
         color: #af87af;
       }
 
-      .token.uri {
+      .token.uri, .token.url {
         color: #d6ffb7;
         font-style: italic;
       }
@@ -171,7 +172,7 @@
         auto2top: true,
         plugins: [
           function (hook, vm) {
-            hook.beforeEach(function (html) {
+            hook.afterEach(function (html) {
               return (
                 html + '<hr/><div style="text-align:center"><a href="https://github.com/danielgtaylor/restish/blob/main/docs/' + vm.route.file + '">Edit this page on Github</a></div>'
               );
@@ -181,8 +182,12 @@
       };
     </script>
     <script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
+    <script src="//unpkg.com/docsify-pagination/dist/docsify-pagination.min.js"></script>
     <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/search.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/docsify-themeable@0"></script>
+    <script src="//unpkg.com/mermaid/dist/mermaid.js"></script>
+    <script src="//unpkg.com/docsify-mermaid@latest/dist/docsify-mermaid.js"></script>
+    <script>mermaid.initialize({ startOnLoad: true });</script>
     <script src="//unpkg.com/prismjs/components/prism-http.min.js"></script>
     <script src="//unpkg.com/prismjs/components/prism-json.min.js"></script>
     <script src="//unpkg.com/prismjs/components/prism-yaml.min.js"></script>
@@ -203,7 +208,7 @@
             property: /[A-Z][a-zA-Z0-9-]+(?=:)/,
           },
         },
-        property: /^\s+[a-z0-9-_]+(?=:)/im,
+        property: /^\s+['"]?[a-z0-9-_$]+['"]?(?=:)/im,
         date: /"?20[0-9]{2}-[01][0-9]-[0-9]{2}(T[0-9:+-.]+Z?)?"?/,
         uri: /"([a-z]+:\/\/|\/).*"/,
         string: {
@@ -218,13 +223,25 @@
 
       Prism.languages.bash = {
         comment: /^\s*#.*/m,
-        json: {
-          pattern: /'?\{(.|\n)*\}'?/m,
+        redirect: /2>\/dev\/null/,
+        response: {
+          pattern: /^(HTTP\/[12]|\{|\[)(.|\n)+(\]|\}(\n|$))/gm,
           greedy: false,
-          inside: Prism.languages.json,
+          inside: Prism.languages.readable
         },
         uri: {
-          pattern: /['"]?(https?:\/\/)?[a-z0-9.-]+\.(com|org|dev)\S*['"]?/,
+          pattern: /['"]?(https?:\/\/)?[a-z0-9.-]+\.(com|org|dev|sh)[\S{}]*['"]?/,
+        },
+        shorturi: {
+          alias: "uri",
+          pattern: /\s[a-z0-9_.-]+\/[a-zA-Z0-9_\.\/?=&{}-]*/,
+        },
+        date: {
+          pattern: /"?20[0-9]{2}-[01][0-9]-[0-9]{2}(T[0-9:+-.]+Z?)?"?/,
+        },
+        httpdate: {
+          alias: "date",
+          pattern: /"?(Mon|Tue|Wed|Thu|Fri|Sat|Sun), [0-9]+ \S+ [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT"?/,
         },
         variable: /[A-Z0-9_]+(?=[=])/,
         varuse: {
@@ -247,7 +264,7 @@
           pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))|('(?:\\.|[^\\'\r\n])*'(?!\s*:))/,
           greedy: true,
         },
-        redirect: /2>\/dev\/null/,
+        keypress: /<\S+>/,
         property: /[A-Za-z0-9.\[\]-]+(?=:[a-z0-9. _-])/,
         number: /\b[0-9]+(\.[0-9]+)?/,
         boolean: /\b(?:true|false)\b/i,

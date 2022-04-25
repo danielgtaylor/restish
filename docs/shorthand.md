@@ -1,13 +1,17 @@
 # CLI Shorthand Syntax
 
-Restish comes with an optional contextual shorthand syntax for passing structured data into calls that require a body (i.e. `POST`, `PUT`, `PATCH`). While you can always pass full JSON or other documents through `stdin`, you can also specify or modify them by hand as arguments to the command using this shorthand syntax. For example:
+Restish comes with an optional contextual shorthand syntax for passing structured data into calls that require a body (i.e. `POST`, `PUT`, `PATCH`). While you can always pass full JSON or other documents through `stdin`, you can also specify or modify them by hand as arguments to the command using this shorthand syntax.
+
+?> Note: for the examples below, you may need to escape or quote the values depending on your shell & settings. Instead of `foo.bar[].baz: 1`, use `'foo.bar[].baz: 1'`. If using `zsh` you can prefix a command with `noglob` to ignore `?` and `[]`.
+
+For example:
 
 ```bash
 # Make an HTTP POST with a JSON body
-$ restish post api.example.com/items foo.bar[].baz: 1, .hello: world
+$ restish post api.rest.sh foo.bar[].baz: 1, .hello: world
 ```
 
-Would result in the following body contents being sent on the wire (assuming a JSON media type is specified in the service spec):
+Would result in the following body contents being sent on the wire (assuming a JSON content type):
 
 ```json
 {
@@ -61,10 +65,10 @@ It seems reasonable to ask, why create a new syntax?
 
 ## Features in Depth
 
-You can use the `j` executable from the OpenAPI CLI Generator project to try out the shorthand format examples below. Examples are shown in JSON, but the shorthand parses into structured data that can be marshalled as other formats, like YAML or CBOR if you prefer.
+You can use the `j` executable from the [CLI Shorthand](https://github.com/danielgtaylor/shorthand) project to try out the shorthand format examples below. Examples are shown in JSON, but the shorthand parses into structured data that can be marshalled as other formats, like YAML or CBOR if you prefer.
 
 ```bash
-go get -u github.com/danielgtaylor/openapi-cli-generator/j
+$ go install github.com/danielgtaylor/shorthand/cmd/j@latest
 ```
 
 Also feel free to use this tool to generate structured data for input to other commands.

@@ -47,7 +47,7 @@ The built-in CLI shorthand syntax is not the only one you can use to generate da
 For example, the shorthand example given above could be rewritten as:
 
 ```bash
-$ jo -p foo=$(jo -p bar=$(jo -a $(jo baz=1 hello=world))) | restish post api.example.com/items
+$ jo -p foo=$(jo -p bar=$(jo -a $(jo baz=1 hello=world))) | restish post api.rest.sh
 ```
 
 The built-in shorthand syntax implementation described herein uses those and the following for inspiration:

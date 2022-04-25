@@ -80,7 +80,7 @@ $ restish example list-images
 $ restish example/images
 
 # It also works for full URIs, e.g. auth will be applied to:
-$ restish https://api.example.com/images
+$ restish https://api.rest.sh/images
 ```
 
 Read on the learn more about the available API options.

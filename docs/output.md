@@ -48,7 +48,7 @@ Date: Thu, 28 May 2020 05:56:31 GMT
   id: "test"
   nested: {
     saved: true
-    self: "https://example.com/nested"
+    self: "https://api.rest.sh/example"
   }
   json: {
     datetime: "2020-05-27T05:41:19.603396Z"
@@ -109,7 +109,7 @@ Internally, the response is structured like this:
     "next": [
       {
         "rel": "next",
-        "uri": "https://api.example.com/items?cursor=abc123"
+        "uri": "https://api.rest.sh/images?cursor=abc123"
       }
     ]
   },

@@ -30,79 +30,78 @@ You can confirm the installation worked by trying to run Restish:
 $ restish --version
 ```
 
+?> If using `zsh` as your shell (the default on macOS), you should set `alias restish="noglob restish"` in your `~/.zshrc` to prevent it from trying to handle `?` in URLs and `[]` in shorthand input!
+
 ## Basic Usage
 
 Generic HTTP verbs require no setup and are easy to use. If no verb is supplied then a GET is assumed. The `https://` is also optional as it is the default.
 
 ```bash
 # Perform an HTTP GET request
-$ restish jsonplaceholder.typicode.com/users/1
+$ restish api.rest.sh/types
 
 # Above is equivalent to:
-$ restish get https://jsonplaceholder.typicode.com/users/1
+$ restish get https://api.rest.sh/types
 ```
 
 You will see a response like:
 
 ```readable
 HTTP/2.0 200 OK
-Content-Encoding: br
-Content-Type: application/json; charset=utf-8
-Date: Wed, 20 May 2020 05:50:52 GMT
+Content-Length: 278
+Content-Type: application/cbor
+Date: Tue, 19 Apr 2022 21:17:58 GMT
 
 {
-  address: {
-    city: "Gwenborough"
-    geo: {
-      lat: -37.3159
-      lng: 81.1496
-    }
-    street: "Kulas Light"
-    suite: "Apt. 556"
-    zipcode: "92998-3874"
+  $schema: "https://api.rest.sh/schemas/TypesModel.json"
+  boolean: true
+  integer: 42
+  nullable: null
+  number: 123.45
+  object: {
+    binary: 0xdeadc0de
+    binary_long: 0x00010203040506070809...
+    date: 2022-04-23
+    date_time: 2022-04-23T21:41:58.20449651Z
+    url: "https://rest.sh/"
   }
-  company: {
-    bs: "harness real-time e-markets"
-    catchPhrase: "Multi-layered client-server neural-net"
-    name: "Romaguera-Crona"
-  }
-  email: "Sincere@april.biz"
-  id: 1
-  name: "Leanne Graham"
-  phone: "1-770-736-8031 x56442"
-  username: "Bret"
-  website: "https://www.hildegard.org/"
+  string: "Hello, world!"
+  tags: ["example", "short"]
 }
 ```
 
-?> Note that the output above is **not** JSON! By default, Restish outputs an HTTP+JSON-like format meant to be more readable. See [output](/output.md) for more info.
+For a bigger real-world example check out `restish api.rest.sh/example`.
+
+!> Note that the output above is **not** JSON! By default, Restish outputs an HTTP+JSON-like format meant to be more readable. See [output](/output.md) for more info.
+
+### Input Parameters & Body
 
 Various inputs can be passed in as needed:
 
 ```bash
 # Pass a query param (either way)
-$ restish example.com?search=foo
-$ restish -q search=foo example.com
+$ restish api.rest.sh/?active=true
+$ restish -q active=true api.rest.sh
 
 # Pass a header
-$ restish -H MyHeader:value example.com
+$ restish -H Accept:application/json api.rest.sh
 
 # Pass in a body via a file
-$ restish post example.com/users <user.json
+$ restish post api.rest.sh <input.json
 
 # Pass in body via CLI shorthand
-$ restish post example.com/users name: Kari, tags[]: admin
+$ restish post api.rest.sh name: Kari, tags[]: admin
 ```
 
-Headers and query params can also be set via environment variables, for example:
+Read more about [CLI Shorthand](/shorthand.md). Headers and query params can also be set via environment variables, for example:
 
 ```bash
 # Set via env vars
 $ export RSH_HEADER=header1:value1,header2:value2
-$ restish example.com/users
+$ restish api.rest.sh
 ```
 
-If you have persistent headers or query params you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Read on to find out how.
+?> If you have persistent headers or query params you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Read on to find out how.
 
 ### Editing Resources
 
@@ -110,29 +109,75 @@ If an API supports both a `GET` and a `PUT` for a resource, there is an `edit` c
 
 ```bash
 # Modify a field on the command line via CLI shorthand
-$ restish edit example.com/users/12345 nickname: Daniel
+$ restish edit api.rest.sh/types string: changed, tags[]: another
 
 # Modify a resource interactively in your editor
-$ restish edit -i example.com/users/12345
+$ restish edit -i api.rest.sh/types
 ```
 
 To use interactive mode you must have the `VISUAL` or `EDITOR` environment variable set to an editor, for example `export VISUAL="code --wait"` for VSCode.
 
 Editing resources will make use of [conditional requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests) if any relevant headers are found on the `GET` response.
 
+### Output Filtering
+
+By default, you will see the entire response as output. Restish includes built-in filtering using [JMESPath Plus](https://github.com/danielgtaylor/go-jmespath-plus#readme) which enables you to filter & project the response data. Using a filter automatically enables JSON output mode. Here are some basic examples:
+
+```bash
+# Get social media profiles from a JSON Resume:
+$ restish api.rest.sh/example -f body.basics.profiles
+[
+  {
+    "network": "Github",
+    "url": "https://github.com/danielgtaylor"
+  },
+  {
+    "network": "Dev Blog",
+    "url": "https://dev.to/danielgtaylor"
+  },
+  {
+    "network": "LinkedIn",
+    "url": "https://www.linkedin.com/in/danielgtaylor"
+  }
+]
+
+# Advanced filtering example:
+$ restish api.rest.sh/example -f 'body.volunteer[?organization==`"Restish"`]|[0].{name, startDate, summary}'
+{
+  "organization": "Restish",
+  "startDate": "2018-09-29T00:00:00Z",
+  "summary": "A CLI for interacting with REST-ish HTTP APIs with OpenAPI 3 support built-in."
+}
+
+# Access headers & use raw mode to remove quotes:
+$ restish api.rest.sh -f headers.Date -r
+Sat, 1 Jan 2022 12:00:00 GMT
+```
+
+See [output](/output.md) for more info & examples.
+
+?> Quick tip: If you want the JSON body for scripting just use `-f body`!
+
 ## API Operation Commands
 
-APIs can be registered in order to provide API description auto-discovery with convenience commands and authentication. APIs are registered with a short nickname. For example the GitHub v3 API might be called `github` or the Digital Ocean API might be called `do`.
+APIs can be registered in order to provide API description auto-discovery (e.g. OpenAPI 3) with convenience commands and authentication. The following API description formats and versions are supported:
+
+| Format  | Version | Notes                                                                                               |
+| ------- | ------- | --------------------------------------------------------------------------------------------------- |
+| OpenAPI | 3.0     | Fully supported                                                                                     |
+| OpenAPI | 3.1     | Partially supported, waiting on [kin-openapi#230](https://github.com/getkin/kin-openapi/issues/230) |
+
+APIs are registered with a short nickname. For example the GitHub v3 API might be called `github` or the Digital Ocean API might be called `do`.
 
 Each registered API can have a number of named profiles which can be selected via the `-p` or `--rsh-profile` argument. The default profile is called `default`.
 
 Each profile can have a number of preset headers or query params, a type of auth, and any auth-specific params.
 
-Getting started registering an API is easy and uses an interactive prompt to set up profiles, auth, etc. At a minimum you must provide a short nickname, and you'll be asked for the base domain of the API (e.g `https://api.example.com/`):
+Getting started registering an API is easy and uses an interactive prompt to set up profiles, auth, etc. At a minimum you must provide a short nickname and a base URL:
 
 ```bash
 # Register a new API called `example`
-$ restish api configure example
+$ restish api configure example https://api.rest.sh
 ```
 
 Once registered, use the short nickname to access the API:
@@ -141,27 +186,75 @@ Once registered, use the short nickname to access the API:
 # If an OpenAPI or other API description document was found, this will show
 # you all available commands.
 $ restish example --help
-
-# Call an API operation
-$ restish example list-items -q search=active
-
-# Call the same operation, re-using the same headers & auth
-$ restish api.example.com/items?search=active
 ```
 
-If you configured multiple profiles:
+Let's try calling the API:
+
+```bash
+# Call an API operation
+$ restish example list-images
+HTTP/2.0 200 OK
+Content-Length: 291
+Content-Type: application/cbor
+Date: Sun, 24 Apr 2022 15:21:26 GMT
+Link: </schemas/ImageItemList.json>; rel="describedby"
+
+[
+  {
+    format: "jpeg"
+    name: "Dragonfly macro"
+    self: "/images/jpeg"
+  }
+  {
+    format: "webp"
+    name: "Origami under blacklight"
+    self: "/images/webp"
+  }
+  {
+    format: "gif"
+    name: "Andy Warhol mural in Miami"
+    self: "/images/gif"
+  }
+  {
+    format: "png"
+    name: "Station in Prague"
+    self: "/images/webp"
+  }
+  {
+    format: "heic"
+    name: "Chihuly glass in boats"
+    self: "/images/heic"
+  }
+]
+```
+
+```bash
+# Call the same operation, re-using the same headers & auth
+$ restish api.rest.sh/images
+```
+
+If you had configured multiple profiles, then something like this would work:
 
 ```bash
 # Make a request with a non-default profile
-$ restish -p my-profile example list-items
+$ restish -p my-profile example list-images
 ```
 
-You can even use the short nickname in place of the full API domain, so for example this works:
+You can even use the short nickname in place of the full API domain, so for example this works (`example` expands to `https://rest.sh`):
 
 ```bash
 # Use the API nickname instead of the domain
-$ restish example/items?search=active
+$ restish example/images
 ```
+
+Calling operations with required parameters is easy too as they just become arguments:
+
+```bash
+# Call with the required image type path parameter
+$ restish example get-image jpeg
+```
+
+For more details, check out [OpenAPI](openapi.md).
 
 ### Shell Command Line Completion
 
@@ -175,15 +268,23 @@ $ restish completion powershell --help
 
 Once set up, you can use the `tab` key to discover API commands. For example:
 
-```go
+```bash
 # Tab completion example
 $ restish <tab>
 example
 
-$ restish example list-<tab>
-list-items
-list-users
-list-permissions
+# Tab completion of partial commands
+$ restish example get-<tab>
+get-cached         -- Cached response example
+get-echo           -- Echo GET
+get-example        -- Example large structured data response
+get-image          -- Get an image
+...
+
+# Tab completion of partial URLs
+$ restish example/images
+example/images         -- Paginated list of all images
+example/images/{type}  -- Get an image
 ```
 
 That's it for the guide! Hopefully this gave you a quick overview of what is possible with Restish. See the more in-depth topics in the side navigation bar to go deep on how all the above works and is used. Thanks for reading! :tada:

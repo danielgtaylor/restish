@@ -1,5 +1,17 @@
 # Controlling Output
 
+Responses are processed like the below directed graph shows. For example, a server might send a response that Restish will gzip uncompress, unmarshal from CBOR, apply a JMESPath filter, marshal the result into JSON & highlight to display.
+
+```mermaid
+graph LR
+  Response --> Uncompress
+  Uncompress --> Unmarshal
+  Unmarshal --> Filter
+  Filter --> Marshal
+  Marshal --> Highlight
+  Highlight --> Display
+```
+
 ## Caching
 
 By default, Restish will cache responses with appropriate [RFC 7234](https://tools.ietf.org/html/rfc7234) caching headers set. When fetching API service descriptions, a 24-hour cache is used if _no cache headers_ are sent by the API. This is to prevent hammering the API each time the CLI is run. The cached responses are stored in `~/.restish/responses`.
@@ -9,11 +21,11 @@ The easiest way to tell if a cached response has been used is to look at the `Da
 You may wish to disable caching to force an updated fetch:
 
 ```bash
-# Disable caching via arg
-$ restish --rsh-no-cache get api.example.com/items
+# Disable local caching via arg
+$ restish --rsh-no-cache api.rest.sh/cached/15?private=true
 
-# Disable caching via env
-$ RSH_NO_CACHE=1 restish get api.example.com/items
+# Disable local caching via env
+$ RSH_NO_CACHE=1 restish api.rest.sh/cached/15?private=true
 ```
 
 Even if caching is disabled, the local disk cache will get updated. The setting above prevents the _use_ of a cached response.
@@ -32,10 +44,15 @@ Date: Thu, 28 May 2020 05:56:31 GMT
 {
   binary: 0x00030402060a632a3016...
   created: 2020-05-27T05:41:19.603396Z
+  date: 2020-05-27
   id: "test"
   nested: {
     saved: true
     self: "https://example.com/nested"
+  }
+  json: {
+    datetime: "2020-05-27T05:41:19.603396Z"
+    binary: "AAECAwQF"
   }
   pointer: null
   tags: ["one", "tw\"o", "three"]
@@ -59,13 +76,23 @@ The following types are supported & syntax highlighted:
 
 If the output is _not_ structured data (JSON/YAML/CBOR/etc) then it is output as-is without formatting.
 
-?> Keep in mind the default output format is meant for **human** consumption!
+?> Keep in mind the default output format is meant for **human** consumption! When writing shell scripts you will most likely want to use filtering which enables JSON output mode.
 
 ### Images
 
 Basic image support is available using unicode half-blocks if your terminal supports these unicode characters and true color mode. For example:
 
 <img alt="Screen Shot" src="https://user-images.githubusercontent.com/106826/83105045-c4fd4200-a06e-11ea-8902-fc681cd7c66e.png">
+
+Try it out:
+
+```bash
+# Display the Restish logo!
+$ restish rest.sh/logo.png
+
+# Display another example:
+$ restish api.rest.sh/images/gif
+```
 
 ## Response Structure
 
@@ -99,7 +126,7 @@ The above is the same structure used when setting the output format to something
 
 ```bash
 # Output a response as JSON
-$ restish -o json api.example.com/items
+$ restish -o json api.rest.sh/images
 ```
 
 ## Filtering & Projection
@@ -110,16 +137,16 @@ The response format described above is used as the input, so don't forget the `b
 
 ```bash
 # Print out request headers
-$ restish api.example.com/items -f "headers"
+$ restish api.rest.sh/images -f "headers"
 
-# Filter results to just their ID & versions
-$ restish api.example.com/items -f "body[].{id, version}"
+# Filter results to just the names
+$ restish api.rest.sh/images -f "body[].{name}"
 
-# Get all `id` fields recursively from a response that are a URL
-$ restish api.example.com/items -f "..id|[?starts_with(@, 'http')]"
+# Get all `url` fields recursively from a response that are from Github
+$ restish api.rest.sh/example -f "..url|[?starts_with(@, 'https://github')]"
 
-# Pivot data, e.g. group/sort item IDs by tags
-$ restish api.example.com/items -f "pivot(body, &tags, &id)"
+# Pivot data, e.g. group/sort company names by title
+$ restish api.rest.sh/example -f "pivot(body.work, &position, &name)"
 ```
 
 See the JMESPath documentation for more information and examples.
@@ -137,33 +164,39 @@ For example:
 
 ```bash
 # Normal mode
-$ restish api.example.com/items -f "body[0].id"
-"id1"
+$ restish api.rest.sh/images -f body[0].self
+"/images/jpeg"
 
 # Raw mode strips the quotes
-$ restish api.example.com/items -f "body[0].id" -r
-id1
+$ restish api.rest.sh/images -f body[0].self -r
+/images/jpeg
 
 # It also works with arrays
-$ restish api.example.com/items -f "body[].id" -r
-id1
-id2
-id3
-...
+$ restish api.rest.sh/images -f body[].self -r
+/images/jpeg
+/images/webp
+/images/gif
+/images/webp
+/images/heic
 ```
 
 If the filtered output result doesn't match one of the above types, then `-r` is a no-op.
 
 This feature is mainly useful for shell scripting, where you don't want to have to parse the JSON and instead just want to loop through a list of IDs and run further commands.
 
-## Downloading Files & Saving Responses
+### Downloading Files & Saving Responses
 
 Raw mode in combination with redirected output can also be used to download files, and saving a structured data response (e.g. JSON, CBOR, YAML, etc) is simple as well:
 
 ```bash
-# Save a zip file from the server.
-$ restish api.example.com/file.zip -r >file.zip
+# Save a binary file from the server
+$ restish rest.sh/logo.png -r >logo.png
 
-# Save structured data
-$ restish api.example.com/items -f body >items.json
+# Saving unparsed structured data
+$ restish api.rest.sh/types -H Accept:application/json -r >types.json
+
+# Save parsed & formatted structured data as JSON
+$ restish api.rest.sh/types -f body >types.json
 ```
+
+?> Raw mode without filtering will not parse the response, but _will_ decode it if compressed (e.g. with gzip).

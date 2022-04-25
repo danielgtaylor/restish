@@ -37,18 +37,18 @@ The following three would be equivalent ways to configure restish:
 
 ```bash
 # CLI arguments
-$ restish -v -p testing https://api.example.com/items
+$ restish -v -p testing api.rest.sh/images
 ```
 
 ```bash
 # Environment variables
-$ RSH_VERBOSE=1 RSH_PROFILE=testing restish https://api.example.com/items
+$ RSH_VERBOSE=1 RSH_PROFILE=testing restish api.rest.sh/images
 ```
 
 ```bash
 # Configuration file
 $ echo '{"rsh-verbose": true, "rsh-profile": "testing"}' > ~/.restish/config.json
-$ restish https://api.example.com/items
+$ restish api.rest.sh/images
 ```
 
 Should TTY autodetection for colored output cause any problems, you can manually disable colored output via the `NOCOLOR=1` environment variable.
@@ -72,14 +72,15 @@ If the API offers autoconfiguration data (e.g. through the [`x-cli-config` OpenA
 Once an API is configured, you can start using it by using its short name. For example, given an API named `example`:
 
 ```bash
-# If it has an API service description, call an operation
-$ restish example list-items
+# If it has an API service description, call an operation:
+$ restish example list-images
 
-# If there is no API description you can still use persistent headers and auth
-$ restish example/items
+# If there is no API description you can still use persistent headers, auth,
+# and the API short-name in URLs:
+$ restish example/images
 
 # It also works for full URIs, e.g. auth will be applied to:
-$ restish https://api.example.com/items
+$ restish https://api.example.com/images
 ```
 
 Read on the learn more about the available API options.

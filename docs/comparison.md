@@ -75,22 +75,22 @@ This is how you pass parameters to the API.
 cURL Example:
 
 ```bash
-curl -H Header:value 'https://api.example.com/foo?a=1&b=true'
-curl -H Header:value https://api.example.com/foo -G -d a=1 -d b=true
+curl -H Header:value 'https://api.rest.sh/?a=1&b=true'
+curl -H Header:value https://api.rest.sh/ -G -d a=1 -d b=true
 ```
 
 HTTPie Example:
 
 ```bash
-https Header:value 'api.example.com/foo?a=1&b=true'
-https Header:value api.example.com/foo a==1 b==true
+https Header:value 'api.rest.sh/?a=1&b=true'
+https Header:value api.rest.sh/ a==1 b==true
 ```
 
 Restish Example:
 
 ```bash
-restish -H Header:value 'api.example.com/foo?a=1&b=true'
-restish -H Header:value api.example.com/foo -q a=1 -q b=true
+restish -H Header:value 'api.rest.sh/?a=1&b=true'
+restish -H Header:value api.rest.sh/ -q a=1 -q b=true
 ```
 
 ## Input Shorthand
@@ -102,7 +102,7 @@ cURL Example: n/a
 HTTPie Example:
 
 ```bash
-http post pie.dev/post \
+https post api.rest.sh \
   platform[name]=HTTPie \
   platform[about][mission]='Make APIs simple and intuitive' \
   platform[about][homepage]=httpie.io \
@@ -116,7 +116,7 @@ http post pie.dev/post \
 Restish equivalent:
 
 ```bash
-restish post pie.dev/post \
+restish post api.rest.sh \
   platform.name: HTTPie, \
   platform.about.mission: Make APIs simple and intuitive, \
   platform.about.homepage: httpie.io, \
@@ -131,17 +131,17 @@ How easy is it to read the output of a header in a shell environment?
 cURL Exmaple:
 
 ```bash
-curl httpbin.org/get --head 2>/dev/null | grep Content-Length | cut -d':' -d' ' -f2
+curl https://api.rest.sh/ --head 2>/dev/null | grep -i Content-Length | cut -d':' -d' ' -f2
 ```
 
 HTTPie Example:
 
 ```bash
-http --headers httpbin.org/get | grep Content-Length | cut -d':' -d' ' -f2
+https --headers api.rest.sh | grep Content-Length | cut -d':' -d' ' -f2
 ```
 
 Restish Example:
 
 ```bash
-restish httpbin.org/get -f 'headers."Content-Length"' -r
+restish api.rest.sh -f 'headers."Content-Length"' -r
 ```

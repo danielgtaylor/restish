@@ -344,6 +344,7 @@ func GetParsedResponse(req *http.Request) (Response, error) {
 	}
 
 	base := req.URL
+	allLinks := parsed.Links
 	for {
 		links := parsed.Links
 		if len(links["next"]) == 0 || viper.GetBool("rsh-no-paginate") {
@@ -376,12 +377,16 @@ func GetParsedResponse(req *http.Request) (Response, error) {
 
 		if l, ok := parsedNext.Body.([]interface{}); ok {
 			// The last request in the chain will be the one that gets displayed
-			// for the proto/status/headers, plus the merged body.
+			// for the proto/status/headers, plus the merged body/links.
 			parsed.Proto = parsedNext.Proto
 			parsed.Status = parsedNext.Status
 			parsed.Headers = parsedNext.Headers
 			parsed.Links = parsedNext.Links
 			parsed.Body = append(parsed.Body.([]interface{}), l...)
+
+			for name, links := range parsedNext.Links {
+				allLinks[name] = append(allLinks[name], links...)
+			}
 
 			// Update the total computed size to include the size of each individual
 			// request if the content size is available.
@@ -393,6 +398,9 @@ func GetParsedResponse(req *http.Request) (Response, error) {
 			break
 		}
 	}
+
+	// Set the final response links as a combination of all.
+	parsed.Links = allLinks
 
 	if computedSize > 0 {
 		parsed.Headers["Content-Length"] = fmt.Sprintf("%d", computedSize)

@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"fmt"
 	"net/http"
+	"syscall"
+
+	"golang.org/x/term"
 )
 
 // AuthParam describes an auth input parameter for an AuthHandler.
@@ -42,6 +46,18 @@ func (a *BasicAuth) Parameters() []AuthParam {
 
 // OnRequest gets run before the request goes out on the wire.
 func (a *BasicAuth) OnRequest(req *http.Request, key string, params map[string]string) error {
+	_, usernamePresent := params["username"]
+	_, passwordPresent := params["password"]
+
+	if usernamePresent && !passwordPresent {
+		fmt.Print("password: ")
+		inputPassword, err := term.ReadPassword(syscall.Stdin)
+		if err == nil {
+			params["password"] = string(inputPassword)
+		}
+		fmt.Println()
+	}
+
 	req.SetBasicAuth(params["username"], params["password"])
 	return nil
 }

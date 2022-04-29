@@ -85,6 +85,16 @@ $ restish https://api.rest.sh/images
 
 Read on the learn more about the available API options.
 
+### Showing an API configuration
+
+Showing an API is possible via the following command:
+
+```bash
+$ restish api configure $NAME
+```
+
+Output is in JSON by default. It can be displayed as a YAML by using `--rsh-output-format yaml` or `-o yaml`
+
 ### Persistent Headers & Query Params
 
 Follow the prompts to add or edit persistent headers or query params. These are values that get sent with **every request** when using that profile.

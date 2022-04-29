@@ -95,6 +95,14 @@ $ restish api configure $NAME
 
 Output is in JSON by default. It can be displayed as a YAML by using `--rsh-output-format yaml` or `-o yaml`
 
+### Syncing an API configuration
+
+If the API endpoints changed, you can force-fetch the latest API description and update the local cache:
+
+```bash
+$ restish api sync $NAME
+```
+
 ### Persistent Headers & Query Params
 
 Follow the prompts to add or edit persistent headers or query params. These are values that get sent with **every request** when using that profile.

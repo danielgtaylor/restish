@@ -17,12 +17,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/logrusorgru/aurora"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/ssh/terminal"
 	"gopkg.in/yaml.v2"
 )
 
@@ -241,8 +243,17 @@ func Init(name string, version string) {
 		// Highlighting is expensive, so only do this when the user actually asks
 		// for help via this template func and a custom help template.
 		if tty {
-			if l, err := Highlight("markdown", []byte(s)); err == nil {
-				return string(l)
+			w, _, err := terminal.GetSize(0)
+			if err != nil {
+				// Default to standard terminal size
+				w = 80
+			}
+			r, _ := glamour.NewTermRenderer(
+				glamour.WithStyles(MarkdownStyle),
+				glamour.WithWordWrap(w),
+			)
+			if out, err := r.Render(s); err == nil {
+				return out
 			}
 		}
 		return s

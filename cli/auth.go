@@ -51,7 +51,7 @@ func (a *BasicAuth) OnRequest(req *http.Request, key string, params map[string]s
 
 	if usernamePresent && !passwordPresent {
 		fmt.Print("password: ")
-		inputPassword, err := term.ReadPassword(syscall.Stdin)
+		inputPassword, err := term.ReadPassword(int(syscall.Stdin))
 		if err == nil {
 			params["password"] = string(inputPassword)
 		}

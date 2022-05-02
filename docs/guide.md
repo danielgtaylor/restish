@@ -70,7 +70,11 @@ Date: Tue, 19 Apr 2022 21:17:58 GMT
 }
 ```
 
-For a bigger real-world example check out `restish api.rest.sh/example`.
+For a bigger real-world example check out:
+
+```bash
+$ restish api.rest.sh/example
+```
 
 !> Note that the output above is **not** JSON! By default, Restish outputs an HTTP+JSON-like format meant to be more readable. See [output](/output.md) for more info.
 
@@ -180,7 +184,7 @@ Getting started registering an API is easy and uses an interactive prompt to set
 $ restish api configure example https://api.rest.sh
 ```
 
-Once registered, use the short nickname to access the API:
+What exactly does this do? It sets up the API short name `example` to point to `https://api.rest.sh` in a configuration file (usually `~/.restish/apis.json`) and finds [https://api.rest.sh/openapi.json](https://api.rest.sh/openapi.json) in order to discover available API operations, documentation, parameters, schemas, etc. You can see the available operations via:
 
 ```bash
 # If an OpenAPI or other API description document was found, this will show

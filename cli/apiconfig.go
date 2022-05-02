@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 // apis holds the per-API configuration.
@@ -51,6 +54,33 @@ func (a APIConfig) Save() error {
 	return apis.WriteConfig()
 }
 
+// Return colorized string of configuration in JSON or YAML
+func (a APIConfig) GetPrettyDisplay(outFormat string) (string, error) {
+	var prettyConfig []byte
+	var marshalled []byte
+	var err error
+
+	// marshal
+	if outFormat == "yaml" {
+		marshalled, err = yaml.Marshal(a)
+	} else {
+		outFormat = "json"
+		marshalled, err = json.MarshalIndent(&a, "", "  ")
+	}
+
+	if err != nil {
+		return "", errors.New("unable to render configuration")
+	}
+
+	// colorize
+	prettyConfig, err = Highlight(outFormat, marshalled)
+	if err != nil {
+		return "", errors.New("unable to colorize output")
+	}
+
+	return string(prettyConfig), nil
+}
+
 type apiConfigs map[string]*APIConfig
 
 var configs apiConfigs
@@ -91,6 +121,27 @@ func initAPIConfig() {
 		Long:    "Initializes an API with a short interactive prompt session to set up the base URI and auth if needed.",
 		Args:    cobra.MinimumNArgs(1),
 		Run:     askInitAPIDefault,
+	})
+
+	apiCommand.AddCommand(&cobra.Command{
+		Use:     "show short-name",
+		Aliases: []string{"show"},
+		Short:   "Show an API",
+		Long:    "Show an API configuration.",
+		Args:    cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			config := configs[args[0]]
+			if config == nil {
+				panic("API not found")
+			}
+
+			outFormat := viper.Get("rsh-output-format").(string)
+			if prettyString, err := config.GetPrettyDisplay(outFormat); err == nil {
+				fmt.Println(prettyString)
+			} else {
+				panic(err)
+			}
+		},
 	})
 
 	apiCommand.AddCommand(&cobra.Command{

@@ -103,6 +103,8 @@ If the API endpoints changed, you can force-fetch the latest API description and
 $ restish api sync $NAME
 ```
 
+?> This is usually not necessary, as Restish will update the API description every 24 hours. Use this if you want to force an update sooner!
+
 ### Persistent Headers & Query Params
 
 Follow the prompts to add or edit persistent headers or query params. These are values that get sent with **every request** when using that profile.
@@ -113,6 +115,26 @@ Use cases:
 - Additional parameters required by the API
 
 If you **do not** want these values being applied to **all** requests, then consider the `-H` and `-q` options instead.
+
+Example:
+
+```json
+{
+  "my-api": {
+    "base": "https://api.company.com",
+    "profiles": {
+      "default": {
+        "query": {
+          "api_key": "some-secret-here"
+        },
+        "headers": {
+          "X-API-KEY": "some-secret-here"
+        }
+      }
+    }
+  }
+}
+```
 
 ### API Auth
 
@@ -127,7 +149,26 @@ Each has its own set of parameters and setup. Any additional parameters beyond t
 
 #### HTTP Basic Auth
 
-HTTP Basic Auth is sent via an `Authorization` HTTP header and requires a `username` and `password` to be set.
+HTTP Basic Auth is sent via an `Authorization` HTTP header and requires a `username` to be set. Setting `password` is optional, and if unset you will be prompted every time.
+
+```json
+{
+  "my-api": {
+    "base": "https://api.company.com",
+    "profiles": {
+      "default": {
+        "auth": {
+          "name": "http-basic",
+          "params": {
+            "username": "foo",
+            "password": "bar"
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 #### API key
 
@@ -135,11 +176,50 @@ API keys are values given to you by the API operator that identify you as the ca
 
 For example, if your API operator has given you a JWT of `abc123`, you might set a persistent header like `Authorization: bearer abc123` in the default profile.
 
+```json
+{
+  "my-api": {
+    "base": "https://api.company.com",
+    "profiles": {
+      "default": {
+        "headers": {
+          "Authorization": "Bearer ..."
+        }
+      }
+    }
+  }
+}
+```
+
 #### OAuth 2.0 Client Credentials
 
 [OAuth 2.0 Client Credentials](https://oauth.net/2/grant-types/client-credentials/) is typically used for scripts that are not initiated by a specific user. Machine-to-machine tokens is another term for them.
 
 In order to set up a client credentials flow, you will need a client ID, client secret, and a token URL.
+
+For example, to integrate with a third-party service like [Auth0](https://auth0.com/), you might use a configuration like:
+
+```json
+{
+  "my-api": {
+    "base": "https://api.company.com",
+    "profiles": {
+      "default": {
+        "auth": {
+          "name": "oauth-client-credentials",
+          "params": {
+            "audience": "audience-name",
+            "client_id": "abc123",
+            "client_secret": "...",
+            "scopes": "",
+            "token_url": "https://company.auth0.com/oauth/token"
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 #### OAuth 2.0 Authorization Code
 
@@ -175,11 +255,11 @@ For example, to integrate with a third-party service like [Auth0](https://auth0.
 }
 ```
 
-### Loading From Files
+### Loading From Files or URLs
 
 Sometimes an API won't provide a way to fetch its spec document, or a third-party will provide a spec for an existing public API, for example GitHub or Stripe.
 
-In this case you can download the spec files to your machine and link to them in the API configuration. Use the `spec_files` array configuration directive for this in `~/.restish/apis.json`:
+In this case you can download the spec files to your machine and link to them (or provide a URL) in the API configuration. Use the `spec_files` array configuration directive for this in `~/.restish/apis.json`:
 
 ```json
 {

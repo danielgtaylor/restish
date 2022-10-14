@@ -16,6 +16,7 @@ import (
 // Operation represents an API action, e.g. list-things or create-user
 type Operation struct {
 	Name          string   `json:"name"`
+	Group         string   `json:"group,omitempty"`
 	Aliases       []string `json:"aliases,omitempty"`
 	Short         string   `json:"short,omitempty"`
 	Long          string   `json:"long,omitempty"`
@@ -52,6 +53,7 @@ func (o Operation) command() *cobra.Command {
 
 	sub := &cobra.Command{
 		Use:     use,
+		GroupID: o.Group,
 		Aliases: o.Aliases,
 		Short:   o.Short,
 		Long:    long,

@@ -50,38 +50,6 @@ var Stdout io.Writer = os.Stdout
 // otherwise it defaults to `os.Stderr`.
 var Stderr io.Writer = os.Stderr
 
-// Ugh, see https://github.com/spf13/cobra/issues/836
-var usageTemplate = `Usage:{{if .Runnable}}
-  {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
-  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
-
-Aliases:
-  {{.NameAndAliases}}{{end}}{{if .HasExample}}
-
-Examples:
-{{.Example}}{{end}}{{if (not .Parent)}}{{if (gt (len .Commands) 9)}}
-
-Available API Commands:{{range .Commands}}{{if (not (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links") (eq .Name "edit") (eq .Name "completion") (eq .Name "auth-header")))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
-
-Generic Commands:{{range .Commands}}{{if (or (eq .Name "help") (eq .Name "get") (eq .Name "put") (eq .Name "post") (eq .Name "patch") (eq .Name "delete") (eq .Name "head") (eq .Name "options") (eq .Name "cert") (eq .Name "api") (eq .Name "links") (eq .Name "edit") (eq .Name "completion") (eq .Name "auth-header"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{else}}{{if .HasAvailableSubCommands}}
-
-Available Commands:{{range .Commands}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
-  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
-
-Flags:
-{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
-
-Global Flags:
-{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
-
-Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
-  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
-
-Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
-`
-
 var tty bool
 var au aurora.Aurora
 
@@ -278,12 +246,16 @@ func Init(name string, version string) {
 			generic(http.MethodGet, args[0], args[1:])
 		},
 	}
-	Root.SetUsageTemplate(usageTemplate)
+	Root.AddGroup(
+		&cobra.Group{ID: "api", Title: "Available API Commands:"},
+		&cobra.Group{ID: "generic", Title: "Generic Commands:"},
+	)
 	Root.SetHelpTemplate(`{{with (or .Long .Short)}}{{. | trimTrailingWhitespaces | highlight}}
 
 {{end}}{{if or .Runnable .HasSubCommands}}{{.UsageString}}{{end}}`)
 
 	head := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "head uri",
 		Short:             "Head a URI",
 		Long:              "Perform an HTTP HEAD on the given URI",
@@ -296,6 +268,7 @@ func Init(name string, version string) {
 	Root.AddCommand(head)
 
 	options := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "options uri",
 		Short:             "Options a URI",
 		Long:              "Perform an HTTP OPTIONS on the given URI",
@@ -308,6 +281,7 @@ func Init(name string, version string) {
 	Root.AddCommand(options)
 
 	get := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "get uri",
 		Short:             "Get a URI",
 		Long:              "Perform an HTTP GET on the given URI",
@@ -320,6 +294,7 @@ func Init(name string, version string) {
 	Root.AddCommand(get)
 
 	post := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "post uri [body...]",
 		Short:             "Post a URI",
 		Long:              "Perform an HTTP POST on the given URI",
@@ -332,6 +307,7 @@ func Init(name string, version string) {
 	Root.AddCommand(post)
 
 	put := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "put uri [body...]",
 		Short:             "Put a URI",
 		Long:              "Perform an HTTP PUT on the given URI",
@@ -344,6 +320,7 @@ func Init(name string, version string) {
 	Root.AddCommand(put)
 
 	patch := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "patch uri [body...]",
 		Short:             "Patch a URI",
 		Long:              "Perform an HTTP PATCH on the given URI",
@@ -356,6 +333,7 @@ func Init(name string, version string) {
 	Root.AddCommand(patch)
 
 	delete := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "delete uri [body...]",
 		Short:             "Delete a URI",
 		Long:              "Perform an HTTP DELETE on the given URI",
@@ -371,6 +349,7 @@ func Init(name string, version string) {
 	var noPrompt *bool
 	var editFormat *string
 	edit := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "edit uri [-i] [body...]",
 		Short:             "Edit a resource by URI",
 		Long:              "Convenience function which combines a GET, edit, and PUT operation into one command",
@@ -393,9 +372,10 @@ func Init(name string, version string) {
 	Root.AddCommand(edit)
 
 	authHeader := &cobra.Command{
-		Use:   "auth-header uri",
-		Short: "Get an auth header for a given API",
-		Long:  "Get an OAuth2 bearer token in an Authorization header capable of being passed to other commands. Uses a cached token when possible, renewing as needed if it has expired.",
+		GroupID: "generic",
+		Use:     "auth-header uri",
+		Short:   "Get an auth header for a given API",
+		Long:    "Get an OAuth2 bearer token in an Authorization header capable of being passed to other commands. Uses a cached token when possible, renewing as needed if it has expired.",
 		Example: fmt.Sprintf(`  # Using API short name
   $ %s auth-header my-api
 
@@ -437,6 +417,7 @@ func Init(name string, version string) {
 	Root.AddCommand(authHeader)
 
 	cert := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "cert uri",
 		Short:             "Get cert info",
 		Long:              "Get TLS certificate information including expiration date",
@@ -489,6 +470,7 @@ Not after (expires): %s (%s)
 	Root.AddCommand(cert)
 
 	linkCmd := &cobra.Command{
+		GroupID:           "generic",
 		Use:               "links uri [rel1 rel2...]",
 		Short:             "Get link relations from the given URI, with optional filtering",
 		Long:              "Returns a list of resolved references to the link relations after making an HTTP GET request to the given URI. Additional arguments filter down the set of returned relationship names.",

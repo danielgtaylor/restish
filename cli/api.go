@@ -65,6 +65,11 @@ func setupRootFromAPI(root *cobra.Command, api *API) {
 	}
 
 	for _, op := range api.Operations {
+		if op.Group != "" && !root.ContainsGroup(op.Group) {
+			groupName := fmt.Sprintf("%s Commands:", strings.Title(op.Group))
+			group := &cobra.Group{ID: op.Group, Title: groupName}
+			root.AddGroup(group)
+		}
 		root.AddCommand(op.command())
 	}
 }

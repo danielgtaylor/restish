@@ -333,8 +333,16 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		tmpl = uriTemplate.String()
 	}
 
+	// Try to add a group: if there's more than 1 tag, we'll just pick the
+	// first one as a best guess
+	group := ""
+	if len(op.Tags) > 0 {
+		group = op.Tags[0]
+	}
+
 	return cli.Operation{
 		Name:          name,
+		Group:         group,
 		Aliases:       aliases,
 		Short:         op.Summary,
 		Long:          desc,

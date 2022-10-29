@@ -26,9 +26,20 @@ func fixAddress(addr string) string {
 		// the base URL for that API.
 		parts := strings.Split(addr, "/")
 		c := configs[parts[0]]
-		if c != nil && c.Base != "" {
-			parts[0] = c.Base
-			return strings.Join(parts, "/")
+		if c != nil {
+			p := c.Profiles[viper.GetString("rsh-profile")]
+			if p == nil {
+				if viper.GetString("rsh-profile") != "default" {
+					panic("Invalid profile " + viper.GetString("rsh-profile"))
+				}
+			}
+			if p != nil && p.Base != "" {
+				parts[0] = p.Base
+				return strings.Join(parts, "/")
+			} else if c.Base != "" {
+				parts[0] = c.Base
+				return strings.Join(parts, "/")
+			}
 		}
 
 		// Local traffic defaults to HTTP, everything else uses TLS.
@@ -82,7 +93,6 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		if viper.GetString("rsh-profile") != "default" {
 			panic("Invalid profile " + viper.GetString("rsh-profile"))
 		}
-
 		profile = &APIProfile{}
 	}
 

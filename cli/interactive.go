@@ -241,6 +241,11 @@ func askEditProfile(a asker, name string, profile *APIProfile) {
 			options = append(options, "Delete query param "+k)
 		}
 
+		options = append(options, "Add custom base URL")
+		if profile.Base != "" {
+			options = append(options, "Remove custom base URL")
+		}
+
 		options = append(options, "Setup auth", "Finished with profile")
 
 		choice := a.askSelect("Select option for profile `"+name+"`", options, nil, "")
@@ -275,6 +280,11 @@ func askEditProfile(a asker, name string, profile *APIProfile) {
 				profile.Auth = &APIAuth{}
 			}
 			askAuth(a, profile.Auth)
+		case choice == "Add custom base URL":
+			url := a.askInput("Base URL", "", true, "")
+			profile.Base = url
+		case choice == "Remove custom base URL":
+			profile.Base = ""
 		case choice == "Finished with profile":
 			return
 		}

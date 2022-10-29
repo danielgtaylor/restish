@@ -116,7 +116,17 @@ func completeCurrentConfig(cmd *cobra.Command, args []string, toComplete string,
 		for _, cmd := range Root.Commands() {
 			if cmd.Use == currentConfig.name {
 				// This is the matching command. Load the URL and check each operation.
-				api, _ := Load(currentConfig.Base, cmd)
+				currentBase := currentConfig.Base
+				currentProfile := currentConfig.Profiles[viper.GetString("rsh-profile")]
+				if currentProfile == nil {
+					if viper.GetString("rsh-profile") != "default" {
+						panic("Invalid profile " + viper.GetString("rsh-profile"))
+					}
+				}
+				if currentProfile != nil && currentProfile.Base != "" {
+					currentBase = currentProfile.Base
+				}
+				api, _ := Load(currentBase, cmd)
 				for _, op := range api.Operations {
 					if op.Method != method {
 						// We only care about operations which match the currently selected
@@ -679,6 +689,7 @@ func Run() {
 	if headers, _ := GlobalFlags.GetStringSlice("rsh-header"); len(headers) > 0 {
 		viper.Set("rsh-header", headers)
 	}
+	profile, _ := GlobalFlags.GetString("rsh-profile")
 
 	// Now that global flags are parsed we can enable verbose mode if requested.
 	if viper.GetBool("rsh-verbose") {
@@ -704,7 +715,17 @@ func Run() {
 				currentConfig = cfg
 				for _, cmd := range Root.Commands() {
 					if cmd.Use == apiName {
-						if _, err := Load(cfg.Base, cmd); err != nil {
+						currentBase := cfg.Base
+						currentProfile := cfg.Profiles[profile]
+						if currentProfile == nil {
+							if profile != "default" {
+								panic("Invalid profile " + profile)
+							}
+						}
+						if currentProfile != nil && currentProfile.Base != "" {
+							currentBase = currentProfile.Base
+						}
+						if _, err := Load(currentBase, cmd); err != nil {
 							panic(err)
 						}
 						loaded = true

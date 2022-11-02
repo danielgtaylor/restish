@@ -13,7 +13,7 @@ import (
 
 	"github.com/danielgtaylor/casing"
 	"github.com/danielgtaylor/restish/cli"
-	"github.com/danielgtaylor/shorthand"
+	"github.com/danielgtaylor/shorthand/v2"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
@@ -244,7 +244,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 					// Not a string, so it's structured data. Let's marshal it to the
 					// shorthand syntax if we can.
 					if m, ok := ex.(map[string]interface{}); ok {
-						exs := shorthand.Get(m)
+						exs := shorthand.MarshalCLI(m)
 
 						if len(exs) < 150 {
 							examples = append(examples, exs)

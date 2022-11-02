@@ -131,27 +131,20 @@ $ restish -o json api.rest.sh/images
 
 ## Filtering & Projection
 
-Restish includes JMESPath Plus, which includes all of [JMESPath](https://jmespath.org/) plus some [additional enhancements](https://github.com/danielgtaylor/go-jmespath-plus#readme). If you've ever used the [AWS CLI](https://aws.amazon.com/cli/), then you've likely used JMESPath. It's a language for filtering and projecting the response value that's useful for massaging the response data for scripts.
+Restish includes basic response filtering functionality through the [Shorthand Query Syntax](shorthand.md#Querying). It's a language for filtering and projecting the response value that's useful for paring down and massaging the response data for scripts.
 
 The response format described above is used as the input, so don't forget the `body` prefix when accessing body members!
 
 ```bash
 # Print out request headers
-$ restish api.rest.sh/images -f "headers"
+$ restish api.rest.sh/images -f headers
 
 # Filter results to just the names
-$ restish api.rest.sh/images -f "body[].{name}"
+$ restish api.rest.sh/images -f 'body[].{name}'
 
 # Get all `url` fields recursively from a response that are from Github
-$ restish api.rest.sh/example -f "..url|[?starts_with(@, 'https://github')]"
-
-# Pivot data, e.g. group/sort company names by title
-$ restish api.rest.sh/example -f "pivot(body.work, &position, &name)"
+$ restish api.rest.sh/example -f '..url|[@ contains github]'
 ```
-
-See the JMESPath documentation for more information and examples.
-
-!> Warning: structured data from binary formats like CBOR may be converted to its JSON equivalent before applying JMESPath filters. For example, a byte slice and a date would both be treated as strings.
 
 ## Raw Mode
 
@@ -164,15 +157,15 @@ For example:
 
 ```bash
 # Normal mode
-$ restish api.rest.sh/images -f body[0].self
+$ restish api.rest.sh/images -f 'body[0].self'
 "/images/jpeg"
 
 # Raw mode strips the quotes
-$ restish api.rest.sh/images -f body[0].self -r
+$ restish api.rest.sh/images -f 'body[0].self' -r
 /images/jpeg
 
 # It also works with arrays
-$ restish api.rest.sh/images -f body[].self -r
+$ restish api.rest.sh/images -f 'body[].self' -r
 /images/jpeg
 /images/webp
 /images/gif

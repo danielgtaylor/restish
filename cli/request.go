@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/danielgtaylor/shorthand/v2"
 	"github.com/spf13/viper"
 )
 
@@ -247,26 +248,34 @@ type Response struct {
 }
 
 // Map returns a map representing this response matching the encoded JSON.
-func (r Response) Map() map[string]interface{} {
-	links := map[string][]map[string]interface{}{}
+func (r Response) Map() map[string]any {
+	links := map[string]any{}
 
 	for rel, list := range r.Links {
-		if _, ok := links[rel]; !ok {
-			links[rel] = []map[string]interface{}{}
+		lrel := links[rel]
+		if lrel == nil {
+			lrel = []any{}
 		}
 
 		for _, l := range list {
-			links[rel] = append(links[rel], map[string]interface{}{
+			lrel = append(lrel.([]any), map[string]any{
 				"rel": l.Rel,
 				"uri": l.URI,
 			})
 		}
+
+		links[rel] = lrel
 	}
 
-	return map[string]interface{}{
+	headers := map[string]any{}
+	for k, v := range r.Headers {
+		headers[k] = v
+	}
+
+	return map[string]any{
 		"proto":   r.Proto,
 		"status":  r.Status,
-		"headers": r.Headers,
+		"headers": headers,
 		"links":   links,
 		"body":    r.Body,
 	}
@@ -419,6 +428,9 @@ func MakeRequestAndFormat(req *http.Request) {
 	}
 
 	if err := Formatter.Format(parsed); err != nil {
+		if e, ok := err.(shorthand.Error); ok {
+			panic(e.Pretty())
+		}
 		panic(err)
 	}
 }

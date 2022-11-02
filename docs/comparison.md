@@ -121,7 +121,7 @@ restish post api.rest.sh \
   platform.about.mission: Make APIs simple and intuitive, \
   platform.about.homepage: httpie.io, \
   platform.about.stars: 54000, \
-  platform.apps: Terminal, Desktop, Web, Mobile
+  platform.apps: [Terminal, Desktop, Web, Mobile]
 ```
 
 ## Getting Header Values
@@ -143,5 +143,5 @@ https --headers api.rest.sh | grep Content-Length | cut -d':' -d' ' -f2
 Restish Example:
 
 ```bash
-restish api.rest.sh -f 'headers."Content-Length"' -r
+restish api.rest.sh -f 'headers.Content-Length' -r
 ```

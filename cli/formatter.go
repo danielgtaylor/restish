@@ -19,7 +19,7 @@ import (
 	"github.com/alecthomas/chroma/quick"
 	"github.com/alecthomas/chroma/styles"
 	"github.com/charmbracelet/glamour/ansi"
-	jmespath "github.com/danielgtaylor/go-jmespath-plus"
+	"github.com/danielgtaylor/shorthand/v2"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
@@ -421,10 +421,12 @@ func (f *DefaultFormatter) Format(resp Response) error {
 	}
 
 	if filter != "" {
-		// JMESPath can't support maps with arbitrary key types, so we convert
-		// to map[string]interface{} before filtering.
-		data = makeJSONSafe(data, true)
-		result, err := jmespath.Search(filter, data)
+		opts := shorthand.GetOptions{}
+		if enableVerbose {
+			opts.DebugLogger = LogDebug
+		}
+
+		result, _, err := shorthand.GetPath(filter, data, opts)
 
 		if err != nil {
 			return err

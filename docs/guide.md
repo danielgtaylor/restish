@@ -9,11 +9,8 @@ You can install in one of three ways: Homebrew tap, GitHub release, or via `go g
 If you have [Homebrew](https://brew.sh/) then install via the official tap:
 
 ```bash
-# Add the tap
-$ brew tap danielgtaylor/restish
-
-# Install the executable
-$ brew install restish
+# Install directly through the Homebrew tap
+$ brew install danielgtaylor/restish/restish
 ```
 
 If you don't have Homebrew, you can grab a [release](https://github.com/danielgtaylor/restish/releases) for your platform and manually copy the executable to the right location (e.g. `/usr/local/bin/restish`), otherwise if you have Go installed:
@@ -30,7 +27,7 @@ You can confirm the installation worked by trying to run Restish:
 $ restish --version
 ```
 
-?> If using `zsh` as your shell (the default on macOS), you should set `alias restish="noglob restish"` in your `~/.zshrc` to prevent it from trying to handle `?` in URLs and `[]` in shorthand input!
+?> If using `zsh` as your shell (the default on macOS), you should set `alias restish="noglob restish"` in your `~/.zshrc` to prevent it from trying to handle `?` in URLs and `[]` in shorthand input. Alternatively you can use quotes around your inputs.
 
 ## Basic Usage
 
@@ -97,7 +94,7 @@ $ restish post api.rest.sh <input.json
 $ restish post api.rest.sh name: Kari, tags[]: admin
 ```
 
-Read more about [CLI Shorthand](/shorthand.md). Headers and query params can also be set via environment variables, for example:
+Read more about [CLI Shorthand](/shorthand.md). Headers and query params can also be set via environment variables by prefixing with `RSH_`, for example:
 
 ```bash
 # Set via env vars
@@ -121,11 +118,11 @@ $ restish edit -i api.rest.sh/types
 
 To use interactive mode you must have the `VISUAL` or `EDITOR` environment variable set to an editor, for example `export VISUAL="code --wait"` for VSCode.
 
-Editing resources will make use of [conditional requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests) if any relevant headers are found on the `GET` response.
+Editing resources will make use of [conditional requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests) if any relevant headers are found on the `GET` response. For example, if an `ETag` header is present in the `GET` response then an `If-Match` header will be send on the `PUT` to prevent performing the write operation if the resource was modified by someone else while you are editing.
 
 ### Output Filtering
 
-By default, you will see the entire response as output. Restish includes built-in filtering using [JMESPath Plus](https://github.com/danielgtaylor/go-jmespath-plus#readme) which enables you to filter & project the response data. Using a filter automatically enables JSON output mode. Here are some basic examples:
+By default, you will see the entire response as output. Restish includes built-in filtering using [Shorthand queries]() which enable you to filter & project the response data. Using a filter automatically enables JSON output mode and only prints the result of the filter expression. Here are some basic examples:
 
 ```bash
 # Get social media profiles from a JSON Resume:
@@ -146,7 +143,7 @@ $ restish api.rest.sh/example -f body.basics.profiles
 ]
 
 # Advanced filtering example:
-$ restish api.rest.sh/example -f 'body.volunteer[?organization==`"Restish"`]|[0].{name, startDate, summary}'
+$ restish api.rest.sh/example -f 'body.volunteer[organization.lower == restish]|[0].{organization, startDate, summary}'
 {
   "organization": "Restish",
   "startDate": "2018-09-29T00:00:00Z",
@@ -180,6 +177,9 @@ Each profile can have a number of preset headers or query params, a type of auth
 Getting started registering an API is easy and uses an interactive prompt to set up profiles, auth, etc. At a minimum you must provide a short nickname and a base URL:
 
 ```bash
+# How to register a new API
+$ restish api configure $SHORT_NAME $URL
+
 # Register a new API called `example`
 $ restish api configure example https://api.rest.sh
 ```
@@ -269,6 +269,8 @@ $ restish completion bash --help
 $ restish completion zsh --help
 $ restish completion powershell --help
 ```
+
+If using Homebrew, you may need one additional step to [include the Homebrew completions path](https://docs.brew.sh/Shell-Completion) for your shell.
 
 Once set up, you can use the `tab` key to discover API commands. For example:
 

@@ -146,7 +146,8 @@
       }
 
       .token.variable,
-      .token.binary {
+      .token.binary,
+      .token.function {
         color: #ffd7d7;
       }
 
@@ -261,14 +262,16 @@
           },
         },
         string: {
-          pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))|('(?:\\.|[^\\'\r\n])*'(?!\s*:))/,
+          // pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))|('(?:\\.|[^\\'\r\n])*'(?!\s*:))/,
+          pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))/,
           greedy: true,
         },
         keypress: /<\S+>/,
-        property: /[A-Za-z0-9.\[\]-]+(?=:[a-z0-9. _-])/,
+        property: /[A-Za-z0-9.-]+(?=[:[{][a-z0-9.^ _-\}[\]])/,
         number: /\b[0-9]+(\.[0-9]+)?/,
         boolean: /\b(?:true|false)\b/i,
         null: /\bnull\b/i,
+        function: /contains|startsWith/,
         keyword: /restish|<|[|]|\b(for|do|done)(?!\/)\b/,
       };
     </script>

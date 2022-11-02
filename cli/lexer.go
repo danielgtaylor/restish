@@ -130,11 +130,13 @@ var SchemaLexer = lexers.Register(chroma.MustNewLazyLexer(
 					Type:    chroma.ByGroups(chroma.Text, chroma.Keyword),
 				},
 				{
-					Pattern: `([^:]+)(:)([^ )]+)`,
+					Pattern: `([^: )]+)(:)([^ )]+)`,
 					Type:    chroma.ByGroups(chroma.String, chroma.Text, chroma.Text),
 				},
 				{
-					Pattern: `[^\n]*`, Type: chroma.Text, Mutator: chroma.Pop(1),
+					Pattern: `[^\n]*`,
+					Type:    chroma.Text,
+					Mutator: chroma.Pop(1),
 				},
 			},
 			"row": {

@@ -109,8 +109,9 @@ func initAPIConfig() {
 
 	// Register api init sub-command to register the API.
 	apiCommand = &cobra.Command{
-		Use:   "api",
-		Short: "API management commands",
+		GroupID: "generic",
+		Use:     "api",
+		Short:   "API management commands",
 	}
 	Root.AddCommand(apiCommand)
 
@@ -176,8 +177,9 @@ func initAPIConfig() {
 
 			n := apiName
 			cmd := &cobra.Command{
-				Use:   n,
-				Short: config.Base,
+				GroupID: "api",
+				Use:     n,
+				Short:   config.Base,
 				Run: func(cmd *cobra.Command, args []string) {
 					cmd.Help()
 				},

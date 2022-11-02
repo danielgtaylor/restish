@@ -4,7 +4,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -58,7 +57,7 @@ func DecodeResponse(resp *http.Response) error {
 		return err
 	}
 
-	resp.Body = ioutil.NopCloser(reader)
+	resp.Body = io.NopCloser(reader)
 
 	return nil
 }

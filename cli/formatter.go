@@ -22,7 +22,7 @@ import (
 	jmespath "github.com/danielgtaylor/go-jmespath-plus"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/viper"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 
 	"github.com/alexeyco/simpletable"
 	"github.com/eliukblau/pixterm/pkg/ansimage"
@@ -490,6 +490,8 @@ func (f *DefaultFormatter) Format(resp Response) error {
 					// The above are scalars used by decoders
 				default:
 					scalars = false
+				}
+				if !scalars {
 					break
 				}
 			}
@@ -531,7 +533,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 			if resp.Body != nil && (ct == "image/png" || ct == "image/jpeg" || ct == "image/webp" || ct == "image/gif") {
 				// This is likely an image. Let's display it if we can! Get the window
 				// size, read and scale the image, and display it using unicode.
-				w, h, err := terminal.GetSize(0)
+				w, h, err := term.GetSize(0)
 				if err != nil {
 					// Default to standard terminal size
 					w, h = 80, 24
@@ -656,7 +658,7 @@ func setTable(data []interface{}) (*[]byte, error) {
 			// Discover headers for repeating objects
 			// Iterate first instance of one of the repeating objects
 			if defineHeader {
-				for k, _ := range mapData {
+				for k := range mapData {
 					headerCells = append(headerCells, &simpletable.Cell{Align: simpletable.AlignCenter, Text: k})
 				}
 			}

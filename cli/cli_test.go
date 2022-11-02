@@ -123,16 +123,16 @@ func TestAuthHeader(t *testing.T) {
 	}
 
 	captured := runNoReset("auth-header bad-api")
-	assert.Contains(t, captured, "No matched API")
+	assert.Contains(t, captured, "no matched API")
 
 	captured = runNoReset("auth-header test-auth-header")
 	assert.Equal(t, "abc123\n", captured)
 
 	captured = runNoReset("auth-header test-auth-header -p bad")
-	assert.Contains(t, captured, "Invalid profile bad")
+	assert.Contains(t, captured, "invalid profile bad")
 
 	captured = runNoReset("auth-header test-auth-header -p no-auth")
-	assert.Contains(t, captured, "No auth set up")
+	assert.Contains(t, captured, "no auth set up")
 }
 
 func TestLinks(t *testing.T) {

@@ -28,7 +28,7 @@ func marshalReadable(indent string, v interface{}) ([]byte, error) {
 
 		return marshalReadable(indent, rv.Elem().Interface())
 	case reflect.Bool:
-		if v.(bool) == true {
+		if v.(bool) {
 			return []byte("true"), nil
 		}
 

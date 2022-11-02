@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,7 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 	"gopkg.in/yaml.v2"
 )
 
@@ -211,7 +210,7 @@ func Init(name string, version string) {
 		// Highlighting is expensive, so only do this when the user actually asks
 		// for help via this template func and a custom help template.
 		if tty {
-			w, _, err := terminal.GetSize(0)
+			w, _, err := term.GetSize(0)
 			if err != nil {
 				// Default to standard terminal size
 				w = 80
@@ -391,16 +390,16 @@ func Init(name string, version string) {
 			name, config := findAPI(addr)
 
 			if config == nil {
-				return fmt.Errorf("No matched API for URL %s", args[0])
+				return fmt.Errorf("no matched API for URL %s", args[0])
 			}
 
 			profile := config.Profiles[viper.GetString("rsh-profile")]
 			if profile == nil {
-				return fmt.Errorf("Invalid profile %s", viper.GetString("rsh-profile"))
+				return fmt.Errorf("invalid profile %s", viper.GetString("rsh-profile"))
 			}
 
 			if profile.Auth == nil || profile.Auth.Name == "" {
-				return fmt.Errorf("No auth set up for API")
+				return fmt.Errorf("no auth set up for API")
 			}
 
 			if auth, ok := authHandlers[profile.Auth.Name]; ok {
@@ -440,12 +439,12 @@ func Init(name string, version string) {
 			}
 
 			chains := conn.ConnectionState().VerifiedChains
-			if chains != nil && len(chains) > 0 && len(chains[0]) > 0 {
+			if len(chains) > 0 && len(chains[0]) > 0 {
 				// The first cert in the first chain should represent the domain.
 				c := chains[0][0]
 
 				expiresRelative := ""
-				days := c.NotAfter.Sub(time.Now()).Hours() / 24
+				days := time.Until(c.NotAfter).Hours() / 24
 				if days > 0 {
 					expiresRelative = fmt.Sprintf("in %.1f days", days)
 				} else {
@@ -488,9 +487,7 @@ Not after (expires): %s (%s)
 			if len(args) > 1 {
 				tmp := []*Link{}
 				for _, rel := range args[1:] {
-					for _, link := range resp.Links[rel] {
-						tmp = append(tmp, link)
-					}
+					tmp = append(tmp, resp.Links[rel]...)
 				}
 				output = tmp
 			}
@@ -603,7 +600,7 @@ func initCache(appName string) {
 	// cli.Cache.SaveConfig() to write new values.
 	filename := path.Join(viper.GetString("config-directory"), "cache.json")
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		if err := ioutil.WriteFile(filename, []byte("{}"), 0600); err != nil {
+		if err := os.WriteFile(filename, []byte("{}"), 0600); err != nil {
 			panic(err)
 		}
 	}

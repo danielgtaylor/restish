@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -29,7 +28,7 @@ func GetBody(mediaType string, args []string) (string, error) {
 			// There are no args but there is data on stdin. Just read it and
 			// pass it through as it may not be structured data we can parse or
 			// could be binary (e.g. file uploads).
-			b, err := ioutil.ReadAll(Stdin)
+			b, err := io.ReadAll(Stdin)
 			if err != nil {
 				return "", err
 			}
@@ -56,7 +55,7 @@ func GetBody(mediaType string, args []string) (string, error) {
 			}
 			body = string(marshalled)
 		} else {
-			return "", fmt.Errorf("Not sure how to marshal %s", mediaType)
+			return "", fmt.Errorf("not sure how to marshal %s", mediaType)
 		}
 	}
 

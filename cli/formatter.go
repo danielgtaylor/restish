@@ -490,6 +490,8 @@ func (f *DefaultFormatter) Format(resp Response) error {
 					// The above are scalars used by decoders
 				default:
 					scalars = false
+				}
+				if !scalars {
 					break
 				}
 			}

@@ -14,6 +14,8 @@ import (
 	"github.com/fxamacker/cbor/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // API represents an abstracted API description used to build CLI commands
@@ -66,7 +68,7 @@ func setupRootFromAPI(root *cobra.Command, api *API) {
 
 	for _, op := range api.Operations {
 		if op.Group != "" && !root.ContainsGroup(op.Group) {
-			groupName := fmt.Sprintf("%s Commands:", strings.Title(op.Group))
+			groupName := fmt.Sprintf("%s Commands:", cases.Title(language.Und, cases.NoLower).String(op.Group))
 			group := &cobra.Group{ID: op.Group, Title: groupName}
 			root.AddGroup(group)
 		}

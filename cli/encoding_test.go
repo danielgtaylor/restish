@@ -3,7 +3,7 @@ package cli
 import (
 	"bytes"
 	"compress/gzip"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -44,13 +44,13 @@ func TestEncodings(parent *testing.T) {
 				Header: http.Header{
 					"Content-Encoding": []string{tt.header},
 				},
-				Body: ioutil.NopCloser(bytes.NewReader(tt.data)),
+				Body: io.NopCloser(bytes.NewReader(tt.data)),
 			}
 
 			err := DecodeResponse(resp)
 			assert.NoError(t, err)
 
-			data, err := ioutil.ReadAll(resp.Body)
+			data, err := io.ReadAll(resp.Body)
 			assert.NoError(t, err)
 			assert.Equal(t, "hello world", string(data))
 		})

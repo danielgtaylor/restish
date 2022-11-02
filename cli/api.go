@@ -3,7 +3,7 @@ package cli
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -97,7 +97,7 @@ func cacheAPI(name string, api *API) {
 		LogError("Could not marshal API cache %s", err)
 	}
 	filename := path.Join(viper.GetString("config-directory"), name+".cbor")
-	if err := ioutil.WriteFile(filename, b, 0o600); err != nil {
+	if err := os.WriteFile(filename, b, 0o600); err != nil {
 		LogError("Could not write API cache %s", err)
 	}
 }
@@ -107,7 +107,7 @@ func cacheAPI(name string, api *API) {
 func Load(entrypoint string, root *cobra.Command) (API, error) {
 	start := time.Now()
 	defer func() {
-		LogDebug("API loading took %s", time.Now().Sub(start))
+		LogDebug("API loading took %s", time.Since(start))
 	}()
 	uris := []string{}
 
@@ -129,7 +129,7 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 	if !viper.GetBool("rsh-no-cache") && !expires.IsZero() && expires.After(time.Now()) {
 		var cached API
 		filename := path.Join(viper.GetString("config-directory"), name+".cbor")
-		if data, err := ioutil.ReadFile(filename); err == nil {
+		if data, err := os.ReadFile(filename); err == nil {
 			if err := cbor.Unmarshal(data, &cached); err == nil {
 				setupRootFromAPI(root, &cached)
 				return cached, nil
@@ -144,9 +144,9 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 			if err != nil {
 				return []byte{}, err
 			}
-			return ioutil.ReadAll(resp.Body)
+			return io.ReadAll(resp.Body)
 		} else {
-			return ioutil.ReadFile(os.ExpandEnv(uri))
+			return os.ReadFile(os.ExpandEnv(uri))
 		}
 	}
 	if name != "" && len(config.SpecFiles) > 0 {
@@ -164,11 +164,11 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 
 			for _, l := range loaders {
 				// Reset the body
-				resp.Body = ioutil.NopCloser(bytes.NewReader(body))
+				resp.Body = io.NopCloser(bytes.NewReader(body))
 
 				if l.Detect(resp) {
 					found = true
-					resp.Body = ioutil.NopCloser(bytes.NewReader(body))
+					resp.Body = io.NopCloser(bytes.NewReader(body))
 					tmp, err := load(root, *uri, *uri, resp, name, l)
 					if err != nil {
 						return API{}, err
@@ -248,17 +248,17 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 			return API{}, err
 		}
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return API{}, err
 		}
 
 		for _, l := range loaders {
 			// Reset the body
-			resp.Body = ioutil.NopCloser(bytes.NewReader(body))
+			resp.Body = io.NopCloser(bytes.NewReader(body))
 
 			if l.Detect(resp) {
-				resp.Body = ioutil.NopCloser(bytes.NewReader(body))
+				resp.Body = io.NopCloser(bytes.NewReader(body))
 
 				api, err := load(root, *uri, *resolved, resp, name, l)
 				if err == nil {

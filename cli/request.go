@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -164,13 +164,13 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 			t.TLSClientConfig.Certificates = append(t.TLSClientConfig.Certificates, cert)
 		}
 		if config.TLS.CACert != "" {
-			caCert, err := ioutil.ReadFile(config.TLS.CACert)
+			caCert, err := os.ReadFile(config.TLS.CACert)
 			if err != nil {
 				return nil, err
 			}
 			systemCerts := BestEffortSystemCertPool()
 			if !systemCerts.AppendCertsFromPEM(caCert) {
-				return nil, fmt.Errorf("Failed to append CACert %s RootCA list", config.TLS.CACert)
+				return nil, fmt.Errorf("failed to append CACert %s RootCA list", config.TLS.CACert)
 			}
 			t.TLSClientConfig.RootCAs = systemCerts
 		}
@@ -283,7 +283,7 @@ func ParseResponse(resp *http.Response) (Response, error) {
 		return Response{}, err
 	}
 
-	data, _ := ioutil.ReadAll(resp.Body)
+	data, _ := io.ReadAll(resp.Body)
 
 	if len(data) > 0 {
 		if viper.GetBool("rsh-raw") && viper.GetString("rsh-filter") == "" {

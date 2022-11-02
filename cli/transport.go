@@ -2,7 +2,7 @@ package cli
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path"
 	"strings"
@@ -75,7 +75,7 @@ func (m minCachedTransport) RoundTrip(req *http.Request) (*http.Response, error)
 	// the 204 response type and do a dummy read that immediately results in
 	// an EOF.
 	if resp.StatusCode == http.StatusNoContent {
-		ioutil.ReadAll(resp.Body)
+		io.ReadAll(resp.Body)
 	}
 
 	return resp, nil

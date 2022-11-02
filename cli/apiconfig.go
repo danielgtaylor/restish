@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -85,7 +84,6 @@ type apiConfigs map[string]*APIConfig
 
 var configs apiConfigs
 var apiCommand *cobra.Command
-var profileCommand *cobra.Command
 
 func initAPIConfig() {
 	apis = viper.New()
@@ -97,7 +95,7 @@ func initAPIConfig() {
 	// configs.SaveConfig() to write new values.
 	filename := path.Join(viper.GetString("config-directory"), "apis.json")
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		if err := ioutil.WriteFile(filename, []byte("{}"), 0600); err != nil {
+		if err := os.WriteFile(filename, []byte("{}"), 0600); err != nil {
 			panic(err)
 		}
 	}
@@ -169,7 +167,7 @@ func initAPIConfig() {
 	for apiName, config := range configs {
 		func(config *APIConfig) {
 			if seen[config.Base] {
-				panic(fmt.Errorf("Multiple APIs configured with the same base URL: %s", config.Base))
+				panic(fmt.Errorf("multiple APIs configured with the same base URL: %s", config.Base))
 			}
 			seen[config.Base] = true
 			config.name = apiName

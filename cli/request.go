@@ -124,50 +124,6 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 	// Save modified query string arguments.
 	req.URL.RawQuery = query.Encode()
 
-	// Add auth if needed.
-	if profile.Auth != nil && profile.Auth.Name != "" {
-		auth, ok := authHandlers[profile.Auth.Name]
-		if ok {
-			err := auth.OnRequest(req, name+":"+viper.GetString("rsh-profile"), profile.Auth.Params)
-			if err != nil {
-				panic(err)
-			}
-		}
-	}
-
-	if req.Header.Get("user-agent") == "" {
-		req.Header.Set("user-agent", "restish-"+Root.Version)
-	}
-
-	if req.Header.Get("accept") == "" {
-		req.Header.Set("accept", buildAcceptHeader())
-	}
-
-	if req.Header.Get("accept-encoding") == "" {
-		req.Header.Set("accept-encoding", buildAcceptEncodingHeader())
-	}
-
-	if req.Header.Get("content-type") == "" && req.Body != nil {
-		// We have a body but no content-type; default to JSON.
-		req.Header.Set("content-type", "application/json; charset=utf-8")
-	}
-
-	client := CachedTransport().Client()
-	if viper.GetBool("rsh-no-cache") {
-		client = &http.Client{Transport: InvalidateCachedTransport()}
-	}
-
-	log := true
-	for _, option := range options {
-		if option.client != nil {
-			client = option.client
-		}
-
-		if option.disableLog {
-			log = false
-		}
-	}
-
 	// The assumption is that all Transport implementations eventually use the
 	// default HTTP transport.
 	// We can therefore inject the TLS config once here, along with all the other
@@ -217,6 +173,50 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 				return nil, fmt.Errorf("Failed to append CACert %s RootCA list", config.TLS.CACert)
 			}
 			t.TLSClientConfig.RootCAs = systemCerts
+		}
+	}
+
+	// Add auth if needed.
+	if profile.Auth != nil && profile.Auth.Name != "" {
+		auth, ok := authHandlers[profile.Auth.Name]
+		if ok {
+			err := auth.OnRequest(req, name+":"+viper.GetString("rsh-profile"), profile.Auth.Params)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	if req.Header.Get("user-agent") == "" {
+		req.Header.Set("user-agent", "restish-"+Root.Version)
+	}
+
+	if req.Header.Get("accept") == "" {
+		req.Header.Set("accept", buildAcceptHeader())
+	}
+
+	if req.Header.Get("accept-encoding") == "" {
+		req.Header.Set("accept-encoding", buildAcceptEncodingHeader())
+	}
+
+	if req.Header.Get("content-type") == "" && req.Body != nil {
+		// We have a body but no content-type; default to JSON.
+		req.Header.Set("content-type", "application/json; charset=utf-8")
+	}
+
+	client := CachedTransport().Client()
+	if viper.GetBool("rsh-no-cache") {
+		client = &http.Client{Transport: InvalidateCachedTransport()}
+	}
+
+	log := true
+	for _, option := range options {
+		if option.client != nil {
+			client = option.client
+		}
+
+		if option.disableLog {
+			log = false
 		}
 	}
 

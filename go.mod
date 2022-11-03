@@ -8,7 +8,7 @@ require (
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/amzn/ion-go v1.1.3
 	github.com/andybalholm/brotli v1.0.4
-	github.com/charmbracelet/glamour v0.5.0
+	github.com/charmbracelet/glamour v0.5.1-0.20221024082230-3c5ceaed91cc
 	github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3
 	github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba
 	github.com/danielgtaylor/shorthand v1.1.0

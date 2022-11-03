@@ -340,6 +340,11 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		group = op.Tags[0]
 	}
 
+	dep := ""
+	if op.Deprecated {
+		dep = "do not use"
+	}
+
 	return cli.Operation{
 		Name:          name,
 		Group:         group,
@@ -354,6 +359,7 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		BodyMediaType: mediaType,
 		Examples:      examples,
 		Hidden:        hidden,
+		Deprecated:    dep,
 	}
 }
 

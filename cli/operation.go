@@ -28,6 +28,7 @@ type Operation struct {
 	BodyMediaType string   `json:"bodyMediaType,omitempty"`
 	Examples      []string `json:"examples,omitempty"`
 	Hidden        bool     `json:"hidden,omitempty"`
+	Deprecated    string   `json:"deprecated,omitempty"`
 }
 
 // command returns a Cobra command instance for this operation.
@@ -52,14 +53,15 @@ func (o Operation) command() *cobra.Command {
 	}
 
 	sub := &cobra.Command{
-		Use:     use,
-		GroupID: o.Group,
-		Aliases: o.Aliases,
-		Short:   o.Short,
-		Long:    long,
-		Example: examples,
-		Args:    argSpec,
-		Hidden:  o.Hidden,
+		Use:        use,
+		GroupID:    o.Group,
+		Aliases:    o.Aliases,
+		Short:      o.Short,
+		Long:       long,
+		Example:    examples,
+		Args:       argSpec,
+		Hidden:     o.Hidden,
+		Deprecated: o.Deprecated,
 		Run: func(cmd *cobra.Command, args []string) {
 			uri := o.URITemplate
 

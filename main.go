@@ -15,7 +15,8 @@ var date string
 func main() {
 	if version == "dev" {
 		// Try to add the executable modification time to the dev version.
-		if info, err := os.Stat(os.Args[0]); err == nil {
+		filename, _ := os.Executable()
+		if info, err := os.Stat(filename); err == nil {
 			version += "-" + info.ModTime().Format("2006-01-02-15:04")
 		}
 	}

@@ -88,8 +88,12 @@ github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3 h1:qDsADtCM9A
 github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3/go.mod h1:eFdYmNxcuLDrRNW0efVoxSaApmvGXfHZ9k2CT/RSUF0=
 github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba h1:COT94fQgUPh7CG42x3RTfab3V9jK9x4i2GLpubq7eZM=
 github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba/go.mod h1:A57wu2YKZM9dwidFjak6swlRJPKbg+TfHsFm0py9/i8=
+github.com/danielgtaylor/mexpr v1.7.2 h1:NDAIvh3BIE8jDSjJEO/EqTNxuguaNbNEH/LPTDbM4bQ=
+github.com/danielgtaylor/mexpr v1.7.2/go.mod h1:Jcg0kPd2IPMV8ZxnpOj/UbNwMbM9As23hi8yxKsrI0U=
 github.com/danielgtaylor/shorthand v1.1.0 h1:ZCp6zUFPI6yJbbxy0y7Lks6Zbm6cic9h2Pzjhoahgz0=
 github.com/danielgtaylor/shorthand v1.1.0/go.mod h1:cGt46ErC5zbLmtuQIXcavU06e8gLQbp97oDPYVYny3I=
+github.com/danielgtaylor/shorthand/v2 v2.0.0-beta2 h1:CCeH9yL+GQ9BspSEbUZ8OQykXRSiYe49js6DBdmfYNY=
+github.com/danielgtaylor/shorthand/v2 v2.0.0-beta2/go.mod h1:iWZyWz+QrYscKroB6hdrK01C2u6qIg/dE3ttmsrUZfE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -447,6 +451,8 @@ golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
+golang.org/x/exp v0.0.0-20221108223516-5d533826c662 h1:QIza2Vre5WI+NE5AQ6Wi2nGDgDOckLCHJdhcM/kxcfw=
+golang.org/x/exp v0.0.0-20221108223516-5d533826c662/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=

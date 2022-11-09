@@ -25,7 +25,7 @@ $ restish -H Header1:val1 -H Header2:val2 api.rest.sh
 
 ## Request Body
 
-A request body can be set in two ways for requests that support bodies (e.g. `POST` / `PUT` / `PATCH`):
+A request body can be set in two ways (or a combination of both) for requests that support bodies (e.g. `POST` / `PUT` / `PATCH`):
 
 1. Standard input
 2. CLI shorthand
@@ -49,7 +49,7 @@ $ echo '{"name": "hello"}' | restish put api.rest.sh
 The [CLI Shorthand](shorthand.md) is a convenient way of providing structured data on the commandline. It is a JSON-like syntax that enables you to easily create nested structured data. For example:
 
 ```bash
-$ restish post api.rest.sh foo.bar[].baz: 1, .hello: world
+$ restish post api.rest.sh 'foo.bar[]{baz: 1, hello: world}'
 ```
 
 Will send the following request:
@@ -71,7 +71,7 @@ Host: api.rest.sh
 }
 ```
 
-The shorthand supports nested objects, arrays, automatic type coercion, context-aware backreferences, and loading data from files. See the [CLI Shorthand Syntax](shorthand.md) for more info.
+The shorthand supports nested objects, arrays, automatic type coercion, and loading data from files. See the [CLI Shorthand Syntax](shorthand.md) for more info.
 
 ### Combined Body Input
 
@@ -85,4 +85,4 @@ $ restish post api.rest.sh <template.json id: test2, tags[]: group1
 
 If you have a known small set of fields that need to change between calls, this makes it easy to do so without large complex commands.
 
-?> Hint: want to replace an array? Use something like `value: null, value[]: item` to first empty the array, then start building it up again.
+?> Hint: want to replace an array? Use something like `value: [item]` rather than appending.

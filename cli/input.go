@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/danielgtaylor/shorthand"
+	"github.com/danielgtaylor/shorthand/v2"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -36,7 +36,10 @@ func GetBody(mediaType string, args []string) (string, error) {
 		}
 	}
 
-	input, err := shorthand.GetInput(args)
+	input, _, err := shorthand.GetInput(args, shorthand.ParseOptions{
+		EnableFileInput:       true,
+		EnableObjectDetection: true,
+	})
 	if err != nil {
 		return "", err
 	}

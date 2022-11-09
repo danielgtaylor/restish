@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	jmespath "github.com/danielgtaylor/go-jmespath-plus"
-	"github.com/danielgtaylor/shorthand"
+	"github.com/danielgtaylor/shorthand/v2"
 	"github.com/google/shlex"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
@@ -99,7 +99,7 @@ export EDITOR="vim"`)
 	var modified interface{} = data
 
 	if len(args) > 0 {
-		modified, err = shorthand.ParseAndBuild(req.URL.Path, strings.Join(args, " "), modified.(map[string]interface{}))
+		modified, err = shorthand.Unmarshal(strings.Join(args, " "), shorthand.ParseOptions{EnableFileInput: true, EnableObjectDetection: true}, modified)
 		panicOnErr(err)
 	}
 

@@ -31,7 +31,7 @@ func fixAddress(addr string) string {
 			p := c.Profiles[viper.GetString("rsh-profile")]
 			if p == nil {
 				if viper.GetString("rsh-profile") != "default" {
-					panic("Invalid profile " + viper.GetString("rsh-profile"))
+					panic("invalid profile " + viper.GetString("rsh-profile"))
 				}
 			}
 			if p != nil && p.Base != "" {
@@ -92,7 +92,7 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 
 	if profile == nil {
 		if viper.GetString("rsh-profile") != "default" {
-			panic("Invalid profile " + viper.GetString("rsh-profile"))
+			panic("invalid profile " + viper.GetString("rsh-profile"))
 		}
 		profile = &APIProfile{}
 	}

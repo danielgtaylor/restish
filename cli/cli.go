@@ -120,7 +120,7 @@ func completeCurrentConfig(cmd *cobra.Command, args []string, toComplete string,
 				currentProfile := currentConfig.Profiles[viper.GetString("rsh-profile")]
 				if currentProfile == nil {
 					if viper.GetString("rsh-profile") != "default" {
-						panic("Invalid profile " + viper.GetString("rsh-profile"))
+						panic("invalid profile " + viper.GetString("rsh-profile"))
 					}
 				}
 				if currentProfile != nil && currentProfile.Base != "" {
@@ -720,7 +720,7 @@ func Run() {
 						currentProfile := cfg.Profiles[profile]
 						if currentProfile == nil {
 							if profile != "default" {
-								panic("Invalid profile " + profile)
+								panic("invalid profile " + profile)
 							}
 						}
 						if currentProfile != nil && currentProfile.Base != "" {

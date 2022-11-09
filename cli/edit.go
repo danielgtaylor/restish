@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"strings"
 
-	jmespath "github.com/danielgtaylor/go-jmespath-plus"
 	"github.com/danielgtaylor/shorthand/v2"
 	"github.com/google/shlex"
 	"github.com/hexops/gotextdiff"
@@ -71,7 +70,14 @@ export EDITOR="vim"`)
 	if filter == "" {
 		filter = "body"
 	}
-	filtered, err := jmespath.Search(filter, data)
+
+	var logger func(format string, a ...interface{})
+	if enableVerbose {
+		logger = LogDebug
+	}
+	filtered, _, err := shorthand.GetPath(filter, data, shorthand.GetOptions{
+		DebugLogger: logger,
+	})
 	panicOnErr(err)
 	data = filtered
 

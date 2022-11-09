@@ -10,7 +10,6 @@ require (
 	github.com/andybalholm/brotli v1.0.4
 	github.com/charmbracelet/glamour v0.5.1-0.20221024082230-3c5ceaed91cc
 	github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3
-	github.com/danielgtaylor/go-jmespath-plus v0.0.0-20200228063638-e0b6f132acba
 	github.com/danielgtaylor/shorthand/v2 v2.0.0-beta2
 	github.com/eliukblau/pixterm v1.3.1
 	github.com/fxamacker/cbor/v2 v2.4.0
@@ -31,6 +30,7 @@ require (
 	github.com/spf13/viper v1.13.0
 	github.com/stretchr/testify v1.8.1
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9
+	golang.org/x/exp v0.0.0-20221108223516-5d533826c662
 	golang.org/x/oauth2 v0.1.0
 	golang.org/x/term v0.1.0
 	golang.org/x/text v0.4.0
@@ -45,6 +45,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
+	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
@@ -78,10 +79,10 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/twpayne/httpcache v1.0.0 // indirect
+	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yuin/goldmark v1.5.2 // indirect
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
-	golang.org/x/exp v0.0.0-20221108223516-5d533826c662 // indirect
 	golang.org/x/image v0.1.0 // indirect
 	golang.org/x/net v0.1.0 // indirect
 	golang.org/x/sys v0.1.0 // indirect

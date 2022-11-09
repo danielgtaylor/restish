@@ -641,6 +641,7 @@ func Defaults() {
 
 	// Register auth schemes
 	AddAuth("http-basic", &BasicAuth{})
+	AddAuth("external-tool", &ExternalToolAuth{})
 }
 
 // Run the CLI! Parse arguments, make requests, print responses.

@@ -32,6 +32,7 @@ type TLSConfig struct {
 
 // APIProfile contains account-specific API information
 type APIProfile struct {
+	Base    string            `json:"base",omitempty`
 	Headers map[string]string `json:"headers,omitempty"`
 	Query   map[string]string `json:"query,omitempty"`
 	Auth    *APIAuth          `json:"auth"`
@@ -189,9 +190,23 @@ func initAPIConfig() {
 
 func findAPI(uri string) (string, *APIConfig) {
 	for name, config := range configs {
-		if strings.HasPrefix(uri, config.Base) {
-			// TODO: find the longest matching base?
-			return name, config
+		profile := viper.GetString("rsh-profile")
+		if profile != "default" {
+			if config.Profiles[profile] == nil {
+				continue
+			}
+			if config.Profiles[profile].Base != "" {
+				if strings.HasPrefix(uri, config.Profiles[profile].Base) {
+					return name, config
+				}
+			} else if strings.HasPrefix(uri, config.Base) {
+				return name, config
+			}
+		} else {
+			if strings.HasPrefix(uri, config.Base) {
+				// TODO: find the longest matching base?
+				return name, config
+			}
 		}
 	}
 

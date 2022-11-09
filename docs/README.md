@@ -41,7 +41,7 @@
   - [JSON:API](https://jsonapi.org/)
 - Local caching that respects [RFC 7234](https://tools.ietf.org/html/rfc7234) `Cache-Control` and `Expires` headers
 - CLI [shorthand](https://github.com/danielgtaylor/openapi-cli-generator/tree/master/shorthand#cli-shorthand-syntax) for structured data input (e.g. for JSON)
-- [JMESPath Plus](https://github.com/danielgtaylor/go-jmespath-plus) response filtering & projection
+- [Shorthand query](https://github.com/danielgtaylor/shorthand#querying) response filtering & projection
 - Colorized prettified readable output
 - Fast native zero-dependency binary
 

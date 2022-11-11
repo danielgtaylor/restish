@@ -24,6 +24,7 @@ Features include:
   - API key via header or query param
   - OAuth2 client credentials flow (machine-to-machine, [RFC 6749](https://tools.ietf.org/html/rfc6749))
   - OAuth2 authorization code (with PKCE [RFC 7636](https://tools.ietf.org/html/rfc7636)) flow
+  - On the fly authorization through external tools for custom API signature mechanisms
 - Content negotiation, decoding & unmarshalling built-in:
   - JSON ([RFC 8259](https://tools.ietf.org/html/rfc8259), https://www.json.org/)
   - YAML (https://yaml.org/)

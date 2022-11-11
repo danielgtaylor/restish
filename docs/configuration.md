@@ -144,6 +144,7 @@ The following auth types are supported:
 - API key
 - OAuth 2.0 client credentials
 - OAuth 2.0 authorization code
+- External Tool
 
 Each has its own set of parameters and setup. Any additional parameters beyond the default will get sent as additional request parameters when fetching tokens.
 
@@ -254,6 +255,61 @@ For example, to integrate with a third-party service like [Auth0](https://auth0.
   }
 }
 ```
+
+#### External Tool
+
+To allow interaction with APIs which have custom signature schemes, a
+third-party tool or script can be used. The script will need to accept
+a JSON representation of the API request on its standard input and
+will reply with the necessary request modifications on standard
+output.
+
+Two parameters are accepted for this authentication method:
+
+- `commandline`: A required string, pointing to the command to run.
+- `omitbody`: Optional. When present and set to the string `"true"`,
+  do not supply the request body to the helper script.
+
+```json
+{
+  "my-api": {
+    "base": "https://api.company.com",
+    "profiles": {
+      "default": {
+        "auth": {
+          "name": "external-tool",
+          "params": {
+            "commandline": "restish-custom-auth",
+            "omitbody": "false"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The serialized body will be supplied in the following form to the
+helper commandline:
+
+``` json
+{
+  "method": "GET",
+  "uri": "http://...",
+  "headers": {
+      "content-type": ["…"],
+      // …
+  },
+  "body": "…"
+}
+```
+
+The same shape is expected on the program's standard output. Two
+parameters only will be considered:
+
+- `headers`: Values present will be added to the outbound payload.
+- `uri`: Will replace the destination URL entirely (allowing the
+  addition of query arguments if needed).
 
 ### Loading From Files or URLs
 

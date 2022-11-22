@@ -1,6 +1,6 @@
 # Controlling Output
 
-Responses are processed like the below directed graph shows. For example, a server might send a response that Restish will gzip uncompress, unmarshal from CBOR, apply a JMESPath filter, marshal the result into JSON & highlight to display.
+Responses are processed like the below directed graph shows. For example, a server might send a response that Restish will gzip uncompress, unmarshal from CBOR, apply a filter, marshal the result into JSON & highlight to display.
 
 ```mermaid
 graph LR
@@ -8,8 +8,10 @@ graph LR
   Uncompress --> Unmarshal
   Unmarshal --> Filter
   Filter --> Marshal
+  Unmarshal --> Marshal
   Marshal --> Highlight
   Highlight --> Display
+  Marshal --> Display
 ```
 
 ## Caching
@@ -30,9 +32,9 @@ $ RSH_NO_CACHE=1 restish api.rest.sh/cached/15?private=true
 
 Even if caching is disabled, the local disk cache will get updated. The setting above prevents the _use_ of a cached response.
 
-## Default Output
+## Readable Output
 
-By default, Restish will output a custom format that is similar to JSON or YAML and meant to be easily consumed by humans while supporting both text and binary formats. Here is an example of how various types look:
+Readable output is a custom format that is similar to JSON or YAML and meant to be easily consumed by humans while supporting both text and binary formats. Here is an example of how various types look:
 
 ```readable
 HTTP/1.1 200 OK
@@ -76,7 +78,7 @@ The following types are supported & syntax highlighted:
 
 If the output is _not_ structured data (JSON/YAML/CBOR/etc) then it is output as-is without formatting.
 
-?> Keep in mind the default output format is meant for **human** consumption! When writing shell scripts you will most likely want to use filtering which enables JSON output mode.
+?> Keep in mind the default interactive shell output format is meant for **human** consumption! See [output defaults](#output-defaults) below for how JSON is used by default when redirecting output for scripting.
 
 ### Images
 
@@ -140,11 +142,51 @@ The response format described above is used as the input, so don't forget the `b
 $ restish api.rest.sh/images -f headers
 
 # Filter results to just the names
-$ restish api.rest.sh/images -f 'body[].{name}'
+$ restish api.rest.sh/images -f 'body.{name}'
 
 # Get all `url` fields recursively from a response that are from Github
 $ restish api.rest.sh/example -f '..url|[@ contains github]'
 ```
+
+## Output Defaults
+
+Like some other well-known tools, the output defaults are different depending on whether the command is running in an interactive shell or output is being redirected to a pipe or file.
+
+```mermaid
+graph TD
+  Interactive[Is interactive terminal<br/>or redirected to file/pipe?] -->|interactive| Readable[Colorized<br/>Full pretty response<br/>Human readable]
+  Interactive -->|redirected| JSON[No color<br/>Body only</br>JSON]
+```
+
+The defaults are described in the following table:
+
+| Feature       | Interactive   | Redirected  | Options                |
+| ------------- | ------------- | ----------- | ---------------------- |
+| Color         | enabled       | disabled    | `COLOR=1`, `NOCOLOR=1` |
+| Filter        | full response | `body` only | `-f`                   |
+| Output format | `readable`    | `json`      | `-o`                   |
+
+The following options are functionally equvalent to the defaults:
+
+| Mode        | Equivalent Options                 |
+| ----------- | ---------------------------------- |
+| Interactive | `COLOR=1` and `-o readable -f '@'` |
+| Redirected  | `NOCOLOR=1` and `-o json -f body`  |
+
+Here are some useful examples:
+
+```sh
+# Redirect body JSON to a file
+$ restish api.rest.sh/types >file.json
+
+# Redirect the entire response (status, headers, body) to a file
+$ restish api.rest.sh/types -f '@' >file.json
+
+# Redirect using the interactive terminal defaults
+$ COLOR=1 restish api.rest.sh/types -o readable -f '@' | less
+```
+
+!> Use `restish api content-types` to see the avialable content types and output formats you can use.
 
 ## Raw Mode
 
@@ -165,7 +207,7 @@ $ restish api.rest.sh/images -f 'body[0].self' -r
 /images/jpeg
 
 # It also works with arrays
-$ restish api.rest.sh/images -f 'body[].self' -r
+$ restish api.rest.sh/images -f 'body.self' -r
 /images/jpeg
 /images/webp
 /images/gif
@@ -177,19 +219,22 @@ If the filtered output result doesn't match one of the above types, then `-r` is
 
 This feature is mainly useful for shell scripting, where you don't want to have to parse the JSON and instead just want to loop through a list of IDs and run further commands.
 
-### Downloading Files & Saving Responses
+## Downloading Files & Saving Responses
 
-Raw mode in combination with redirected output can also be used to download files, and saving a structured data response (e.g. JSON, CBOR, YAML, etc) is simple as well:
+Output redirection and/or raw mode can be used to download files & save structured responses in various formats (e.g. JSON, CBOR, YAML, etc):
 
 ```bash
 # Save a binary file from the server
-$ restish rest.sh/logo.png -r >logo.png
+$ restish rest.sh/logo.png >logo.png
 
-# Saving unparsed structured data
+# Save parsed & formatted structured body as JSON
+$ restish api.rest.sh/types >types.json
+
+# Save parsed & formatted structured body as CBOR
+$ restish api.rest.sh/types -o cbor >types.cbor
+
+# Save unparsed structured body via raw mode
 $ restish api.rest.sh/types -H Accept:application/json -r >types.json
-
-# Save parsed & formatted structured data as JSON
-$ restish api.rest.sh/types -f body >types.json
 ```
 
-?> Raw mode without filtering will not parse the response, but _will_ decode it if compressed (e.g. with gzip).
+?> Raw mode without filtering will not parse the response, but _will_ decode it if compressed (e.g. with gzip or brotli).

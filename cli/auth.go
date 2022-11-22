@@ -95,7 +95,7 @@ func (a *ExternalToolAuth) Parameters() []AuthParam {
 // The supplied commandline argument is ran with a JSON input
 // and expects a JSON output on stdout
 func (a *ExternalToolAuth) OnRequest(req *http.Request, key string, params map[string]string) error {
-	commandLine, _ := params["commandline"]
+	commandLine := params["commandline"]
 	omitBodyStr, omitBodyPresent := params["omitbody"]
 	omitBody := false
 	if omitBodyPresent && strings.EqualFold(omitBodyStr, "true") {

@@ -72,7 +72,7 @@ var ReadableLexer = lexers.Register(chroma.MustNewLazyLexer(
 				chroma.Include("whitespace"),
 				{
 					Pattern: `\}`,
-					Type:    chroma.Punctuation,
+					Type:    chroma.EmitterFunc(indentEnd),
 					Mutator: chroma.Pop(1),
 				},
 				{
@@ -84,7 +84,7 @@ var ReadableLexer = lexers.Register(chroma.MustNewLazyLexer(
 			"arrayvalue": {
 				{
 					Pattern: `\]`,
-					Type:    chroma.Punctuation,
+					Type:    chroma.EmitterFunc(indentEnd),
 					Mutator: chroma.Pop(1),
 				},
 				chroma.Include("value"),
@@ -93,12 +93,12 @@ var ReadableLexer = lexers.Register(chroma.MustNewLazyLexer(
 				chroma.Include("whitespace"),
 				{
 					Pattern: `\{`,
-					Type:    chroma.Punctuation,
+					Type:    chroma.EmitterFunc(indentStart),
 					Mutator: chroma.Push("object"),
 				},
 				{
 					Pattern: `\[`,
-					Type:    chroma.Punctuation,
+					Type:    chroma.EmitterFunc(indentStart),
 					Mutator: chroma.Push("arrayvalue"),
 				},
 				chroma.Include("scalar"),
@@ -109,6 +109,37 @@ var ReadableLexer = lexers.Register(chroma.MustNewLazyLexer(
 		}
 	},
 ))
+
+// indentLevel tracks the current indentation level from `{` and `[` characters.
+// Making this a global is unfortunate but there doesn't appear to be any
+// other way to make it work.
+var indentLevel = 0
+
+const (
+	IndentLevel1 chroma.TokenType = 9000 + iota
+	IndentLevel2
+	IndentLevel3
+)
+
+// indentStart tracks and emits an appropriate indent level token whenever
+// a `{` or `[` is encountered. It enables nested indent braces to be color
+// coded in an alternating pattern to make it easier to distinguish.
+func indentStart(groups []string, state *chroma.LexerState) chroma.Iterator {
+	tokens := []chroma.Token{
+		{Type: chroma.TokenType(9000 + (indentLevel % 3)), Value: groups[0]},
+	}
+	indentLevel++
+	return chroma.Literator(tokens...)
+}
+
+// indentEnd emits indent level tokens to match indentStart.
+func indentEnd(groups []string, state *chroma.LexerState) chroma.Iterator {
+	indentLevel--
+	tokens := []chroma.Token{
+		{Type: chroma.TokenType(9000 + (indentLevel % 3)), Value: groups[0]},
+	}
+	return chroma.Literator(tokens...)
+}
 
 // SchemaLexer colorizes schema output.
 var SchemaLexer = lexers.Register(chroma.MustNewLazyLexer(

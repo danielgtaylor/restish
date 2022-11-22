@@ -106,7 +106,7 @@ $ restish api.rest.sh
 
 ### Editing Resources
 
-If an API supports both a `GET` and a `PUT` for a resource, there is an `edit` convenience operation which allows you to edit the resource similar to how you might use a `PATCH` if the API were available.
+If an API supports both a `GET` and a `PUT` for a resource, there is a client-side `edit` convenience operation which allows you to edit the resource similar to how you might use a `PATCH` if the API were available.
 
 ```bash
 # Modify a field on the command line via CLI shorthand
@@ -116,13 +116,13 @@ $ restish edit api.rest.sh/types string: changed, tags[]: another
 $ restish edit -i api.rest.sh/types
 ```
 
-To use interactive mode you must have the `VISUAL` or `EDITOR` environment variable set to an editor, for example `export VISUAL="code --wait"` for VSCode.
+To use interactive mode you must have the `VISUAL` or `EDITOR` environment variable set to an editor, for example `export VISUAL="code --wait"` for VSCode. If the API resource includes a `$schema` then you will also get documentation on hover, completion suggestions, and linting as you type in your editor.
 
 Editing resources will make use of [conditional requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests) if any relevant headers are found on the `GET` response. For example, if an `ETag` header is present in the `GET` response then an `If-Match` header will be send on the `PUT` to prevent performing the write operation if the resource was modified by someone else while you are editing.
 
 ### Output Filtering
 
-By default, you will see the entire response as output. Restish includes built-in filtering using [Shorthand queries]() which enable you to filter & project the response data. Using a filter automatically enables JSON output mode and only prints the result of the filter expression. Here are some basic examples:
+Restish includes built-in filtering using [Shorthand queries](shorthand.md#querying) which enable you to filter & project the response data. Using a filter only prints the result of the filter expression. Here are some basic examples:
 
 ```bash
 # Get social media profiles from a JSON Resume:
@@ -155,9 +155,42 @@ $ restish api.rest.sh -f headers.Date -r
 Sat, 1 Jan 2022 12:00:00 GMT
 ```
 
-See [output](/output.md) for more info & examples.
+See [filtering & projection](output.md#filtering--projection) for more info & examples.
 
-?> Quick tip: If you want the JSON body for scripting just use `-f body`!
+### Output Defaults
+
+Like some other well-known tools, the output defaults are different depending on whether the command is running in an interactive shell or output is being redirected to a pipe or file.
+
+```mermaid
+graph TD
+  Interactive[Is interactive terminal<br/>or redirected to file/pipe?] -->|interactive| Readable[Colorized<br/>Full pretty response<br/>Human readable]
+  Interactive -->|redirected| JSON[No color<br/>Body only</br>JSON]
+```
+
+See [output defaults](output.md#output-defaults) for more information.
+
+!> Use `restish api content-types` to see the avialable content types and output formats you can use.
+
+### Tabular Output
+
+Sometimes it's easier to read a response when you can see it in the form of a two-dimentional table. Restish supports the `table` output format for this purpose if the response (or filtered result) is an array of objects. For example:
+
+```bash
+$ restish api.rest.sh/images -o table
+HTTP/2.0 200 OK
+Accept-Ranges: bytes
+...
+
+╔════════╤════════════════════════════╤══════════════╗
+║ format │            name            │     self     ║
+╟━━━━━━━━┼━━━━━━━━━━━━━━━━━━━━━━━━━━━━┼━━━━━━━━━━━━━━╢
+║   jpeg │            Dragonfly macro │ /images/jpeg ║
+║   webp │   Origami under blacklight │ /images/webp ║
+║    gif │ Andy Warhol mural in Miami │  /images/gif ║
+║    png │          Station in Prague │  /images/png ║
+║   heic │     Chihuly glass in boats │ /images/heic ║
+╚════════╧════════════════════════════╧══════════════╝
+```
 
 ## API Operation Commands
 

@@ -49,7 +49,7 @@ var Stdout io.Writer = os.Stdout
 // otherwise it defaults to `os.Stderr`.
 var Stderr io.Writer = os.Stderr
 
-var tty bool
+var useColor bool
 var au aurora.Aurora
 
 // Keeps track of currently selected API for shell completions
@@ -190,31 +190,31 @@ func Init(name string, version string) {
 
 	// Reset registries.
 	authHandlers = map[string]AuthHandler{}
-	contentTypes = []contentTypeEntry{}
+	contentTypes = map[string]contentTypeEntry{}
 	encodings = map[string]ContentEncoding{}
 	linkParsers = []LinkParser{}
 	loaders = []Loader{}
 
 	// Determine if we are using a TTY or colored output is forced-on.
-	tty = false
-	if isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd()) || viper.GetBool("color") {
+	tty := false
+	if isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd()) || viper.GetBool("tty") {
 		tty = true
 	}
 
-	if viper.GetBool("nocolor") {
-		// If forced off, ignore all of the above!
-		tty = false
+	useColor = false
+	if viper.GetBool("color") || (tty && !viper.GetBool("nocolor")) {
+		useColor = true
 	}
 
-	if tty {
+	if useColor {
 		// Support colored output across operating systems.
 		Stdout = colorable.NewColorableStdout()
 		Stderr = colorable.NewColorableStderr()
 	}
 
-	au = aurora.NewAurora(tty)
+	au = aurora.NewAurora(useColor)
 
-	Formatter = NewDefaultFormatter(tty)
+	Formatter = NewDefaultFormatter(tty, useColor)
 
 	cobra.AddTemplateFunc("highlight", func(s string) string {
 		// Highlighting is expensive, so only do this when the user actually asks
@@ -507,7 +507,7 @@ Not after (expires): %s (%s)
 				panic(err)
 			}
 
-			if tty {
+			if useColor {
 				encoded, err = Highlight("json", encoded)
 				if err != nil {
 					panic(err)
@@ -528,8 +528,8 @@ Not after (expires): %s (%s)
 	GlobalFlags.BoolP("help", "h", false, "")
 
 	AddGlobalFlag("rsh-verbose", "v", "Enable verbose log output", false, false)
-	AddGlobalFlag("rsh-output-format", "o", "Output format [auto, json, yaml]", "auto", false)
-	AddGlobalFlag("rsh-filter", "f", "Filter / project results using JMESPath Plus", "", false)
+	AddGlobalFlag("rsh-output-format", "o", "Output format [auto, json, table, ...]", "auto", false)
+	AddGlobalFlag("rsh-filter", "f", "Filter / project results using shorthand query", "", false)
 	AddGlobalFlag("rsh-raw", "r", "Output result of query as raw rather than an escaped JSON string or list", false, false)
 	AddGlobalFlag("rsh-server", "s", "Override scheme://server:port for an API", "", false)
 	AddGlobalFlag("rsh-header", "H", "Add custom header", []string{}, true)
@@ -541,7 +541,6 @@ Not after (expires): %s (%s)
 	AddGlobalFlag("rsh-client-cert", "", "Path to a PEM encoded client certificate", "", false)
 	AddGlobalFlag("rsh-client-key", "", "Path to a PEM encoded private key", "", false)
 	AddGlobalFlag("rsh-ca-cert", "", "Path to a PEM encoded CA cert", "", false)
-	AddGlobalFlag("rsh-table", "t", "Enable table formatted output for array of objects", false, false)
 
 	Root.RegisterFlagCompletionFunc("rsh-output-format", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"auto", "json", "yaml"}, cobra.ShellCompDirectiveNoFileComp
@@ -626,12 +625,14 @@ func Defaults() {
 	AddEncoding("br", &BrotliEncoding{})
 
 	// Register content type marshallers
-	AddContentType("application/cbor", 0.9, &CBOR{})
-	AddContentType("application/msgpack", 0.8, &MsgPack{})
-	AddContentType("application/ion", 0.6, &Ion{})
-	AddContentType("application/json", 0.5, &JSON{})
-	AddContentType("application/yaml", 0.5, &YAML{})
-	AddContentType("text/*", 0.2, &Text{})
+	AddContentType("cbor", "application/cbor", 0.9, &CBOR{})
+	AddContentType("msgpack", "application/msgpack", 0.8, &MsgPack{})
+	AddContentType("ion", "application/ion", 0.6, &Ion{})
+	AddContentType("json", "application/json", 0.5, &JSON{})
+	AddContentType("yaml", "application/yaml", 0.5, &YAML{})
+	AddContentType("text", "text/*", 0.2, &Text{})
+	AddContentType("table", "", -1, &Table{})
+	AddContentType("readable", "", -1, &Readable{})
 
 	// Add link relation parsers
 	AddLinkParser(&LinkHeaderParser{})
@@ -656,6 +657,13 @@ func Run() {
 		if !strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "__") {
 			args = append(args, arg)
 		}
+	}
+
+	if os.Getenv("COLOR") != "" {
+		viper.Set("color", true)
+	}
+	if os.Getenv("NOCOLOR") != "" {
+		viper.Set("nocolor", true)
 	}
 
 	// Because we may be doing HTTP calls before cobra has parsed the flags

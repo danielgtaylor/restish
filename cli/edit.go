@@ -64,7 +64,7 @@ export EDITOR="vim"`)
 	// Convert from CBOR or other formats which might allow map[any]any to the
 	// constraints of JSON (i.e. map[string]interface{}).
 	var data interface{} = resp.Map()
-	data = makeJSONSafe(data, false)
+	data = makeJSONSafe(data)
 
 	filter := viper.GetString("rsh-filter")
 	if filter == "" {
@@ -144,7 +144,7 @@ export EDITOR="vim"`)
 		panicOnErr(editUnmarshal(b, &modified))
 	}
 
-	modified = makeJSONSafe(modified, false)
+	modified = makeJSONSafe(modified)
 	mod, err := json.MarshalIndent(modified, "", "  ")
 	panicOnErr(err)
 	edits := myers.ComputeEdits(span.URIFromPath("original"), string(orig), string(mod))
@@ -155,7 +155,7 @@ export EDITOR="vim"`)
 		return
 	} else {
 		diff := fmt.Sprint(gotextdiff.ToUnified("original", "modified", string(orig), edits))
-		if tty {
+		if useColor {
 			d, _ := Highlight("diff", []byte(diff))
 			diff = string(d)
 		}

@@ -28,7 +28,7 @@ func LogDebugRequest(req *http.Request) {
 			return
 		}
 
-		if tty {
+		if useColor {
 			sb := &strings.Builder{}
 			quick.Highlight(sb, string(dumped), "http", "terminal256", "cli-dark")
 			dumped = []byte(sb.String())
@@ -47,7 +47,7 @@ func LogDebugResponse(start time.Time, resp *http.Response) {
 			return
 		}
 
-		if tty {
+		if useColor {
 			sb := &strings.Builder{}
 			quick.Highlight(sb, string(dumped), "http", "terminal256", "cli-dark")
 			dumped = []byte(sb.String())

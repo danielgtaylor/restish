@@ -88,6 +88,7 @@ func TestOperation(t *testing.T) {
 
 	viper.Reset()
 	viper.Set("nocolor", true)
+	viper.Set("tty", true)
 	Init("test", "1.0.0")
 	Defaults()
 	capture := &strings.Builder{}

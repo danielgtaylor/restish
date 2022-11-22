@@ -3,8 +3,6 @@ package cli
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"image/color"
 	"net/http"
@@ -20,11 +18,10 @@ import (
 	"github.com/alecthomas/chroma/styles"
 	"github.com/charmbracelet/glamour/ansi"
 	"github.com/danielgtaylor/shorthand/v2"
-	"github.com/ghodss/yaml"
 	"github.com/spf13/viper"
+	"golang.org/x/exp/maps"
 	"golang.org/x/term"
 
-	"github.com/alexeyco/simpletable"
 	"github.com/eliukblau/pixterm/pkg/ansimage"
 )
 
@@ -61,6 +58,11 @@ func init() {
 		chroma.GenericDeleted:    "#ff5f87",
 		chroma.GenericInserted:   "#afd787",
 		chroma.NameAttribute:     "underline",
+
+		// Used for matching `{`, `}, `[`, and `]` characters.
+		IndentLevel1: "#d78700",
+		IndentLevel2: "#af87af",
+		IndentLevel3: "#5fafd7",
 	}))
 }
 
@@ -287,15 +289,14 @@ var MarkdownStyle = ansi.StyleConfig{
 // encoding to JSON (or YAML) works. Some unmarshallers (e.g. CBOR) will
 // create map[interface{}]interface{} which causes problems marshalling.
 // See https://github.com/fxamacker/cbor/issues/206
-func makeJSONSafe(obj interface{}, normalizeNumbers bool) interface{} {
+func makeJSONSafe(obj interface{}) interface{} {
 	value := reflect.ValueOf(obj)
 
+	for value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+
 	switch value.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32:
-		if normalizeNumbers {
-			// Normalize all numbers to float64 for filtering.
-			return value.Convert(reflect.TypeOf(float64(0))).Interface()
-		}
 	case reflect.Slice:
 		if _, ok := obj.([]byte); ok {
 			// Special case: byte slices get special encoding rules in various
@@ -305,7 +306,7 @@ func makeJSONSafe(obj interface{}, normalizeNumbers bool) interface{} {
 		}
 		returnSlice := make([]interface{}, value.Len())
 		for i := 0; i < value.Len(); i++ {
-			returnSlice[i] = makeJSONSafe(value.Index(i).Interface(), normalizeNumbers)
+			returnSlice[i] = makeJSONSafe(value.Index(i).Interface())
 		}
 		return returnSlice
 	case reflect.Map:
@@ -317,22 +318,20 @@ func makeJSONSafe(obj interface{}, normalizeNumbers bool) interface{} {
 			} else {
 				kStr = fmt.Sprintf("%v", k.Interface())
 			}
-			tmpData[kStr] = makeJSONSafe(value.MapIndex(k).Interface(), normalizeNumbers)
+			tmpData[kStr] = makeJSONSafe(value.MapIndex(k).Interface())
 		}
 		return tmpData
-	// case reflect.Struct:
-	// 	for i := 0; i < value.NumField(); i++ {
-	// 		field := value.Field(i)
-	// 		spew.Dump(field, field.Kind(), field.CanSet())
-	// 		switch field.Kind() {
-	// 		case reflect.Slice, reflect.Map, reflect.Struct, reflect.Ptr:
-	// 			if field.CanSet() {
-	// 				field.Set(reflect.ValueOf(makeJSONSafe(field.Interface())))
-	// 			}
-	// 		}
-	// 	}
-	case reflect.Ptr:
-		return makeJSONSafe(value.Elem().Interface(), normalizeNumbers)
+		// case reflect.Struct:
+		// 	for i := 0; i < value.NumField(); i++ {
+		// 		field := value.Field(i)
+		// 		spew.Dump(field, field.Kind(), field.CanSet())
+		// 		switch field.Kind() {
+		// 		case reflect.Slice, reflect.Map, reflect.Struct, reflect.Ptr:
+		// 			if field.CanSet() {
+		// 				field.Set(reflect.ValueOf(makeJSONSafe(field.Interface())))
+		// 			}
+		// 		}
+		// 	}
 	}
 
 	return obj
@@ -343,6 +342,10 @@ func makeJSONSafe(obj interface{}, normalizeNumbers bool) interface{} {
 // then the body is also returned as a byte slice ready to be written to
 // stdout.
 func printable(body interface{}) ([]byte, bool) {
+	if s, ok := body.(string); ok {
+		return []byte(s), true
+	}
+
 	if b, ok := body.([]byte); ok {
 		// This was not a known format we could parse, and was not likely an
 		// image. If it looks like displayable text, then let's try to display
@@ -376,6 +379,9 @@ func printable(body interface{}) ([]byte, bool) {
 
 // Highlight a block of data with the given lexer.
 func Highlight(lexer string, data []byte) ([]byte, error) {
+	// Reset indent level used by the `readable` lexer.
+	indentLevel = 0
+
 	sb := &strings.Builder{}
 	if err := quick.Highlight(sb, string(data), lexer, "terminal256", "cli-dark"); err != nil {
 		return nil, err
@@ -393,114 +399,90 @@ type ResponseFormatter interface {
 // default formatter uses the `rsh-filter` and `rsh-output-format` configuration
 // values to perform JMESPath queries and set JSON (default) or YAML output.
 type DefaultFormatter struct {
-	tty bool
+	tty   bool
+	color bool
 }
 
 // NewDefaultFormatter creates a new formatted with autodetected TTY
 // capabilities.
-func NewDefaultFormatter(tty bool) *DefaultFormatter {
+func NewDefaultFormatter(tty, color bool) *DefaultFormatter {
 	return &DefaultFormatter{
-		tty: tty,
+		tty:   tty,
+		color: color,
 	}
 }
 
-// Format will filter, prettify, colorize and output the data.
-func (f *DefaultFormatter) Format(resp Response) error {
-	outFormat := viper.GetString("rsh-output-format")
-
-	var data interface{} = resp.Map()
-
-	filter := viper.GetString("rsh-filter")
-	if filter == "" && viper.GetBool("rsh-raw") {
-		if b, ok := resp.Body.([]byte); ok {
-			// The response wasn't decoded so we have a bunch of bytes and the user
-			// asked for raw output, so just write it. This enables file downloads.
-			Stdout.Write(b)
-			return nil
-		}
-	}
-
-	if filter != "" {
-		opts := shorthand.GetOptions{}
-		if enableVerbose {
-			opts.DebugLogger = LogDebug
-		}
-
-		result, _, err := shorthand.GetPath(filter, data, opts)
-
-		if err != nil {
-			return err
-		}
-
-		if outFormat == "auto" {
-			// Filtering in auto mode means we just return JSON
-			outFormat = "json"
-		}
-
-		if result == nil {
-			return nil
-		}
-
-		data = result
-	}
-
-	// Encode to the requested output format using nice formatting.
-	var encoded []byte
-	var err error
-	var lexer string
-
-	handled := false
-	kind := reflect.ValueOf(data).Kind()
-
-	// Handle table formatting
-	if viper.GetBool("rsh-table") && kind == reflect.Slice {
-		d, ok := data.([]interface{})
-		if ok {
-			ret, err := setTable(d)
-			if err != nil {
-				return err
-			}
-			encoded = *ret
-			handled = true
-		} else {
-			return errors.New("error building table. Collection not supported. Must be array of objects")
-		}
-	}
-
-	if viper.GetBool("rsh-raw") && kind == reflect.String {
-		handled = true
-		dStr := data.(string)
-		encoded = []byte(dStr)
-		lexer = ""
-
-		if len(dStr) != 0 && (dStr[0] == '{' || dStr[0] == '[') {
-			// Looks like JSON to me!
-			lexer = "json"
-		}
-	} else if viper.GetBool("rsh-raw") && kind == reflect.Slice {
-		scalars := true
-
-		if d, ok := data.([]byte); ok {
-			// Special case: binary data which should be represented by base64.
-			handled = true
-			encoded = make([]byte, base64.StdEncoding.EncodedLen(len(d)))
-			base64.StdEncoding.Encode(encoded, d)
-		} else {
-			for _, item := range data.([]interface{}) {
-				switch item.(type) {
-				case nil, bool, int, int64, float64, string:
-					// The above are scalars used by decoders
-				default:
-					scalars = false
+// filterData filters the current response using shorthand query and returns the
+// result.
+func (f *DefaultFormatter) filterData(filter string, data map[string]any) (any, error) {
+	keys := maps.Keys(data)
+	sort.Strings(keys)
+	found := strings.HasPrefix(filter, "*") || strings.HasPrefix(filter, "..")
+	if !found {
+		for _, k := range keys {
+			if strings.HasPrefix(filter, k) {
+				if len(filter) > len(k) && filter[len(k)] == '{' {
+					// Catch a common typo 'body{id}` vs `body.{id}`
+					return nil, fmt.Errorf("expected '.' or '[' after '%s' but found %s", k, filter)
 				}
-				if !scalars {
+				if len(filter) == len(k) || len(filter) > len(k) && (filter[len(k)] == '.' || filter[len(k)] == '[') {
+					// Matches e.g. `body`, `body.`, `body[...]`, etc.
+					found = true
 					break
 				}
 			}
 		}
+	}
+	if !found {
+		return nil, fmt.Errorf("filter must begin with one of '%v' and use '.' delimiters", strings.Join(keys, "', '"))
+	}
 
-		if !handled && scalars {
-			handled = true
+	opts := shorthand.GetOptions{}
+	if enableVerbose {
+		opts.DebugLogger = LogDebug
+	}
+
+	result, _, err := shorthand.GetPath(filter, data, opts)
+	return result, err
+}
+
+func (f *DefaultFormatter) formatRaw(data any) ([]byte, string, bool) {
+	kind := reflect.ValueOf(data).Kind()
+	lexer := ""
+
+	if kind == reflect.String {
+		dStr := data.(string)
+		if len(dStr) != 0 && (dStr[0] == '{' || dStr[0] == '[') {
+			// Looks like JSON to me!
+			lexer = "json"
+		}
+		return []byte(dStr), lexer, true
+	}
+
+	if kind == reflect.Slice {
+		scalars := true
+
+		if d, ok := data.([]byte); ok {
+			// Special case: binary data which should be represented by base64.
+			encoded := make([]byte, base64.StdEncoding.EncodedLen(len(d)))
+			base64.StdEncoding.Encode(encoded, d)
+			return encoded, lexer, true
+		}
+
+		for _, item := range data.([]interface{}) {
+			switch item.(type) {
+			case nil, bool, int, int64, float64, string:
+				// The above are scalars used by decoders
+			default:
+				scalars = false
+			}
+			if !scalars {
+				break
+			}
+		}
+
+		if scalars {
+			var encoded []byte
 			for _, item := range data.([]interface{}) {
 				if item == nil {
 					encoded = append(encoded, []byte("null\n")...)
@@ -512,114 +494,179 @@ func (f *DefaultFormatter) Format(resp Response) error {
 					encoded = append(encoded, []byte(fmt.Sprintf("%v\n", item))...)
 				}
 			}
+			return encoded, lexer, true
+		}
+	}
+
+	return nil, "", false
+}
+
+// nl prepends a new line to a slice of bytes.
+func (f *DefaultFormatter) nl(v []byte) []byte {
+	result := append([]byte{'\n'}, v...)
+	if result[len(result)-1] != '\n' {
+		result = append(result, '\n')
+	}
+	return result
+}
+
+// formatAuto formats the response as a human-readable terminal display
+// friendly format.
+func (f *DefaultFormatter) formatAuto(format string, resp Response) ([]byte, error) {
+	text := fmt.Sprintf("%s %d %s\n", resp.Proto, resp.Status, http.StatusText(resp.Status))
+
+	headerNames := []string{}
+	for k := range resp.Headers {
+		headerNames = append(headerNames, k)
+	}
+	sort.Strings(headerNames)
+
+	for _, name := range headerNames {
+		text += name + ": " + resp.Headers[name] + "\n"
+	}
+
+	var err error
+	var encoded []byte
+
+	if f.color {
+		encoded, err = Highlight("http", []byte(text))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		encoded = []byte(text)
+	}
+
+	ct := resp.Headers["Content-Type"]
+	if resp.Body != nil && (ct == "image/png" || ct == "image/jpeg" || ct == "image/webp" || ct == "image/gif") {
+		if b, ok := resp.Body.([]byte); ok {
+			// This is likely an image. Let's display it if we can! Get the window
+			// size, read and scale the image, and display it using unicode.
+			w, h, err := term.GetSize(0)
+			if err != nil {
+				// Default to standard terminal size
+				w, h = 80, 24
+			}
+
+			image, err := ansimage.NewScaledFromReader(bytes.NewReader(b), h*2, w*1, color.Transparent, ansimage.ScaleModeFit, ansimage.NoDithering)
+			if err == nil {
+				return append(encoded, f.nl([]byte(image.Render()))...), nil
+			} else {
+				LogWarning("Unable to display image: %v", err)
+			}
+		}
+	}
+
+	if b, ok := printable(resp.Body); ok {
+		return append(encoded, f.nl(b)...), nil
+	}
+
+	if reflect.ValueOf(resp.Body).Kind() != reflect.Invalid {
+		b, err := MarshalShort(format, true, resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		if f.color {
+			// Uncomment to debug lexer...
+			// iter, err := ReadableLexer.Tokenise(&chroma.TokeniseOptions{State: "root"}, string(readable))
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// for _, token := range iter.Tokens() {
+			// 	fmt.Println(token.Type, token.Value)
+			// }
+
+			if b, err = Highlight(format, b); err != nil {
+				return nil, err
+			}
+		}
+
+		return append(encoded, f.nl(b)...), nil
+	}
+
+	// No body to display.
+	return nil, nil
+}
+
+// Format will filter, prettify, colorize and output the data.
+func (f *DefaultFormatter) Format(resp Response) error {
+	var err error
+	outFormat := viper.GetString("rsh-output-format")
+	filter := viper.GetString("rsh-filter")
+
+	// Special case: raw response output mode. The response wasn't decoded so we
+	// have a bunch of bytes and the user asked for raw output, so just write it.
+	// This enables completely bypassing decoding and file downloads.
+	if filter == "" && (viper.GetBool("rsh-raw") || !f.tty) {
+		if b, ok := resp.Body.([]byte); ok {
+			Stdout.Write(b)
+			return nil
+		}
+	}
+
+	// Output defaults. Bypass by passing output options.
+	if outFormat == "auto" {
+		if f.tty {
+			// Live terminal: readable output
+			outFormat = "readable"
+		} else {
+			// Redirected (e.g. file or pipe) output: JSON for easier scripting.
+			outFormat = "json"
+		}
+	}
+	if !f.tty && filter == "" {
+		filter = "body"
+	}
+
+	var data any = resp.Map()
+
+	// Filter the data if requested via shorthand query.
+	if filter != "" && filter != "@" {
+		// Optimization: select just the body
+		if filter == "body" {
+			data = resp.Body
+		} else {
+			data, err = f.filterData(filter, data.(map[string]any))
+			if err != nil || data == nil {
+				return err
+			}
+		}
+	}
+
+	// Encode to the requested output format using nice formatting.
+	var encoded []byte
+	var lexer string
+	handled := false
+
+	// Special case: raw output with scalars or an array of scalars. This enables
+	// shell-friendly output without quotes or with each item on its own line
+	// which is easy to use in e.g. bash `for` loops.
+	if viper.GetBool("rsh-raw") {
+		var ok bool
+		if encoded, lexer, ok = f.formatRaw(data); ok {
+			handled = true
 		}
 	}
 
 	if !handled {
-		if outFormat == "auto" {
-			text := fmt.Sprintf("%s %d %s\n", resp.Proto, resp.Status, http.StatusText(resp.Status))
-
-			headerNames := []string{}
-			for k := range resp.Headers {
-				headerNames = append(headerNames, k)
-			}
-			sort.Strings(headerNames)
-
-			for _, name := range headerNames {
-				text += name + ": " + resp.Headers[name] + "\n"
-			}
-
-			var e []byte
-
-			ct := resp.Headers["Content-Type"]
-			if resp.Body != nil && (ct == "image/png" || ct == "image/jpeg" || ct == "image/webp" || ct == "image/gif") {
-				// This is likely an image. Let's display it if we can! Get the window
-				// size, read and scale the image, and display it using unicode.
-				w, h, err := term.GetSize(0)
-				if err != nil {
-					// Default to standard terminal size
-					w, h = 80, 24
-				}
-
-				image, err := ansimage.NewScaledFromReader(bytes.NewReader(resp.Body.([]byte)), h*2, w*1, color.Transparent, ansimage.ScaleModeFit, ansimage.NoDithering)
-				if err == nil {
-					e = []byte(image.Render())
-					handled = true
-				} else {
-					LogWarning("Unable to display image: %v", err)
-				}
-			}
-
-			if b, ok := printable(resp.Body); ok {
-				e = b
-				handled = true
-			}
-
-			if !handled {
-				if s, ok := resp.Body.(string); ok {
-					text += "\n" + s
-				} else if reflect.ValueOf(resp.Body).Kind() != reflect.Invalid {
-					e, err = MarshalReadable(resp.Body)
-					if err != nil {
-						return err
-					}
-
-					if f.tty {
-						// Uncomment to debug lexer...
-						// iter, err := ReadableLexer.Tokenise(&chroma.TokeniseOptions{State: "root"}, string(e))
-						// if err != nil {
-						// 	panic(err)
-						// }
-						// for _, token := range iter.Tokens() {
-						// 	fmt.Println(token.Type, token.Value)
-						// }
-
-						if e, err = Highlight("readable", e); err != nil {
-							return err
-						}
-					}
-				}
-			}
-
-			if f.tty {
-				encoded, err = Highlight("http", []byte(text))
-				if err != nil {
-					return err
-				}
-			} else {
-				encoded = []byte(text)
-			}
-
-			if len(e) > 0 {
-				encoded = append(encoded, '\n')
-				encoded = append(encoded, e...)
-			}
-		} else if outFormat == "yaml" {
-			data = makeJSONSafe(data, false)
-			encoded, err = yaml.Marshal(data)
-
-			if err != nil {
-				return err
-			}
-
-			lexer = "yaml"
+		if (f.tty && filter == "") || (outFormat == "readable" && (filter == "" || filter == "@")) {
+			encoded, err = f.formatAuto(outFormat, resp)
 		} else {
-			data = makeJSONSafe(data, false)
+			encoded, err = MarshalShort(outFormat, true, data)
+			lexer = outFormat
+		}
+	}
 
-			// The default encoder escapes '<', '>', and '&' which we don't want
-			// since we are not a browser. Disable this with an encoder instance.
-			// See https://stackoverflow.com/a/28596225/164268
-			buf := &bytes.Buffer{}
-			enc := json.NewEncoder(buf)
-			enc.SetEscapeHTML(false)
-			enc.SetIndent("", "  ")
+	if err != nil {
+		return err
+	}
 
-			if err := enc.Encode(data); err != nil {
-				return err
-			}
-			encoded = buf.Bytes()
-
-			lexer = "json"
+	// Only colorize if we have a lexer and color is enabled.
+	if f.color && lexer != "" {
+		encoded, err = Highlight(lexer, encoded)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -629,65 +676,7 @@ func (f *DefaultFormatter) Format(resp Response) error {
 		encoded = append(encoded, '\n')
 	}
 
-	// Only colorize if we are a TTY.
-	if f.tty && lexer != "" {
-		encoded, err = Highlight(lexer, encoded)
-		if err != nil {
-			return err
-		}
-	}
-
-	if len(encoded) > 0 && encoded[len(encoded)-1] != '\n' {
-		encoded = append(encoded, '\n')
-	}
-
-	fmt.Fprint(Stdout, string(encoded))
+	Stdout.Write(encoded)
 
 	return nil
-}
-
-// Only applicable to collection of repeating objects.
-// Filter down to a collection of objects first then apply --table.
-// Simpletable has much more styling that can be applied.
-func setTable(data []interface{}) (*[]byte, error) {
-	table := simpletable.New()
-
-	var headerCells []*simpletable.Cell
-	defineHeader := true
-	for _, maps := range data {
-		var bodyCells []*simpletable.Cell
-		if mapData, ok := maps.(map[string]interface{}); ok {
-			// Discover headers for repeating objects
-			// Iterate first instance of one of the repeating objects
-			if defineHeader {
-				for k := range mapData {
-					headerCells = append(headerCells, &simpletable.Cell{Align: simpletable.AlignCenter, Text: k})
-				}
-			}
-			defineHeader = false
-
-			// Add body cells based on order of header cells
-			// Will gt out of order otherwise
-			for _, cellKey := range headerCells {
-				if val, ok := mapData[cellKey.Text]; ok {
-					bodyCells = append(bodyCells, &simpletable.Cell{Align: simpletable.AlignRight, Text: fmt.Sprintf("%v", val)})
-				} else {
-					return nil, fmt.Errorf("error building table. Header Key not found in repeating object: %s", cellKey.Text)
-				}
-			}
-			table.Body.Cells = append(table.Body.Cells, bodyCells)
-		} else {
-			// Defensive just in case
-			return nil, errors.New("error building table. Collection not supported")
-		}
-	}
-
-	table.Header = &simpletable.Header{
-		Cells: headerCells,
-	}
-
-	table.SetStyle(simpletable.StyleCompactLite)
-
-	ret := []byte(table.String())
-	return &ret, nil
 }

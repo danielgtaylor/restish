@@ -16,7 +16,7 @@ import (
 
 func reset(color bool) {
 	viper.Reset()
-
+	viper.Set("tty", true)
 	if color {
 		viper.Set("color", true)
 	} else {
@@ -159,7 +159,7 @@ func TestDefaultOutput(t *testing.T) {
 	})
 
 	captured := run("http://example.com/foo", true)
-	assert.Equal(t, "\x1b[38;5;204mHTTP\x1b[0m/\x1b[38;5;172m1.1\x1b[0m \x1b[38;5;172m200\x1b[0m \x1b[38;5;74mOK\x1b[0m\n\x1b[38;5;74mContent-Type\x1b[0m: application/json\n\n\x1b[38;5;247m{\x1b[0m\n  \x1b[38;5;74mhello\x1b[0m\x1b[38;5;247m:\x1b[0m \x1b[38;5;150m\"world\"\x1b[0m\x1b[38;5;247m\n}\x1b[0m\n", captured)
+	assert.Equal(t, "\x1b[38;5;204mHTTP\x1b[0m/\x1b[38;5;172m1.1\x1b[0m \x1b[38;5;172m200\x1b[0m \x1b[38;5;74mOK\x1b[0m\n\x1b[38;5;74mContent-Type\x1b[0m: application/json\n\n\x1b[38;5;172m{\x1b[0m\n  \x1b[38;5;74mhello\x1b[0m\x1b[38;5;247m:\x1b[0m \x1b[38;5;150m\"world\"\x1b[0m\x1b[38;5;247m\n\x1b[0m\x1b[38;5;172m}\x1b[0m\n", captured)
 }
 
 func TestHelp(t *testing.T) {

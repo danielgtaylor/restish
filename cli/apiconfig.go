@@ -1,16 +1,16 @@
 package cli
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"gopkg.in/yaml.v2"
+	"golang.org/x/exp/maps"
 )
 
 // apis holds the per-API configuration.
@@ -19,23 +19,23 @@ var apis *viper.Viper
 // APIAuth describes the auth type and parameters for an API.
 type APIAuth struct {
 	Name   string            `json:"name"`
-	Params map[string]string `json:"params"`
+	Params map[string]string `json:"params,omitempty"`
 }
 
 // TLSConfig contains the TLS setup for the HTTP client
 type TLSConfig struct {
-	InsecureSkipVerify bool   `json:"insecure" mapstructure:"insecure"`
-	Cert               string `json:"cert"`
-	Key                string `json:"key"`
-	CACert             string `json:"ca_cert" mapstructure:"ca_cert"`
+	InsecureSkipVerify bool   `json:"insecure,omitempty" mapstructure:"insecure"`
+	Cert               string `json:"cert,omitempty"`
+	Key                string `json:"key,omitempty"`
+	CACert             string `json:"ca_cert,omitempty" mapstructure:"ca_cert"`
 }
 
 // APIProfile contains account-specific API information
 type APIProfile struct {
-	Base    string            `json:"base",omitempty`
+	Base    string            `json:"base,omitempty"`
 	Headers map[string]string `json:"headers,omitempty"`
 	Query   map[string]string `json:"query,omitempty"`
-	Auth    *APIAuth          `json:"auth"`
+	Auth    *APIAuth          `json:"auth,omitempty"`
 }
 
 // APIConfig describes per-API configuration options like the base URI and
@@ -55,30 +55,25 @@ func (a APIConfig) Save() error {
 }
 
 // Return colorized string of configuration in JSON or YAML
-func (a APIConfig) GetPrettyDisplay(outFormat string) (string, error) {
+func (a APIConfig) GetPrettyDisplay(outFormat string) ([]byte, error) {
 	var prettyConfig []byte
-	var marshalled []byte
-	var err error
 
 	// marshal
-	if outFormat == "yaml" {
-		marshalled, err = yaml.Marshal(a)
-	} else {
+	if outFormat == "auto" {
 		outFormat = "json"
-		marshalled, err = json.MarshalIndent(&a, "", "  ")
 	}
-
+	marshalled, err := MarshalShort(outFormat, true, a)
 	if err != nil {
-		return "", errors.New("unable to render configuration")
+		return nil, errors.New("unable to render configuration")
 	}
 
 	// colorize
 	prettyConfig, err = Highlight(outFormat, marshalled)
 	if err != nil {
-		return "", errors.New("unable to colorize output")
+		return nil, errors.New("unable to colorize output")
 	}
 
-	return string(prettyConfig), nil
+	return prettyConfig, nil
 }
 
 type apiConfigs map[string]*APIConfig
@@ -115,6 +110,40 @@ func initAPIConfig() {
 	Root.AddCommand(apiCommand)
 
 	apiCommand.AddCommand(&cobra.Command{
+		Use:     "content-types",
+		Aliases: []string{"ct", "cts"},
+		Short:   "Show content types",
+		Long:    "Show registered content-type information",
+		Args:    cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			keys := []string{}
+			for k := range contentTypes {
+				if contentTypes[k].name != "" {
+					keys = append(keys, k)
+				}
+			}
+
+			// Sort content types by priority
+			sort.Slice(keys, func(i, j int) bool {
+				return contentTypes[keys[i]].q > contentTypes[keys[j]].q
+			})
+
+			fmt.Fprintln(Stdout, "Content types (most to least preferred):")
+			for _, k := range keys {
+				fmt.Fprintln(Stdout, contentTypes[k].name)
+			}
+
+			// Sort output formats alphabetically
+			keys = maps.Keys(contentTypes)
+			sort.Strings(keys)
+			fmt.Fprintln(Stdout, "\nOutput formats:")
+			for _, k := range keys {
+				fmt.Fprintln(Stdout, k)
+			}
+		},
+	})
+
+	apiCommand.AddCommand(&cobra.Command{
 		Use:     "configure short-name",
 		Aliases: []string{"config"},
 		Short:   "Initialize an API",
@@ -124,20 +153,19 @@ func initAPIConfig() {
 	})
 
 	apiCommand.AddCommand(&cobra.Command{
-		Use:     "show short-name",
-		Aliases: []string{"show"},
-		Short:   "Show an API",
-		Long:    "Show an API configuration.",
-		Args:    cobra.MinimumNArgs(1),
+		Use:   "show short-name",
+		Short: "Show API config",
+		Long:  "Show an API configuration as JSON/YAML.",
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			config := configs[args[0]]
 			if config == nil {
-				panic("API not found")
+				panic("API " + args[0] + " not found")
 			}
 
-			outFormat := viper.Get("rsh-output-format").(string)
+			outFormat := viper.GetString("rsh-output-format")
 			if prettyString, err := config.GetPrettyDisplay(outFormat); err == nil {
-				fmt.Println(prettyString)
+				Stdout.Write(prettyString)
 			} else {
 				panic(err)
 			}

@@ -1,0 +1,27 @@
+short: Test API
+operations:
+  - name: getItem
+    aliases:
+      - get-item
+      - getitem
+      - gi
+    short: ""
+    long: |
+      ## Response 200 (application/json)
+
+      CLI-specific description override
+
+      ```schema
+      {
+        foo: (string)
+      }
+      ```
+    method: GET
+    uri_template: http://api.example.com/items/{item-id}
+    path_params:
+      - type: string
+        name: item-id
+    query_params:
+      - type: "array[string]"
+        name: q
+        display_name: query

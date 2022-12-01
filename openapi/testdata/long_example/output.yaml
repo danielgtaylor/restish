@@ -1,0 +1,35 @@
+short: Test API
+operations:
+  - name: put-item
+    aliases: []
+    short: ""
+    long: |
+      ## Input Example
+
+      ```json
+      {
+        "bar": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "baz": "ccccccccccccccccccccccccccccccccccccccccccccc",
+        "foo": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+      ```
+
+      ## Request Schema (application/json)
+
+      ```schema
+      {
+        foo: (string)
+      }
+      ```
+
+      ## Response 201
+
+      desc
+    method: PUT
+    uri_template: http://api.example.com/items/{item-id}
+    body_media_type: application/json
+    path_params:
+      - type: string
+        name: item-id
+    examples:
+      - "<input.json"

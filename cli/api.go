@@ -22,11 +22,12 @@ import (
 // around available resources, operations, and links. An API is produced by
 // a Loader and cached by the CLI in-between runs when possible.
 type API struct {
-	Short      string      `json:"short"`
-	Long       string      `json:"long,omitempty"`
-	Operations []Operation `json:"operations,omitempty"`
-	Auth       []APIAuth   `json:"auth,omitempty"`
-	AutoConfig AutoConfig  `json:"autoconfig,omitempty"`
+	RestishVersion string      `json:"restish_version" yaml:"restish_version"`
+	Short          string      `json:"short" yaml:"short"`
+	Long           string      `json:"long,omitempty" yaml:"long,omitempty"`
+	Operations     []Operation `json:"operations,omitempty" yaml:"operations,omitempty"`
+	Auth           []APIAuth   `json:"auth,omitempty" yaml:"auth,omitempty"`
+	AutoConfig     AutoConfig  `json:"auto_config,omitempty" yaml:"auto_config,omitempty"`
 }
 
 // Merge two APIs together. Takes the description if none is set and merges
@@ -133,8 +134,10 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 		filename := path.Join(viper.GetString("config-directory"), name+".cbor")
 		if data, err := os.ReadFile(filename); err == nil {
 			if err := cbor.Unmarshal(data, &cached); err == nil {
-				setupRootFromAPI(root, &cached)
-				return cached, nil
+				if cached.RestishVersion == root.Version {
+					setupRootFromAPI(root, &cached)
+					return cached, nil
+				}
 			}
 		}
 	}
@@ -182,6 +185,7 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 		}
 
 		if found {
+			desc.RestishVersion = root.Version
 			cacheAPI(name, &desc)
 			return desc, nil
 		}

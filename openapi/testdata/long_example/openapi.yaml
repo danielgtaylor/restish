@@ -1,0 +1,33 @@
+openapi: "3.1.0"
+info:
+  version: 1.0.0
+  title: Test API
+paths:
+  /items/{item-id}:
+    put:
+      operationId: put-item
+      parameters:
+        - name: item-id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            examples:
+              default:
+                value:
+                  foo: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                  bar: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+                  baz: ccccccccccccccccccccccccccccccccccccccccccccc
+              some_other:
+                value: "<input.json"
+            schema:
+              type: object
+              properties:
+                foo:
+                  type: string
+      responses:
+        "201":
+          description: desc

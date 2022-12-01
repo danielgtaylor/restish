@@ -1,0 +1,25 @@
+openapi: "3.1.0"
+info:
+  version: 1.0.0
+  title: Test API
+components:
+  securitySchemes:
+    default:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://example.com/token
+          scopes: {}
+        authorizationCode:
+          authorizationUrl: https://example.com/authorize
+          tokenUrl: https://example.com/token
+          scopes: {}
+    basic:
+      type: http
+      scheme: basic
+x-cli-config:
+  security: default
+  prompt:
+    client_id:
+      description: Client identifier
+      example: abc123

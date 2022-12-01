@@ -1,0 +1,18 @@
+short: Test API
+operations:
+  - name: get-test
+    aliases: []
+    long: |
+      ## Response 204
+
+      Empty response
+
+      ## Responses 400/404/422/500 (application/json)
+
+      ```schema
+      {
+        message*: (string)
+      }
+      ```
+    method: GET
+    uri_template: http://api.example.com/test

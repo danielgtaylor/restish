@@ -1,0 +1,29 @@
+short: Test API
+operations: []
+auth:
+  - name: http-basic
+    params:
+      username: ""
+      password: ""
+  - name: oauth-client-credentials
+    params:
+      token_url: https://example.com/token
+      client_id: ""
+      client_secret: ""
+  - name: oauth-authorization-code
+    params:
+      authorize_url: https://example.com/authorize
+      client_id: ""
+      token_url: https://example.com/token
+auto_config:
+  prompt:
+    client_id:
+      description: Client identifier
+      example: abc123
+      exclude: false
+  auth:
+    name: oauth-authorization-code
+    params:
+      authorize_url: https://example.com/authorize
+      client_id: ""
+      token_url: https://example.com/token

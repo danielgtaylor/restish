@@ -1,0 +1,96 @@
+short: Swagger Petstore
+operations:
+  - name: create-pets
+    group: pets
+    aliases:
+      - createpets
+    short: Create a pet
+    long: |
+      ## Response 201
+
+      Null response
+
+      ## Response default (application/json)
+
+      unexpected error
+
+      ```schema
+      {
+        code*: (integer format:int32)
+        message*: (string)
+      }
+      ```
+    method: POST
+    uri_template: http://api.example.com/pets
+  - name: list-pets
+    group: pets
+    aliases:
+      - listpets
+    short: List all pets
+    long: |
+      ## Response 200 (application/json)
+
+      A paged array of pets
+
+      Headers: Next
+
+      ```schema
+      [
+        {
+          id*: (integer format:int64)
+          name*: (string)
+          tag: (string)
+        }
+      ]
+      ```
+
+      ## Response default (application/json)
+
+      unexpected error
+
+      ```schema
+      {
+        code*: (integer format:int32)
+        message*: (string)
+      }
+      ```
+    method: GET
+    uri_template: http://api.example.com/pets
+    query_params:
+      - type: integer
+        name: limit
+        description: How many items to return at one time (max 100)
+  - name: show-pet-by-id
+    group: pets
+    aliases:
+      - showpetbyid
+    short: Info for a specific pet
+    long: |
+      ## Response 200 (application/json)
+
+      Expected response to a valid request
+
+      ```schema
+      {
+        id*: (integer format:int64)
+        name*: (string)
+        tag: (string)
+      }
+      ```
+
+      ## Response default (application/json)
+
+      unexpected error
+
+      ```schema
+      {
+        code*: (integer format:int32)
+        message*: (string)
+      }
+      ```
+    method: GET
+    uri_template: http://api.example.com/pets/{petId}
+    path_params:
+      - type: string
+        name: petId
+        description: The id of the pet to retrieve

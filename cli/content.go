@@ -217,6 +217,13 @@ func setTable(data []interface{}) ([]byte, error) {
 			// Will get out of order otherwise
 			for _, cellKey := range headerCells {
 				if val, ok := mapData[cellKey.Text]; ok {
+					if s, ok := val.([]any); ok {
+						converted := make([]string, len(s))
+						for i := 0; i < len(s); i++ {
+							converted[i] = fmt.Sprintf("%v", s[i])
+						}
+						val = strings.Join(converted, ", ")
+					}
 					bodyCells = append(bodyCells, &simpletable.Cell{Align: simpletable.AlignRight, Text: fmt.Sprintf("%v", val)})
 				} else {
 					return nil, fmt.Errorf("error building table. Header Key not found in repeating object: %s", cellKey.Text)

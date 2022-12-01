@@ -168,9 +168,9 @@ func genExampleInternal(s *base.Schema, mode schemaMode, known map[[32]byte]bool
 				continue
 			}
 
-			if prop.ReadOnly != nil && (*prop.ReadOnly && mode == modeWrite) {
+			if prop.ReadOnly && mode == modeWrite {
 				continue
-			} else if prop.WriteOnly != nil && (*prop.WriteOnly && mode == modeRead) {
+			} else if prop.WriteOnly && mode == modeRead {
 				continue
 			}
 

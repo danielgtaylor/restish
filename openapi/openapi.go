@@ -238,8 +238,6 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 			style = cli.StyleForm
 		}
 
-		explode := p.Explode
-
 		displayName := getExt(p.Extensions, ExtName, "")
 		description := getExt(p.Extensions, ExtDescription, p.Description)
 
@@ -249,9 +247,12 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 			DisplayName: displayName,
 			Description: description,
 			Style:       style,
-			Explode:     explode,
 			Default:     def,
 			Example:     example,
+		}
+
+		if p.Explode != nil {
+			param.Explode = *p.Explode
 		}
 
 		switch p.In {

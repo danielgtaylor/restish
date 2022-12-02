@@ -618,7 +618,7 @@ func (l *loader) Resolve(relURI string) (*url.URL, error) {
 }
 
 func (l *loader) LocationHints() []string {
-	return []string{"/openapi.json", "/openapi.yaml"}
+	return []string{"/openapi.json", "/openapi.yaml", "openapi.json", "openapi.yaml"}
 }
 
 func (l *loader) Detect(resp *http.Response) bool {

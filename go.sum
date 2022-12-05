@@ -264,6 +264,8 @@ github.com/pb33f/libopenapi v0.3.0 h1:r0Laly/imRFqAGyjYTfMJicdeJ3vVPEWcrzcE+IU+w
 github.com/pb33f/libopenapi v0.3.0/go.mod h1:UcUNPQcwq4ojgQgthV+zbeUs25lhDlD4bM9Da8n2vdU=
 github.com/pb33f/libopenapi v0.3.1 h1:yB2Xf0R0axjdn2HIT1tX0rugLABhJeOgYAQl2TQRD4k=
 github.com/pb33f/libopenapi v0.3.1/go.mod h1:UcUNPQcwq4ojgQgthV+zbeUs25lhDlD4bM9Da8n2vdU=
+github.com/pb33f/libopenapi v0.3.4 h1:DCdi6B6WwSTU8YYY7fb7C+llmMy84YPBAjhgaW+HU7M=
+github.com/pb33f/libopenapi v0.3.4/go.mod h1:UcUNPQcwq4ojgQgthV+zbeUs25lhDlD4bM9Da8n2vdU=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
 github.com/pelletier/go-toml v1.9.5/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
 github.com/pelletier/go-toml/v2 v2.0.5 h1:ipoSadvV8oGUjnUbMub59IDPPwfxF694nG/jwbMiyQg=

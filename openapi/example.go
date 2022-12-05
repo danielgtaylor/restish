@@ -6,6 +6,7 @@ import (
 	"github.com/lucasjones/reggen"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"golang.org/x/exp/maps"
 )
 
 // genExample creates a dummy example from a given schema.
@@ -16,7 +17,25 @@ func genExample(schema *base.Schema, mode schemaMode) interface{} {
 func genExampleInternal(s *base.Schema, mode schemaMode, known map[[32]byte]bool) any {
 	inferType(s)
 
-	// TODO: handle one-of, all-of, not
+	// TODO: handle  not
+	if len(s.OneOf) > 0 {
+		return genExampleInternal(sortedSchemas(s.OneOf)[0].Schema(), mode, known)
+	}
+
+	if len(s.AnyOf) > 0 {
+		return genExampleInternal(sortedSchemas(s.AnyOf)[0].Schema(), mode, known)
+	}
+
+	if len(s.AllOf) > 0 {
+		result := map[string]any{}
+		for _, proxy := range sortedSchemas(s.AllOf) {
+			tmp := genExampleInternal(proxy.Schema(), mode, known)
+			if m, ok := tmp.(map[string]any); ok {
+				maps.Copy(result, m)
+			}
+		}
+		return result
+	}
 
 	if s.Example != nil {
 		return s.Example
@@ -100,8 +119,12 @@ func genExampleInternal(s *base.Schema, mode schemaMode, known map[[32]byte]bool
 	}
 
 	typ := ""
-	if len(s.Type) > 0 {
-		typ = s.Type[0]
+	for _, t := range s.Type {
+		// Find the first non-null type and use that for now.
+		if t != "null" {
+			typ = t
+			break
+		}
 	}
 
 	switch typ {

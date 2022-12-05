@@ -23,7 +23,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/pb33f/libopenapi v0.3.1
+	github.com/pb33f/libopenapi v0.3.4
 	github.com/shamaton/msgpack/v2 v2.1.1
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5

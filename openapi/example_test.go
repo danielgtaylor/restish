@@ -244,6 +244,25 @@ var exampleTests = []struct {
 		out:  map[string]any{"<any>": "string"},
 	},
 	{
+		name: "all-of",
+		in:   `{allOf: [{type: object, properties: {a: {type: string}}}, {type: object, properties: {foo: {type: string}, bar: {type: number, description: desc}}}]}`,
+		out: map[string]any{
+			"a":   "string",
+			"bar": 1.0,
+			"foo": "string",
+		},
+	},
+	{
+		name: "one-of",
+		in:   `{oneOf: [{type: boolean}, {type: object, properties: {foo: {type: string}, bar: {type: number, description: desc}}}]}`,
+		out:  true,
+	},
+	{
+		name: "any-of",
+		in:   `{anyOf: [{type: boolean}, {type: object, properties: {foo: {type: string}, bar: {type: number, description: desc}}}]}`,
+		out:  true,
+	},
+	{
 		name: "recusive-prop",
 		in:   `{type: object, properties: {person: {type: object, properties: {friend: {$ref: "#/properties/person"}}}}}`,
 		out: map[string]any{

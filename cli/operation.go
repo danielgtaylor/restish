@@ -15,20 +15,20 @@ import (
 
 // Operation represents an API action, e.g. list-things or create-user
 type Operation struct {
-	Name          string   `json:"name"`
-	Group         string   `json:"group,omitempty"`
-	Aliases       []string `json:"aliases,omitempty"`
-	Short         string   `json:"short,omitempty"`
-	Long          string   `json:"long,omitempty"`
-	Method        string   `json:"method,omitempty"`
-	URITemplate   string   `json:"uriTemplate"`
-	PathParams    []*Param `json:"pathParams,omitempty"`
-	QueryParams   []*Param `json:"queryParams,omitempty"`
-	HeaderParams  []*Param `json:"headerParams,omitempty"`
-	BodyMediaType string   `json:"bodyMediaType,omitempty"`
-	Examples      []string `json:"examples,omitempty"`
-	Hidden        bool     `json:"hidden,omitempty"`
-	Deprecated    string   `json:"deprecated,omitempty"`
+	Name          string   `json:"name" yaml:"name"`
+	Group         string   `json:"group,omitempty" yaml:"group,omitempty"`
+	Aliases       []string `json:"aliases,omitempty" yaml:"aliases,omitempty"`
+	Short         string   `json:"short,omitempty" yaml:"short,omitempty"`
+	Long          string   `json:"long,omitempty" yaml:"long,omitempty"`
+	Method        string   `json:"method,omitempty" yaml:"method,omitempty"`
+	URITemplate   string   `json:"uri_template" yaml:"uri_template"`
+	PathParams    []*Param `json:"path_params,omitempty" yaml:"path_params,omitempty"`
+	QueryParams   []*Param `json:"query_params,omitempty" yaml:"query_params,omitempty"`
+	HeaderParams  []*Param `json:"header_params,omitempty" yaml:"header_params,omitempty"`
+	BodyMediaType string   `json:"body_media_type,omitempty" yaml:"body_media_type,omitempty"`
+	Examples      []string `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Hidden        bool     `json:"hidden,omitempty" yaml:"hidden,omitempty"`
+	Deprecated    string   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 }
 
 // command returns a Cobra command instance for this operation.

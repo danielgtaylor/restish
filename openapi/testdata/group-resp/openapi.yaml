@@ -1,0 +1,51 @@
+openapi: "3.1.0"
+info:
+  version: 1.0.0
+  title: Test API
+components:
+  schemas:
+    ErrorModel:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+paths:
+  /test:
+    get:
+      operationId: get-test
+      responses:
+        "204":
+          description: Empty response
+        # The following should all be grouped together as they represent the
+        # same error model.
+        "400":
+          description: desc
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+        "404":
+          description: desc
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+        "422":
+          description: desc
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+        # Example of the same model *without* a ref. It should still get
+        # grouped with the rest as it is functionally equivalent.
+        "500":
+          description: desc
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message:
+                    type: string

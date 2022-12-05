@@ -1,0 +1,53 @@
+short: Test API
+operations:
+  - name: delete-item
+    aliases: []
+    short: ""
+    long: |
+      ## Response 204
+
+      Response has no body
+    method: DELETE
+    uri_template: http://api.example.com/items/{item-id}
+  - name: put-item
+    aliases: []
+    short: ""
+    long: |
+      ## Input Example
+
+      ```json
+      {
+        "foo": "multi"
+      }
+      ```
+
+      ## Request Schema (application/json)
+
+      ```schema
+      {
+        foo: (string)
+      }
+      ```
+
+      ## Response 200 (application/json)
+
+      desc
+
+      ```schema
+      {
+        foo: (string)
+      }
+      ```
+    method: PUT
+    uri_template: http://api.example.com/items/{item-id}
+    body_media_type: application/json
+    path_params:
+      - type: string
+        name: item-id
+    header_params:
+      - type: string
+        name: MyHeader
+        example: abc123
+        style: 1
+    examples:
+      - "foo: multi"

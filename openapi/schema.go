@@ -1,11 +1,13 @@
 package openapi
 
 import (
+	"encoding/base64"
 	"fmt"
 	"sort"
 	"strings"
 
-	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
 type schemaMode int
@@ -15,57 +17,113 @@ const (
 	modeWrite
 )
 
-func renderSchema(s *openapi3.Schema, indent string, mode schemaMode) string {
-	return renderSchemaInternal(s, indent, mode, map[*openapi3.Schema]bool{})
+// inferType fixes missing type if it is missing & can be inferred
+func inferType(s *base.Schema) {
+	if len(s.Type) == 0 {
+		if s.Items != nil {
+			s.Type = []string{"array"}
+		}
+
+		if len(s.Properties) > 0 || s.AdditionalProperties != nil {
+			s.Type = []string{"object"}
+		}
+	}
 }
 
-func renderSchemaInternal(s *openapi3.Schema, indent string, mode schemaMode, known map[*openapi3.Schema]bool) string {
+// isSimpleSchema returns whether this schema is a scalar or array as these
+// can't be circular references. Objects result in `false` and that triggers
+// circular ref checks.
+func isSimpleSchema(s *base.Schema) bool {
+	if len(s.Type) == 0 {
+		return true
+	}
+
+	return s.Type[0] != "object"
+}
+
+// sortedSchemas is a hack to provide stable outputs from the schema and example
+// generation code because libopenapi has a race condition that determines the
+// order of resolved lists of schema proxies for all-of, any-of, one-of, etc.
+func sortedSchemas(s []*base.SchemaProxy) []*base.SchemaProxy {
+	sort.Slice(s, func(i, j int) bool {
+		ih := s[i].GoLow().Hash()
+		jh := s[j].GoLow().Hash()
+		return base64.StdEncoding.EncodeToString(ih[:]) < base64.StdEncoding.EncodeToString(jh[:])
+	})
+	return s
+}
+
+func renderSchema(s *base.Schema, indent string, mode schemaMode) string {
+	return renderSchemaInternal(s, indent, mode, map[[32]byte]bool{})
+}
+
+func renderSchemaInternal(s *base.Schema, indent string, mode schemaMode, known map[[32]byte]bool) string {
 	doc := s.Title
 	if doc == "" {
 		doc = s.Description
 	}
 
-	// Fix missing type if it can be inferred
-	if s.Type == "" {
-		if s.Items != nil && s.Items.Value != nil {
-			s.Type = "array"
-		}
+	inferType(s)
 
-		if len(s.Properties) > 0 || (s.AdditionalProperties != nil && s.AdditionalProperties.Value != nil) || (s.AdditionalPropertiesAllowed != nil && *s.AdditionalPropertiesAllowed) {
-			s.Type = "object"
+	// TODO: handle not
+	for _, of := range []struct {
+		label   string
+		schemas []*base.SchemaProxy
+	}{
+		{label: "allOf", schemas: s.AllOf},
+		{label: "oneOf", schemas: s.OneOf},
+		{label: "anyOf", schemas: s.AnyOf},
+	} {
+		if len(of.schemas) > 0 {
+			out := of.label + "{\n"
+			for _, possible := range sortedSchemas(of.schemas) {
+				out += indent + "  " + renderSchemaInternal(possible.Schema(), indent+"  ", mode, known) + "\n"
+			}
+			return out + indent + "}"
 		}
 	}
 
-	// TODO: handle one-of, all-of, not
-	// TODO: detect circular references
+	// TODO: list type alternatives somehow?
+	typ := ""
+	for _, t := range s.Type {
+		// Find the first non-null type and use that for now.
+		if t != "null" {
+			typ = t
+			break
+		}
+	}
 
-	switch s.Type {
+	switch typ {
 	case "boolean", "integer", "number", "string":
 		tags := []string{}
 
-		// TODO: handler more validators
-		if s.Nullable {
+		// TODO: handle more validators
+		if s.Nullable != nil && *s.Nullable {
 			tags = append(tags, "nullable:true")
 		}
 
-		if s.Min != nil {
+		if s.Minimum != nil {
 			key := "min"
-			if s.ExclusiveMin {
+			if s.ExclusiveMinimumBool != nil && *s.ExclusiveMinimumBool {
 				key = "exclusiveMin"
 			}
-			tags = append(tags, fmt.Sprintf("%s:%g", key, *s.Min))
+			tags = append(tags, fmt.Sprintf("%s:%d", key, *s.Minimum))
+		} else if s.ExclusiveMinimum != nil {
+			tags = append(tags, fmt.Sprintf("exclusiveMin:%d", *s.ExclusiveMinimum))
 		}
 
-		if s.Max != nil {
+		if s.Maximum != nil {
 			key := "max"
-			if s.ExclusiveMax {
+			if s.ExclusiveMaximumBool != nil && *s.ExclusiveMaximumBool {
 				key = "exclusiveMax"
 			}
-			tags = append(tags, fmt.Sprintf("%s:%g", key, *s.Max))
+			tags = append(tags, fmt.Sprintf("%s:%d", key, *s.Maximum))
+		} else if s.ExclusiveMaximum != nil {
+			tags = append(tags, fmt.Sprintf("exclusiveMax:%d", *s.ExclusiveMaximum))
 		}
 
-		if s.MultipleOf != nil {
-			tags = append(tags, fmt.Sprintf("multiple:%g", *s.MultipleOf))
+		if s.MultipleOf != nil && *s.MultipleOf != 0 {
+			tags = append(tags, fmt.Sprintf("multiple:%d", *s.MultipleOf))
 		}
 
 		if s.Default != nil {
@@ -80,11 +138,11 @@ func renderSchemaInternal(s *openapi3.Schema, indent string, mode schemaMode, kn
 			tags = append(tags, fmt.Sprintf("pattern:%s", s.Pattern))
 		}
 
-		if s.MinLength != 0 {
-			tags = append(tags, fmt.Sprintf("minLen:%d", s.MinLength))
+		if s.MinLength != nil && *s.MinLength != 0 {
+			tags = append(tags, fmt.Sprintf("minLen:%d", *s.MinLength))
 		}
 
-		if s.MaxLength != nil {
+		if s.MaxLength != nil && *s.MaxLength != 0 {
 			tags = append(tags, fmt.Sprintf("maxLen:%d", *s.MaxLength))
 		}
 
@@ -102,17 +160,28 @@ func renderSchemaInternal(s *openapi3.Schema, indent string, mode schemaMode, kn
 			tagStr = " " + strings.Join(tags, " ")
 		}
 
-		return fmt.Sprintf("(%s%s) %s", s.Type, tagStr, doc)
-	case "array":
-		if !known[s.Items.Value] {
-			known[s.Items.Value] = true
-			arr := "[\n  " + indent + renderSchemaInternal(s.Items.Value, indent+"  ", mode, known) + "\n" + indent + "]"
-			return arr
+		if doc != "" {
+			doc = " " + doc
 		}
-		return "[<recursive ref>]"
+		return fmt.Sprintf("(%s%s)%s", strings.Join(s.Type, "|"), tagStr, doc)
+	case "array":
+		if len(s.Items) > 0 {
+			items := s.Items[0].Schema()
+			simple := isSimpleSchema(items)
+			hash := items.GoLow().Hash()
+			if simple || !known[hash] {
+				known[hash] = true
+				arr := "[\n  " + indent + renderSchemaInternal(items, indent+"  ", mode, known) + "\n" + indent + "]"
+				known[hash] = false
+				return arr
+			}
+
+			return "[<recursive ref>]"
+		}
+		return "[<any>]"
 	case "object":
 		// Special case: object with nothing defined
-		if len(s.Properties) == 0 && (s.AdditionalProperties == nil || s.AdditionalProperties.Value == nil) && (s.AdditionalPropertiesAllowed == nil || !*s.AdditionalPropertiesAllowed) {
+		if len(s.Properties) == 0 && s.AdditionalProperties == nil {
 			return "(object)"
 		}
 
@@ -125,8 +194,7 @@ func renderSchemaInternal(s *openapi3.Schema, indent string, mode schemaMode, kn
 		sort.Strings(keys)
 
 		for _, name := range keys {
-			prop := s.Properties[name].Value
-
+			prop := s.Properties[name].Schema()
 			if prop == nil {
 				continue
 			}
@@ -144,28 +212,41 @@ func renderSchemaInternal(s *openapi3.Schema, indent string, mode schemaMode, kn
 				}
 			}
 
-			if !known[prop] {
-				known[prop] = true
+			simple := isSimpleSchema(prop)
+			hash := prop.GoLow().Hash()
+			if simple || !known[hash] {
+				known[hash] = true
 				obj += indent + "  " + name + ": " + renderSchemaInternal(prop, indent+"  ", mode, known) + "\n"
+				known[hash] = false
 			} else {
 				obj += indent + "  " + name + ": <rescurive ref>\n"
 			}
 		}
 
-		if s.AdditionalProperties != nil && s.AdditionalProperties.Value != nil && s.AdditionalProperties.Value.Type != "" {
-			if !known[s.AdditionalProperties.Value] {
-				known[s.AdditionalProperties.Value] = true
-				obj += indent + "  " + "<any>: " + renderSchemaInternal(s.AdditionalProperties.Value, indent+"  ", mode, known) + "\n"
-			} else {
-				obj += indent + "  <any>: <rescurive ref>\n"
+		if s.AdditionalProperties != nil {
+			ap := s.AdditionalProperties
+			if sp, ok := ap.(*lowbase.SchemaProxy); ok {
+				ap = sp.Schema()
 			}
-		} else if s.AdditionalPropertiesAllowed != nil && *s.AdditionalPropertiesAllowed {
-			obj += indent + "  <any>: <any>\n"
+			if low, ok := ap.(*lowbase.Schema); ok {
+				addl := base.NewSchema(low)
+				simple := isSimpleSchema(addl)
+				hash := low.Hash()
+				if simple || !known[hash] {
+					known[hash] = true
+					obj += indent + "  " + "<any>: " + renderSchemaInternal(addl, indent+"  ", mode, known) + "\n"
+				} else {
+					obj += indent + "  <any>: <rescurive ref>\n"
+				}
+			}
+			if b, ok := ap.(bool); ok && b {
+				obj += indent + "  <any>: <any>\n"
+			}
 		}
 
 		obj += indent + "}"
 		return obj
 	}
 
-	return ""
+	return "<any>"
 }

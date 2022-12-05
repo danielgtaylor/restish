@@ -1,9 +1,10 @@
 package openapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,9 +15,13 @@ import (
 	"github.com/danielgtaylor/casing"
 	"github.com/danielgtaylor/restish/cli"
 	"github.com/danielgtaylor/shorthand/v2"
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gosimple/slug"
+	"github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 )
 
 // reOpenAPI3 is a regex used to detect OpenAPI files from their contents.
@@ -39,6 +44,9 @@ const (
 	// Create a hidden command for an operation. It will not show in the help,
 	// but can still be called.
 	ExtHidden = "x-cli-hidden"
+
+	// Custom auto-configuration for CLIs
+	ExtCLIConfig = "x-cli-config"
 )
 
 type autoConfig struct {
@@ -53,320 +61,45 @@ type Resolver interface {
 	Resolve(uri string) (*url.URL, error)
 }
 
-// extStr returns the string value of an OpenAPI extension stored as a JSON
-// raw message.
-func extStr(v openapi3.ExtensionProps, key string) (decoded string) {
-	i := v.Extensions[key]
-	if i != nil {
-		if err := json.Unmarshal(i.(json.RawMessage), &decoded); err != nil {
-			cli.LogWarning("Cannot read extensions property %s", key)
-			decoded = ""
+// getExt returns an extension converted to some type with the given default
+// returned if the extension is not found or cannot be cast to that type.
+func getExt[T any](v map[string]any, key string, def T) T {
+	if v != nil {
+		if i := v[key]; i != nil {
+			if t, ok := i.(T); ok {
+				return t
+			}
 		}
 	}
 
-	return
+	return def
 }
 
-// extBool returns the boolean value of an OpenAPI extension.
-func extBool(v openapi3.ExtensionProps, key string) (decoded bool) {
-	if v.Extensions[ExtIgnore] != nil {
-		json.Unmarshal(v.Extensions[ExtIgnore].(json.RawMessage), &decoded)
-	}
-	return
-}
-
-func getRequestInfo(op *openapi3.Operation) (string, *openapi3.Schema, []interface{}) {
-	mts := make(map[string][]interface{})
-
-	if op.RequestBody != nil && op.RequestBody.Value != nil {
-		for mt, item := range op.RequestBody.Value.Content {
-			var schema *openapi3.Schema
-			var examples []interface{}
-
-			if item.Schema != nil && item.Schema.Value != nil {
-				schema = item.Schema.Value
-			}
-
-			if item.Example != nil {
-				examples = append(examples, item.Example)
-			} else {
-				for _, ex := range item.Examples {
-					if ex.Value != nil {
-						examples = append(examples, ex.Value.Value)
-						break
+// getExtSlice returns an extension converted to some type with the given
+// default returned if the extension is not found or cannot be converted to
+// a slice of the correct type.
+func getExtSlice[T any](v map[string]any, key string, def []T) []T {
+	if v != nil {
+		if i := v[key]; i != nil {
+			if s, ok := i.([]any); ok && len(s) > 0 {
+				n := make([]T, len(s))
+				for i := 0; i < len(s); i++ {
+					if si, ok := s[i].(T); ok {
+						n[i] = si
 					}
 				}
-			}
-
-			if schema != nil && len(examples) == 0 {
-				examples = append(examples, genExample(schema))
-			}
-
-			mts[mt] = []interface{}{schema, examples}
-		}
-	}
-
-	// Prefer JSON.
-	for mt, item := range mts {
-		if strings.Contains(mt, "json") {
-			return mt, item[0].(*openapi3.Schema), item[1].([]interface{})
-		}
-	}
-
-	// Fall back to YAML next.
-	for mt, item := range mts {
-		if strings.Contains(mt, "yaml") {
-			return mt, item[0].(*openapi3.Schema), item[1].([]interface{})
-		}
-	}
-
-	// Last resort: return the first we find!
-	for mt, item := range mts {
-		return mt, item[0].(*openapi3.Schema), item[1].([]interface{})
-	}
-
-	return "", nil, nil
-}
-
-func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, path *openapi3.PathItem, op *openapi3.Operation) cli.Operation {
-	pathParams := []*cli.Param{}
-	queryParams := []*cli.Param{}
-	headerParams := []*cli.Param{}
-
-	combinedParams := append(path.Parameters, op.Parameters...)
-
-	for _, p := range combinedParams {
-		if p.Value != nil {
-			var def interface{}
-			var example interface{}
-
-			typ := "string"
-			if p.Value.Schema != nil && p.Value.Schema.Value != nil {
-				if p.Value.Schema.Value.Type != "" {
-					typ = p.Value.Schema.Value.Type
-				}
-
-				if typ == "array" {
-					// TODO: nil checks
-					typ += "[" + p.Value.Schema.Value.Items.Value.Type + "]"
-				}
-
-				def = p.Value.Schema.Value.Default
-				example = p.Value.Schema.Value.Example
-			}
-
-			if p.Value.Example != nil {
-				example = p.Value.Example
-			}
-
-			style := cli.StyleSimple
-			if p.Value.Style == "form" {
-				style = cli.StyleForm
-			}
-
-			explode := false
-			if p.Value.Explode != nil {
-				explode = *p.Value.Explode
-			}
-
-			displayName := ""
-			if override := extStr(p.Value.ExtensionProps, ExtName); override != "" {
-				displayName = override
-			}
-
-			description := p.Value.Description
-			if override := extStr(p.Value.ExtensionProps, ExtDescription); override != "" {
-				description = override
-			}
-
-			if override := extBool(p.Value.ExtensionProps, ExtIgnore); override {
-				continue
-			}
-
-			param := &cli.Param{
-				Type:        typ,
-				Name:        p.Value.Name,
-				DisplayName: displayName,
-				Description: description,
-				Style:       style,
-				Explode:     explode,
-				Default:     def,
-				Example:     example,
-			}
-
-			switch p.Value.In {
-			case "path":
-				pathParams = append(pathParams, param)
-			case "query":
-				queryParams = append(queryParams, param)
-			case "header":
-				headerParams = append(headerParams, param)
+				return n
 			}
 		}
 	}
 
-	var aliases []string
-	if op.Extensions[ExtAliases] != nil {
-		// We need to decode the raw extension value into our string slice.
-		json.Unmarshal(op.Extensions[ExtAliases].(json.RawMessage), &aliases)
-	}
-
-	name := casing.Kebab(op.OperationID)
-	if override := extStr(op.ExtensionProps, ExtName); override != "" {
-		name = override
-	} else if oldName := slug.Make(op.OperationID); oldName != name {
-		// For backward-compatibility, add the old naming scheme as an alias
-		// if it is different. See https://github.com/danielgtaylor/restish/issues/29
-		// for additional context; we prefer kebab casing for readability.
-		aliases = append(aliases, oldName)
-	}
-
-	desc := op.Description
-	if override := extStr(op.ExtensionProps, ExtDescription); override != "" {
-		desc = override
-	}
-
-	hidden := false
-	if override := extBool(path.ExtensionProps, ExtHidden); override {
-		hidden = true
-	}
-
-	mediaType := ""
-	var examples []string
-	if op.RequestBody != nil && op.RequestBody.Value != nil {
-		mt, reqSchema, reqExamples := getRequestInfo(op)
-		mediaType = mt
-
-		if len(reqExamples) > 0 {
-			wroteHeader := false
-			for _, ex := range reqExamples {
-				if _, ok := ex.(string); !ok {
-					// Not a string, so it's structured data. Let's marshal it to the
-					// shorthand syntax if we can.
-					if m, ok := ex.(map[string]interface{}); ok {
-						exs := shorthand.MarshalCLI(m)
-
-						if len(exs) < 150 {
-							examples = append(examples, exs)
-						} else {
-							found := false
-							for _, e := range examples {
-								if e == "<input.json" {
-									found = true
-									break
-								}
-							}
-							if !found {
-								examples = append(examples, "<input.json")
-							}
-						}
-
-						continue
-					}
-
-					b, _ := json.Marshal(ex)
-
-					if !wroteHeader {
-						desc += "\n## Input Example\n\n"
-						wroteHeader = true
-					}
-
-					desc += "\n" + string(b) + "\n"
-					continue
-				}
-
-				if !wroteHeader {
-					desc += "\n## Input Example\n\n"
-					wroteHeader = true
-				}
-
-				desc += "\n" + ex.(string) + "\n"
-			}
-		}
-
-		if reqSchema != nil {
-			desc += "\n## Request Schema (" + mt + ")\n\n```schema\n" + renderSchema(reqSchema, "", modeWrite) + "\n```\n"
-		}
-	}
-
-	codes := []string{}
-	for code := range op.Responses {
-		codes = append(codes, code)
-	}
-	sort.Strings(codes)
-
-	for _, code := range codes {
-		if op.Responses[code] == nil || op.Responses[code].Value == nil {
-			continue
-		}
-
-		resp := op.Responses[code].Value
-
-		if len(resp.Content) > 0 {
-			for ct, typeInfo := range resp.Content {
-				if len(desc) > 0 && !strings.HasSuffix(desc, "\n") {
-					desc += "\n"
-				}
-				desc += "\n## Response " + code + " (" + ct + ")\n"
-				if resp.Description != nil && *resp.Description != "" {
-					desc += "\n" + *resp.Description + "\n"
-				}
-
-				if typeInfo.Schema != nil && typeInfo.Schema.Value != nil {
-					desc += "\n```schema\n" + renderSchema(typeInfo.Schema.Value, "", modeRead) + "\n```\n"
-				}
-			}
-		} else {
-			if len(desc) > 0 && !strings.HasSuffix(desc, "\n") {
-				desc += "\n"
-			}
-			desc += "\n## Response " + code + "\n"
-			if resp.Description != nil && *resp.Description != "" {
-				desc += "\n" + *resp.Description + "\n"
-			}
-		}
-	}
-
-	tmpl, err := url.PathUnescape(uriTemplate.String())
-	if err != nil {
-		// Unescape didn't work, just fall back to the original template.
-		tmpl = uriTemplate.String()
-	}
-
-	// Try to add a group: if there's more than 1 tag, we'll just pick the
-	// first one as a best guess
-	group := ""
-	if len(op.Tags) > 0 {
-		group = op.Tags[0]
-	}
-
-	dep := ""
-	if op.Deprecated {
-		dep = "do not use"
-	}
-
-	return cli.Operation{
-		Name:          name,
-		Group:         group,
-		Aliases:       aliases,
-		Short:         op.Summary,
-		Long:          desc,
-		Method:        method,
-		URITemplate:   tmpl,
-		PathParams:    pathParams,
-		QueryParams:   queryParams,
-		HeaderParams:  headerParams,
-		BodyMediaType: mediaType,
-		Examples:      examples,
-		Hidden:        hidden,
-		Deprecated:    dep,
-	}
+	return def
 }
 
 // getBasePath returns the basePath to which the operation paths need to be appended (if any)
 // It assumes the open-api description has been validated before: the casts should always succeed
 // if the description adheres to the openapi spec schema.
-func getBasePath(location *url.URL, servers openapi3.Servers) (string, error) {
+func getBasePath(location *url.URL, servers []*v3.Server) (string, error) {
 	prefix := fmt.Sprintf("%s://%s", location.Scheme, location.Host)
 
 	for _, s := range servers {
@@ -418,52 +151,409 @@ func getBasePath(location *url.URL, servers openapi3.Servers) (string, error) {
 	return "", nil
 }
 
+func getRequestInfo(op *v3.Operation) (string, *base.Schema, []interface{}) {
+	mts := make(map[string][]interface{})
+
+	if op.RequestBody != nil {
+		for mt, item := range op.RequestBody.Content {
+			var examples []any
+
+			if item.Example != nil {
+				examples = append(examples, item.Example)
+			}
+			if len(item.Examples) > 0 {
+				keys := maps.Keys(item.Examples)
+				sort.Strings(keys)
+				for _, key := range keys {
+					ex := item.Examples[key]
+					if ex.Value != nil {
+						examples = append(examples, ex.Value)
+					}
+				}
+			}
+
+			var schema *base.Schema
+			if item.Schema != nil && item.Schema.Schema() != nil {
+				schema = item.Schema.Schema()
+			}
+
+			if schema != nil && len(examples) == 0 {
+				examples = append(examples, genExample(schema, modeWrite))
+			}
+
+			mts[mt] = []any{schema, examples}
+		}
+	}
+
+	// Prefer JSON, fall back to YAML next, otherwise return the first one.
+	for _, short := range []string{"json", "yaml", "*"} {
+		for mt, item := range mts {
+			if strings.Contains(mt, short) || short == "*" {
+				return mt, item[0].(*base.Schema), item[1].([]interface{})
+			}
+		}
+	}
+
+	return "", nil, nil
+}
+
+func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, path *v3.PathItem, op *v3.Operation) cli.Operation {
+	var pathParams, queryParams, headerParams []*cli.Param
+
+	for _, p := range op.Parameters {
+		if getExt(p.Extensions, ExtIgnore, false) {
+			continue
+		}
+
+		var def interface{}
+		var example interface{}
+
+		typ := "string"
+		if p.Schema != nil && p.Schema.Schema() != nil {
+			s := p.Schema.Schema()
+			if len(s.Type) > 0 {
+				// TODO: support params of multiple types?
+				typ = s.Type[0]
+			}
+
+			if typ == "array" {
+				if len(s.Items) > 0 {
+					items := s.Items[0].Schema()
+					if len(items.Type) > 0 {
+						typ += "[" + items.Type[0] + "]"
+					}
+				}
+			}
+
+			def = s.Default
+			example = s.Example
+		}
+
+		if p.Example != nil {
+			example = p.Example
+		}
+
+		style := cli.StyleSimple
+		if p.Style == "form" {
+			style = cli.StyleForm
+		}
+
+		displayName := getExt(p.Extensions, ExtName, "")
+		description := getExt(p.Extensions, ExtDescription, p.Description)
+
+		param := &cli.Param{
+			Type:        typ,
+			Name:        p.Name,
+			DisplayName: displayName,
+			Description: description,
+			Style:       style,
+			Default:     def,
+			Example:     example,
+		}
+
+		if p.Explode != nil {
+			param.Explode = *p.Explode
+		}
+
+		switch p.In {
+		case "path":
+			if pathParams == nil {
+				pathParams = []*cli.Param{}
+			}
+			pathParams = append(pathParams, param)
+		case "query":
+			if queryParams == nil {
+				queryParams = []*cli.Param{}
+			}
+			queryParams = append(queryParams, param)
+		case "header":
+			if headerParams == nil {
+				headerParams = []*cli.Param{}
+			}
+			headerParams = append(headerParams, param)
+		}
+	}
+
+	aliases := getExtSlice(op.Extensions, ExtAliases, []string{})
+
+	name := casing.Kebab(op.OperationId)
+	if override := getExt(op.Extensions, ExtName, ""); override != "" {
+		name = override
+	} else if oldName := slug.Make(op.OperationId); oldName != name {
+		// For backward-compatibility, add the old naming scheme as an alias
+		// if it is different. See https://github.com/danielgtaylor/restish/issues/29
+		// for additional context; we prefer kebab casing for readability.
+		aliases = append(aliases, oldName)
+	}
+
+	desc := getExt(op.Extensions, ExtDescription, op.Description)
+	hidden := getExt(op.Extensions, ExtHidden, false)
+
+	mediaType := ""
+	var examples []string
+	if op.RequestBody != nil {
+		mt, reqSchema, reqExamples := getRequestInfo(op)
+		mediaType = mt
+
+		if len(reqExamples) > 0 {
+			wroteHeader := false
+			for _, ex := range reqExamples {
+				if _, ok := ex.(string); !ok {
+					// Not a string, so it's structured data. Let's marshal it to the
+					// shorthand syntax if we can.
+					if m, ok := ex.(map[string]interface{}); ok {
+						exs := shorthand.MarshalCLI(m)
+
+						if len(exs) < 150 {
+							examples = append(examples, exs)
+						} else {
+							found := false
+							for _, e := range examples {
+								if e == "<input.json" {
+									found = true
+									break
+								}
+							}
+							if !found {
+								examples = append(examples, "<input.json")
+							}
+						}
+					}
+
+					// Since we use `<` and `>` we need to disable HTML escaping.
+					buffer := &bytes.Buffer{}
+					encoder := json.NewEncoder(buffer)
+					encoder.SetIndent("", "  ")
+					encoder.SetEscapeHTML(false)
+					encoder.Encode(ex)
+					b := buffer.Bytes()
+
+					if !wroteHeader {
+						desc += "\n## Input Example\n"
+						wroteHeader = true
+					}
+
+					desc += "\n```json\n" + strings.Trim(string(b), "\n") + "\n```\n"
+					continue
+				}
+
+				if ex.(string) == "<input.json" {
+					continue
+				}
+
+				if !wroteHeader {
+					desc += "\n## Input Example\n"
+					wroteHeader = true
+				}
+
+				desc += "\n```\n" + strings.Trim(ex.(string), "\n") + "\n```\n"
+			}
+		}
+
+		if reqSchema != nil {
+			desc += "\n## Request Schema (" + mt + ")\n\n```schema\n" + renderSchema(reqSchema, "", modeWrite) + "\n```\n"
+		}
+	}
+
+	codes := []string{}
+	respMap := map[string]*v3.Response{}
+	for k, v := range op.Responses.Codes {
+		codes = append(codes, k)
+		respMap[k] = v
+	}
+	if op.Responses.Default != nil {
+		codes = append(codes, "default")
+		respMap["default"] = op.Responses.Default
+	}
+	sort.Strings(codes)
+
+	type schemaEntry struct {
+		code   string
+		ct     string
+		schema *base.Schema
+	}
+	schemaMap := map[[32]byte][]schemaEntry{}
+	for _, code := range codes {
+		var resp *v3.Response
+		if respMap[code] == nil {
+			continue
+		}
+
+		resp = respMap[code]
+
+		hash := [32]byte{}
+		if len(resp.Content) > 0 {
+			for ct, typeInfo := range resp.Content {
+				var s *base.Schema
+				hash = [32]byte{}
+				if typeInfo.Schema != nil {
+					s = typeInfo.Schema.Schema()
+					hash = s.GoLow().Hash()
+				}
+				if schemaMap[hash] == nil {
+					schemaMap[hash] = []schemaEntry{}
+				}
+				schemaMap[hash] = append(schemaMap[hash], schemaEntry{
+					code:   code,
+					ct:     ct,
+					schema: s,
+				})
+			}
+		} else {
+			if schemaMap[hash] == nil {
+				schemaMap[hash] = []schemaEntry{}
+			}
+			schemaMap[hash] = append(schemaMap[hash], schemaEntry{
+				code: code,
+			})
+		}
+	}
+
+	schemaKeys := maps.Keys(schemaMap)
+	sort.Slice(schemaKeys, func(i, j int) bool {
+		return schemaMap[schemaKeys[i]][0].code < schemaMap[schemaKeys[j]][0].code
+	})
+
+	for _, s := range schemaKeys {
+		entries := schemaMap[s]
+
+		var resp *v3.Response
+		if len(entries) == 1 && respMap[entries[0].code] != nil {
+			resp = respMap[entries[0].code]
+		}
+
+		codeNums := []string{}
+		for _, v := range entries {
+			codeNums = append(codeNums, v.code)
+		}
+
+		hasSchema := s != [32]byte{}
+
+		ct := ""
+		if hasSchema {
+			ct = " (" + entries[0].ct + ")"
+		}
+
+		if resp != nil {
+			desc += "\n## Response " + entries[0].code + ct + "\n"
+			respDesc := getExt(resp.Extensions, ExtDescription, resp.Description)
+			if respDesc != "" {
+				desc += "\n" + respDesc + "\n"
+			} else if !hasSchema {
+				desc += "\nResponse has no body\n"
+			}
+		} else {
+			desc += "\n## Responses " + strings.Join(codeNums, "/") + ct + "\n"
+			if !hasSchema {
+				desc += "\nResponse has no body\n"
+			}
+		}
+
+		headers := respMap[entries[0].code].Headers
+		if len(headers) > 0 {
+			keys := maps.Keys(headers)
+			sort.Strings(keys)
+			desc += "\nHeaders: " + strings.Join(keys, ", ") + "\n"
+		}
+
+		if hasSchema {
+			desc += "\n```schema\n" + renderSchema(entries[0].schema, "", modeRead) + "\n```\n"
+		}
+	}
+
+	tmpl := uriTemplate.String()
+	if s, err := url.PathUnescape(uriTemplate.String()); err == nil {
+		tmpl = s
+	}
+
+	// Try to add a group: if there's more than 1 tag, we'll just pick the
+	// first one as a best guess
+	group := ""
+	if len(op.Tags) > 0 {
+		group = op.Tags[0]
+	}
+
+	dep := ""
+	if op.Deprecated != nil && *op.Deprecated {
+		dep = "do not use"
+	}
+
+	return cli.Operation{
+		Name:          name,
+		Group:         group,
+		Aliases:       aliases,
+		Short:         op.Summary,
+		Long:          strings.Trim(desc, "\n") + "\n",
+		Method:        method,
+		URITemplate:   tmpl,
+		PathParams:    pathParams,
+		QueryParams:   queryParams,
+		HeaderParams:  headerParams,
+		BodyMediaType: mediaType,
+		Examples:      examples,
+		Hidden:        hidden,
+		Deprecated:    dep,
+	}
+}
+
 func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *http.Response) (cli.API, error) {
-	loader := openapi3.NewLoader()
-	loader.IsExternalRefsAllowed = true
-
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return cli.API{}, err
 	}
 
-	swagger, err := loader.LoadFromDataWithPath(data, location)
+	doc, err := libopenapi.NewDocument(data)
 	if err != nil {
 		return cli.API{}, err
 	}
-	// spew.Dump(swagger)
+
+	var model v3.Document
+	switch doc.GetSpecInfo().SpecType {
+	case utils.OpenApi3:
+		result, errs := doc.BuildV3Model()
+		if len(errs) > 0 {
+			return cli.API{}, fmt.Errorf("errors %v", errs)
+		}
+		model = result.Model
+	default:
+		return cli.API{}, fmt.Errorf("unsupported OpenAPI document")
+	}
 
 	// See if this server has any base path prefix we need to account for.
-	basePath, err := getBasePath(location, swagger.Servers)
+	basePath, err := getBasePath(location, model.Servers)
 	if err != nil {
 		return cli.API{}, err
 	}
 
 	operations := []cli.Operation{}
-	for uri, path := range swagger.Paths {
-		if override := extBool(path.ExtensionProps, ExtIgnore); override {
-			continue
-		}
-
-		resolved, err := cfg.Resolve(basePath + uri)
-		if err != nil {
-			return cli.API{}, err
-		}
-
-		for method, operation := range path.Operations() {
-			if override := extBool(operation.ExtensionProps, ExtIgnore); override {
+	if model.Paths != nil {
+		for uri, path := range model.Paths.PathItems {
+			if getExt(path.Extensions, ExtIgnore, false) {
 				continue
 			}
 
-			operations = append(operations, openapiOperation(cmd, method, resolved, path, operation))
+			resolved, err := cfg.Resolve(basePath + uri)
+			if err != nil {
+				return cli.API{}, err
+			}
+
+			for method, operation := range path.GetOperations() {
+				if operation == nil || getExt(operation.Extensions, ExtIgnore, false) {
+					continue
+				}
+
+				operations = append(operations, openapiOperation(cmd, strings.ToUpper(method), resolved, path, operation))
+			}
 		}
 	}
 
 	authSchemes := []cli.APIAuth{}
-	for _, v := range swagger.Components.SecuritySchemes {
-		if v != nil && v.Value != nil {
-			scheme := v.Value
+	if model.Components != nil && model.Components.SecuritySchemes != nil {
+		keys := maps.Keys(model.Components.SecuritySchemes)
+		sort.Strings(keys)
 
+		for _, key := range keys {
+			scheme := model.Components.SecuritySchemes[key]
 			switch scheme.Type {
 			case "apiKey":
 				// TODO: api key auth
@@ -488,7 +578,7 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 							Params: map[string]string{
 								"client_id":     "",
 								"client_secret": "",
-								"token_url":     cc.TokenURL,
+								"token_url":     cc.TokenUrl,
 								// TODO: scopes
 							},
 						})
@@ -500,8 +590,8 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 							Name: "oauth-authorization-code",
 							Params: map[string]string{
 								"client_id":     "",
-								"authorize_url": ac.AuthorizationURL,
-								"token_url":     ac.TokenURL,
+								"authorize_url": ac.AuthorizationUrl,
+								"token_url":     ac.TokenUrl,
 								// TODO: scopes
 							},
 						})
@@ -513,76 +603,72 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 
 	short := ""
 	long := ""
-	if swagger.Info != nil {
-		short = swagger.Info.Title
-		long = swagger.Info.Description
-
-		if override := extStr(swagger.Info.ExtensionProps, ExtName); override != "" {
-			short = override
-		}
-
-		if override := extStr(swagger.Info.ExtensionProps, ExtDescription); override != "" {
-			long = override
-		}
+	if model.Info != nil {
+		short = getExt(model.Info.Extensions, ExtName, model.Info.Title)
+		long = getExt(model.Info.Extensions, ExtDescription, model.Info.Description)
 	}
 
 	api := cli.API{
 		Short:      short,
 		Long:       long,
 		Operations: operations,
-		Auth:       authSchemes,
 	}
 
-	if swagger.Extensions["x-cli-config"] != nil {
-		loadAutoConfig(&api, swagger)
+	if len(authSchemes) > 0 {
+		api.Auth = authSchemes
 	}
+
+	loadAutoConfig(&api, &model)
 
 	return api, nil
 }
 
-func loadAutoConfig(api *cli.API, swagger *openapi3.T) {
+func loadAutoConfig(api *cli.API, model *v3.Document) {
 	var config *autoConfig
 
-	if cfg, ok := swagger.Extensions["x-cli-config"].(json.RawMessage); ok {
-		if err := json.Unmarshal(cfg, &config); err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to unmarshal x-cli-config: %v", err)
-			return
+	cfg := model.Extensions[ExtCLIConfig]
+	if cfg == nil {
+		return
+	}
+
+	low := model.GoLow()
+	for k, v := range low.Extensions {
+		if k.Value == ExtCLIConfig {
+			if err := v.ValueNode.Decode(&config); err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to unmarshal x-cli-config: %v", err)
+				return
+			}
+			break
 		}
-	} else {
-		fmt.Fprintf(os.Stderr, "Unknown type for x-cli-config")
 	}
 
 	authName := config.Security
 	params := map[string]string{}
 
-	if swagger.Components.SecuritySchemes != nil {
-		ref := swagger.Components.SecuritySchemes[config.Security]
-		if ref != nil && ref.Value != nil {
-			// The config references a named security scheme.
-			scheme := ref.Value
+	if model.Components.SecuritySchemes != nil {
+		scheme := model.Components.SecuritySchemes[config.Security]
 
-			// Conver it to the Restish security type and set some default params.
-			switch scheme.Type {
-			case "http":
-				if scheme.Scheme == "basic" {
-					authName = "http-basic"
-				}
-			case "oauth2":
-				if scheme.Flows != nil {
-					if scheme.Flows.AuthorizationCode != nil {
-						// Prefer auth code if multiple auth types are available.
-						authName = "oauth-authorization-code"
-						ac := scheme.Flows.AuthorizationCode
-						params["client_id"] = ""
-						params["authorize_url"] = ac.AuthorizationURL
-						params["token_url"] = ac.TokenURL
-					} else if scheme.Flows.ClientCredentials != nil {
-						authName = "oauth-client-credentials"
-						cc := scheme.Flows.ClientCredentials
-						params["client_id"] = ""
-						params["client_secret"] = ""
-						params["token_url"] = cc.TokenURL
-					}
+		// Convert it to the Restish security type and set some default params.
+		switch scheme.Type {
+		case "http":
+			if scheme.Scheme == "basic" {
+				authName = "http-basic"
+			}
+		case "oauth2":
+			if scheme.Flows != nil {
+				if scheme.Flows.AuthorizationCode != nil {
+					// Prefer auth code if multiple auth types are available.
+					authName = "oauth-authorization-code"
+					ac := scheme.Flows.AuthorizationCode
+					params["client_id"] = ""
+					params["authorize_url"] = ac.AuthorizationUrl
+					params["token_url"] = ac.TokenUrl
+				} else if scheme.Flows.ClientCredentials != nil {
+					authName = "oauth-client-credentials"
+					cc := scheme.Flows.ClientCredentials
+					params["client_id"] = ""
+					params["client_secret"] = ""
+					params["token_url"] = cc.TokenUrl
 				}
 			}
 		}
@@ -628,14 +714,10 @@ func (l *loader) Detect(resp *http.Response) bool {
 	}
 
 	// Fall back to looking for the OpenAPI version in the body.
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	defer resp.Body.Close()
 
-	if reOpenAPI3.Match(body) {
-		return true
-	}
-
-	return false
+	return reOpenAPI3.Match(body)
 }
 
 func (l *loader) Load(entrypoint, spec url.URL, resp *http.Response) (cli.API, error) {

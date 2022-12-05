@@ -1,0 +1,46 @@
+openapi: "3.1.0"
+info:
+  version: 1.0.0
+  title: Test API
+paths:
+  /items/{item-id}:
+    get:
+      operationId: get-item
+      x-cli-name: getItem
+      x-cli-aliases:
+        - get-item
+        - getitem
+        - gi
+      parameters:
+        - name: item-id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: q
+          x-cli-name: query
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: MyHeader
+          in: header
+          example: abc123
+          schema:
+            type: string
+          x-cli-ignore: true
+      responses:
+        "200":
+          description: description
+          x-cli-description: CLI-specific description override
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  foo:
+                    type: string
+    delete:
+      operationId: delete-item
+      x-cli-ignore: true

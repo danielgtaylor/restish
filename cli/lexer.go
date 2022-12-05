@@ -157,6 +157,10 @@ var SchemaLexer = lexers.Register(chroma.MustNewLazyLexer(
 			"value": {
 				chroma.Include("whitespace"),
 				{
+					Pattern: `allOf|anyOf|oneOf`,
+					Type:    chroma.NameBuiltin,
+				},
+				{
 					Pattern: `(\()([^ )]+)`,
 					Type:    chroma.ByGroups(chroma.Text, chroma.Keyword),
 				},
@@ -172,6 +176,10 @@ var SchemaLexer = lexers.Register(chroma.MustNewLazyLexer(
 			},
 			"row": {
 				chroma.Include("whitespace"),
+				{
+					Pattern: `allOf|anyOf|oneOf`,
+					Type:    chroma.NameBuiltin,
+				},
 				{
 					Pattern: `([^*:\n]+)(\*?)(:)`,
 					Type:    chroma.ByGroups(chroma.NameTag, chroma.GenericStrong, chroma.Text),

@@ -18,34 +18,34 @@ var apis *viper.Viper
 
 // APIAuth describes the auth type and parameters for an API.
 type APIAuth struct {
-	Name   string            `json:"name"`
-	Params map[string]string `json:"params,omitempty"`
+	Name   string            `json:"name" yaml:"name"`
+	Params map[string]string `json:"params,omitempty" yaml:"params,omitempty"`
 }
 
 // TLSConfig contains the TLS setup for the HTTP client
 type TLSConfig struct {
-	InsecureSkipVerify bool   `json:"insecure,omitempty" mapstructure:"insecure"`
-	Cert               string `json:"cert,omitempty"`
-	Key                string `json:"key,omitempty"`
-	CACert             string `json:"ca_cert,omitempty" mapstructure:"ca_cert"`
+	InsecureSkipVerify bool   `json:"insecure,omitempty" yaml:"insecure,omitempty" mapstructure:"insecure"`
+	Cert               string `json:"cert,omitempty" yaml:"cert,omitempty"`
+	Key                string `json:"key,omitempty" yaml:"key,omitempty"`
+	CACert             string `json:"ca_cert,omitempty" yaml:"ca_cert,omitempty" mapstructure:"ca_cert"`
 }
 
 // APIProfile contains account-specific API information
 type APIProfile struct {
-	Base    string            `json:"base,omitempty"`
-	Headers map[string]string `json:"headers,omitempty"`
-	Query   map[string]string `json:"query,omitempty"`
-	Auth    *APIAuth          `json:"auth,omitempty"`
+	Base    string            `json:"base,omitempty" yaml:"base,omitempty"`
+	Headers map[string]string `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Query   map[string]string `json:"query,omitempty" yaml:"query,omitempty"`
+	Auth    *APIAuth          `json:"auth,omitempty" yaml:"auth,omitempty"`
 }
 
 // APIConfig describes per-API configuration options like the base URI and
 // auth scheme, if any.
 type APIConfig struct {
 	name      string
-	Base      string                 `json:"base"`
-	SpecFiles []string               `json:"spec_files,omitempty" mapstructure:"spec_files,omitempty"`
-	Profiles  map[string]*APIProfile `json:"profiles,omitempty" mapstructure:",omitempty"`
-	TLS       *TLSConfig             `json:"tls,omitempty" mapstructure:",omitempty"`
+	Base      string                 `json:"base" yaml:"base"`
+	SpecFiles []string               `json:"spec_files,omitempty" yaml:"spec_files,omitempty" mapstructure:"spec_files,omitempty"`
+	Profiles  map[string]*APIProfile `json:"profiles,omitempty" yaml:"profiles,omitempty" mapstructure:",omitempty"`
+	TLS       *TLSConfig             `json:"tls,omitempty" yaml:"tls,omitempty" mapstructure:",omitempty"`
 }
 
 // Save the API configuration to disk.

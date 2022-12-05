@@ -26,14 +26,14 @@ func typeConvert(from, to interface{}) interface{} {
 
 // Param represents an API operation input parameter.
 type Param struct {
-	Type        string      `json:"type"`
-	Name        string      `json:"name"`
-	DisplayName string      `json:"displayName,omitempty"`
-	Description string      `json:"description,omitempty"`
-	Style       Style       `json:"style,omitempty"`
-	Explode     bool        `json:"explode,omitempty"`
-	Default     interface{} `json:"default,omitempty"`
-	Example     interface{} `json:"example,omitempty"`
+	Type        string      `json:"type" yaml:"type"`
+	Name        string      `json:"name" yaml:"name"`
+	DisplayName string      `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Description string      `json:"description,omitempty" yaml:"description,omitempty"`
+	Style       Style       `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode     bool        `json:"explode,omitempty" yaml:"explide,omitempty"`
+	Default     interface{} `json:"default,omitempty" yaml:"default,omitempty"`
+	Example     interface{} `json:"example,omitempty" yaml:"example,omitempty"`
 }
 
 // Parse the parameter from a string input (e.g. command line argument)

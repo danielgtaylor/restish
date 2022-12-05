@@ -570,14 +570,33 @@ func userHomeDir() string {
 	return os.Getenv("HOME")
 }
 
-func cacheDir() string {
-	return path.Join(userHomeDir(), "."+viper.GetString("app-name"))
+func getConfigDir(appName string) string {
+	configDirEnv := strings.ToUpper(appName) + "_CONFIG_DIR"
+
+	configDir := os.Getenv(configDirEnv)
+
+	if configDir == "" {
+		configDir = path.Join(userHomeDir(), "."+appName)
+	}
+	return configDir
+}
+
+func getCacheDir() string {
+	appName := viper.GetString("app-name")
+	cacheDirEnv := strings.ToUpper(appName) + "_CACHE_DIR"
+
+	cacheDir := os.Getenv(cacheDirEnv)
+
+	if cacheDir == "" {
+		cacheDir = path.Join(userHomeDir(), "."+appName)
+	}
+	return cacheDir
 }
 
 func initConfig(appName, envPrefix string) {
 	// One-time setup to ensure the path exists so we can write files into it
 	// later as needed.
-	configDir := path.Join(userHomeDir(), "."+appName)
+	configDir := getConfigDir(appName)
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		panic(err)
 	}
@@ -603,11 +622,17 @@ func initConfig(appName, envPrefix string) {
 func initCache(appName string) {
 	Cache = viper.New()
 	Cache.SetConfigName("cache")
+
+	cacheDir := getCacheDir()
+	if err := os.MkdirAll(cacheDir, 0700); err != nil {
+		panic(err)
+	}
+
 	Cache.AddConfigPath(viper.GetString("config-directory"))
 
 	// Write a blank cache if no file is already there. Later you can use
 	// cli.Cache.SaveConfig() to write new values.
-	filename := path.Join(viper.GetString("config-directory"), "cache.json")
+	filename := path.Join(cacheDir, "cache.json")
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		if err := os.WriteFile(filename, []byte("{}"), 0600); err != nil {
 			panic(err)

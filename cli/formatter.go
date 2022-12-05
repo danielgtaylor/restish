@@ -417,7 +417,7 @@ func NewDefaultFormatter(tty, color bool) *DefaultFormatter {
 func (f *DefaultFormatter) filterData(filter string, data map[string]any) (any, error) {
 	keys := maps.Keys(data)
 	sort.Strings(keys)
-	found := strings.HasPrefix(filter, "*") || strings.HasPrefix(filter, "..")
+	found := strings.HasPrefix(filter, "*") || strings.HasPrefix(filter, "..") || strings.HasPrefix(filter, "{")
 	if !found {
 		for _, k := range keys {
 			if strings.HasPrefix(filter, k) {

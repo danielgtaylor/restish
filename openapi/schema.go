@@ -1,6 +1,7 @@
 package openapi
 
 import (
+	"encoding/base64"
 	"fmt"
 	"sort"
 	"strings"
@@ -40,6 +41,18 @@ func isSimpleSchema(s *base.Schema) bool {
 	return s.Type[0] != "object"
 }
 
+// sortedSchemas is a hack to provide stable outputs from the schema and example
+// generation code because libopenapi has a race condition that determines the
+// order of resolved lists of schema proxies for all-of, any-of, one-of, etc.
+func sortedSchemas(s []*base.SchemaProxy) []*base.SchemaProxy {
+	sort.Slice(s, func(i, j int) bool {
+		ih := s[i].GoLow().Hash()
+		jh := s[j].GoLow().Hash()
+		return base64.StdEncoding.EncodeToString(ih[:]) < base64.StdEncoding.EncodeToString(jh[:])
+	})
+	return s
+}
+
 func renderSchema(s *base.Schema, indent string, mode schemaMode) string {
 	return renderSchemaInternal(s, indent, mode, map[[32]byte]bool{})
 }
@@ -52,12 +65,32 @@ func renderSchemaInternal(s *base.Schema, indent string, mode schemaMode, known 
 
 	inferType(s)
 
-	// TODO: handle one-of, all-of, not
+	// TODO: handle not
+	for _, of := range []struct {
+		label   string
+		schemas []*base.SchemaProxy
+	}{
+		{label: "allOf", schemas: s.AllOf},
+		{label: "oneOf", schemas: s.OneOf},
+		{label: "anyOf", schemas: s.AnyOf},
+	} {
+		if len(of.schemas) > 0 {
+			out := of.label + "{\n"
+			for _, possible := range sortedSchemas(of.schemas) {
+				out += indent + "  " + renderSchemaInternal(possible.Schema(), indent+"  ", mode, known) + "\n"
+			}
+			return out + indent + "}"
+		}
+	}
 
 	// TODO: list type alternatives somehow?
 	typ := ""
-	if len(s.Type) > 0 {
-		typ = s.Type[0]
+	for _, t := range s.Type {
+		// Find the first non-null type and use that for now.
+		if t != "null" {
+			typ = t
+			break
+		}
 	}
 
 	switch typ {

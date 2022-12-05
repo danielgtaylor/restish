@@ -34,6 +34,11 @@ var schemaTests = []struct {
 		out:  "(boolean nullable:true)",
 	},
 	{
+		name: "nullable31",
+		in:   `{type: [null, boolean]}`,
+		out:  "(null|boolean)",
+	},
+	{
 		name: "min",
 		in:   `{type: number, minimum: 5}`,
 		out:  "(number min:5)",
@@ -144,6 +149,21 @@ var schemaTests = []struct {
 		name: "object-additional-props-scehma",
 		in:   `{type: object, additionalProperties: {type: string}}`,
 		out:  "{\n  <any>: (string)\n}",
+	},
+	{
+		name: "all-of",
+		in:   `{allOf: [{type: object, properties: {a: {type: string}}}, {type: object, properties: {foo: {type: string}, bar: {type: number, description: desc}}}]}`,
+		out:  "allOf{\n  {\n    a: (string)\n  }\n  {\n    bar: (number) desc\n    foo: (string)\n  }\n}",
+	},
+	{
+		name: "one-of",
+		in:   `{oneOf: [{type: boolean}, {type: object, properties: {foo: {type: string}, bar: {type: number, description: desc}}}]}`,
+		out:  "oneOf{\n  (boolean)\n  {\n    bar: (number) desc\n    foo: (string)\n  }\n}",
+	},
+	{
+		name: "any-of",
+		in:   `{anyOf: [{type: boolean}, {type: object, properties: {foo: {type: string}, bar: {type: number, description: desc}}}]}`,
+		out:  "anyOf{\n  (boolean)\n  {\n    bar: (number) desc\n    foo: (string)\n  }\n}",
 	},
 	{
 		name: "recusive-prop",

@@ -19,6 +19,7 @@ import (
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -511,8 +512,15 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 	switch doc.GetSpecInfo().SpecType {
 	case utils.OpenApi3:
 		result, errs := doc.BuildV3Model()
-		if len(errs) > 0 {
-			return cli.API{}, fmt.Errorf("errors %v", errs)
+		// Allow circular reference errors
+		for _, err := range errs {
+			if refErr, ok := err.(*resolver.ResolvingError); ok {
+				if refErr.CircularReference == nil {
+					return cli.API{}, fmt.Errorf("errors %v", errs)
+				}
+			} else {
+				return cli.API{}, fmt.Errorf("errors %v", errs)
+			}
 		}
 		model = result.Model
 	default:

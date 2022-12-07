@@ -1,12 +1,12 @@
 package oauth
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/danielgtaylor/restish/cli"
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/clientcredentials"
 )
 
@@ -54,7 +54,7 @@ func (h *ClientCredentialsHandler) OnRequest(request *http.Request, key string, 
 			TokenURL:       params["token_url"],
 			EndpointParams: endpointParams,
 			Scopes:         strings.Split(params["scopes"], ","),
-		}).TokenSource(oauth2.NoContext)
+		}).TokenSource(context.Background())
 
 		return TokenHandler(source, key, request)
 	}

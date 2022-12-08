@@ -32,7 +32,7 @@ type RefreshTokenSource struct {
 
 // Token generates a new token using either a refresh token or by falling
 // back to the original source.
-func (ts RefreshTokenSource) Token() (*oauth2.Token, error) {
+func (ts *RefreshTokenSource) Token() (*oauth2.Token, error) {
 	if ts.RefreshToken != "" {
 		cli.LogDebug("Trying refresh token to get a new access token")
 		payload := fmt.Sprintf("grant_type=refresh_token&client_id=%s&refresh_token=%s", ts.ClientID, ts.RefreshToken)

@@ -3,7 +3,7 @@ package oauth
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -42,7 +42,7 @@ func requestToken(tokenURL, payload string) (*oauth2.Token, error) {
 	}
 	cli.LogDebugResponse(start, res)
 	defer res.Body.Close()
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 
 	if res.StatusCode > 200 {
 		return nil, fmt.Errorf("bad response from token endpoint:\n%s", body)

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -178,7 +177,7 @@ func TestBrokenRequest(t *testing.T) {
 	spec, _ := url.Parse("/openapi.yaml")
 
 	resp := &http.Response{
-		Body: ioutil.NopCloser(iotest.ErrReader(fmt.Errorf("request closed"))),
+		Body: io.NopCloser(iotest.ErrReader(fmt.Errorf("request closed"))),
 	}
 
 	_, err := New().Load(*base, *spec, resp)
@@ -190,7 +189,7 @@ func TestEmptyDocument(t *testing.T) {
 	spec, _ := url.Parse("/openapi.yaml")
 
 	resp := &http.Response{
-		Body: ioutil.NopCloser(strings.NewReader("")),
+		Body: io.NopCloser(strings.NewReader("")),
 	}
 
 	_, err := New().Load(*base, *spec, resp)
@@ -202,7 +201,7 @@ func TestUnsupported(t *testing.T) {
 	spec, _ := url.Parse("/openapi.yaml")
 
 	resp := &http.Response{
-		Body: ioutil.NopCloser(strings.NewReader(`swagger: 2.0`)),
+		Body: io.NopCloser(strings.NewReader(`swagger: 2.0`)),
 	}
 
 	_, err := New().Load(*base, *spec, resp)
@@ -228,7 +227,7 @@ func TestLoader(t *testing.T) {
 			spec, _ := url.Parse("/openapi.yaml")
 
 			resp := &http.Response{
-				Body: ioutil.NopCloser(bytes.NewReader(input)),
+				Body: io.NopCloser(bytes.NewReader(input)),
 			}
 
 			api, err := New().Load(*base, *spec, resp)

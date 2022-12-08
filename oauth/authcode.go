@@ -340,7 +340,7 @@ func (h *AuthorizationCodeHandler) OnRequest(request *http.Request, key string, 
 			TokenSource:    source,
 		}
 
-		return TokenHandler(refreshSource, key, request)
+		return TokenHandler(&refreshSource, key, request)
 	}
 
 	return nil

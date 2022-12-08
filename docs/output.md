@@ -175,7 +175,7 @@ The following options are functionally equvalent to the defaults:
 
 Here are some useful examples:
 
-```sh
+```bash
 # Redirect body JSON to a file
 $ restish api.rest.sh/types >file.json
 

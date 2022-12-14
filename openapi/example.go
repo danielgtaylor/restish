@@ -9,8 +9,8 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// genExample creates a dummy example from a given schema.
-func genExample(schema *base.Schema, mode schemaMode) interface{} {
+// GenExample creates a dummy example from a given schema.
+func GenExample(schema *base.Schema, mode schemaMode) interface{} {
 	return genExampleInternal(schema, mode, map[[32]byte]bool{})
 }
 

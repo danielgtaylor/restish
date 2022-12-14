@@ -10,7 +10,8 @@ require (
 	github.com/andybalholm/brotli v1.0.4
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3
-	github.com/danielgtaylor/shorthand/v2 v2.0.1
+	github.com/danielgtaylor/mexpr v1.7.3
+	github.com/danielgtaylor/shorthand/v2 v2.0.2
 	github.com/eliukblau/pixterm v1.3.1
 	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/gbl08ma/httpcache v1.0.2
@@ -23,16 +24,20 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/nmrshll/go-cp v0.0.0-20180115193924-61436d3b7cfa
 	github.com/pb33f/libopenapi v0.3.7
+	github.com/schollz/progressbar/v3 v3.12.2
 	github.com/shamaton/msgpack/v2 v2.1.1
+	github.com/spf13/afero v1.9.3
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9
+	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/exp v0.0.0-20221204150635-6dcec336b2bb
 	golang.org/x/oauth2 v0.2.0
-	golang.org/x/term v0.2.0
+	golang.org/x/term v0.3.0
 	golang.org/x/text v0.5.0
 	gopkg.in/h2non/gock.v1 v1.1.2
 	gopkg.in/yaml.v2 v2.4.0
@@ -42,7 +47,6 @@ require (
 require (
 	github.com/aymanbagabas/go-osc52 v1.2.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/danielgtaylor/mexpr v1.7.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
@@ -56,11 +60,13 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
+	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/microcosm-cc/bluemonday v1.0.21 // indirect
+	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.13.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
@@ -69,7 +75,6 @@ require (
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
-	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect

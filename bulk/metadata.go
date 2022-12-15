@@ -282,7 +282,9 @@ func (m *Meta) Pull() error {
 		if f.VersionRemote == "" {
 			// This was removed on the remote!
 			delete(m.Files, f.Path)
-			afs.Remove(f.Path)
+			if !f.IsChangedLocal(true) {
+				afs.Remove(f.Path)
+			}
 			bar.Add(1)
 			continue
 		}

@@ -586,7 +586,7 @@ func (f *DefaultFormatter) formatAuto(format string, resp Response) ([]byte, err
 	}
 
 	// No body to display.
-	return nil, nil
+	return encoded, nil
 }
 
 // Format will filter, prettify, colorize and output the data.

@@ -253,6 +253,7 @@ func diff(path, url string, original, modified []byte) {
 // without any separators.
 func getAllDiffs(files []string) error {
 	meta := mustLoadMeta()
+	changed := false
 	for _, path := range files {
 		var orig, modified []byte
 		if f, ok := meta.Files[path]; ok {
@@ -261,8 +262,13 @@ func getAllDiffs(files []string) error {
 			}
 			orig, _ = f.Fetch()
 		}
+		changed = true
 		modified, _ = afero.ReadFile(afs, path)
 		diff(path, meta.Base+strings.TrimSuffix(path, ".json"), orig, modified)
+	}
+
+	if !changed {
+		fmt.Fprintln(cli.Stdout, "No local changes")
 	}
 
 	return nil

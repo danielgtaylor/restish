@@ -311,6 +311,15 @@ func TestWorkflow(t *testing.T) {
 	require.Contains(t, out, "You are up to date with https://example.com")
 	require.Contains(t, out, "No local changes")
 	mustHaveCalledAllHTTPMocks(t)
+
+	// Diff should be empty
+	// --------------------
+	gock.Flush()
+
+	out, err = run("bulk", "diff")
+	require.NoError(t, err)
+	require.Contains(t, out, "No local changes")
+	mustHaveCalledAllHTTPMocks(t)
 }
 
 func TestInterpreterWithSchema(t *testing.T) {

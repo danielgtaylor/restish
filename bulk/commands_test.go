@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/restish/cli"
 	"github.com/spf13/afero"
@@ -92,6 +93,8 @@ func expectRemoteFile(f remoteFile) {
 		Get("/users/"+f.User+"/items/"+f.ID).
 		Reply(http.StatusOK).
 		SetHeader("Content-Type", "application/json").
+		SetHeader("Etag", string(hash([]byte(body)))).
+		SetHeader("Last-Modified", time.Now().Format(http.TimeFormat)).
 		BodyString(body)
 }
 
@@ -101,6 +104,7 @@ Test workflow:
 - list / list with filter
 - edit some files remotely
 - status
+- diff remote
 - pull
 - edit some files locally
 - reset a file
@@ -122,7 +126,7 @@ func TestWorkflow(t *testing.T) {
 
 	cli.Init("test", "1.0.0")
 	cli.Defaults()
-	Setup(cli.Root)
+	Init(cli.Root)
 
 	// Init
 	// ====
@@ -181,6 +185,24 @@ func TestWorkflow(t *testing.T) {
 	// The status command should never change the metadata!
 	mfc2, _ := afero.ReadFile(afs, ".rshbulk/meta")
 	require.Equal(t, string(metaFileContents), string(mfc2))
+
+	// Diff remote changes
+	// -------------------
+	gock.Flush()
+
+	expectRemote([]remoteFile{
+		{User: "a", ID: "a1", Version: "a11"},
+		{User: "a", ID: "a2", Version: "a21"},
+		{User: "b", ID: "b1", Version: "b12", body: `{"id": "b1", "foo": 1}`, fetch: true},
+		{User: "d", ID: "d1", Version: "d11", fetch: true},
+	})
+
+	out, err = run("bulk", "diff", "--remote")
+	require.NoError(t, err)
+	require.Contains(t, out, "+  \"foo\": 1")
+	require.Contains(t, out, "-{\n-  \"id\": \"c1\"\n-}")
+	require.Contains(t, out, "+{\n+  \"id\": \"d1\"\n+}")
+	mustHaveCalledAllHTTPMocks(t)
 
 	// Pull changes
 	// ------------
@@ -253,7 +275,8 @@ func TestWorkflow(t *testing.T) {
 
 	expectRemoteFile(remoteFile{User: "a", ID: "a1", Version: "a11"})
 
-	out, err = run("bulk", "diff")
+	// Ugh, flag state is saved between runs, so explicitly set to false here.
+	out, err = run("bulk", "diff", "--remote=false")
 	require.NoError(t, err)
 	require.Contains(t, out, "--- remote https://example.com/users/a/items/a1")
 	require.Contains(t, out, "+++ local a/items/a1.json")
@@ -320,6 +343,14 @@ func TestWorkflow(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, out, "No local changes")
 	mustHaveCalledAllHTTPMocks(t)
+}
+
+func TestFalsey(t *testing.T) {
+	for _, item := range []any{false, 0, 0.0, "", []byte{}, []any{}, map[string]any{}, map[any]any{}} {
+		t.Run(fmt.Sprintf("%T-%+v", item, item), func(t *testing.T) {
+			require.True(t, isFalsey(item))
+		})
+	}
 }
 
 func TestInterpreterWithSchema(t *testing.T) {

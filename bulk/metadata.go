@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -83,6 +84,7 @@ const (
 	statusRemoved  = 204
 )
 
+// changedFile represents a file with a changed status (add/modify/remove)
 type changedFile struct {
 	Status fileStatus
 	File   *File
@@ -171,6 +173,13 @@ func (m *Meta) PullIndex() error {
 	if err != nil {
 		panic(err)
 	}
+
+	if parsed.Status >= http.StatusBadRequest {
+		cli.LogError("Error fetching resource list %s\n", m.URL)
+		cli.Formatter.Format(parsed)
+		return fmt.Errorf("error fetching %s", m.URL)
+	}
+
 	var data any
 	if m.Filter == "" {
 		data = parsed.Body
@@ -189,7 +198,7 @@ func (m *Meta) PullIndex() error {
 	}
 
 	if _, ok := data.([]any); !ok {
-		panic("not a list")
+		panic("resource list response is not a list")
 	}
 
 	var entries []listEntry
@@ -215,7 +224,7 @@ func (m *Meta) PullIndex() error {
 		version := getFirstKey(entry, "version", "etag", "last_modified", "lastModified", "modified")
 
 		if (url == "") || (version == "") {
-			panic("list response must contain URL and version for each resource")
+			return fmt.Errorf("list response must contain a URL and version for each resource")
 		}
 		entries = append(entries, listEntry{url, version})
 	}
@@ -355,7 +364,7 @@ func (m *Meta) GetChanged(files []string) ([]changedFile, []changedFile, error) 
 			local = append(local, changedFile{
 				statusAdded, &File{
 					Path: path,
-					URL:  m.Base + path,
+					URL:  m.Base + strings.TrimSuffix(path, filepath.Ext(path)),
 				},
 			})
 		}

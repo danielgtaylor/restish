@@ -27,7 +27,7 @@ func main() {
 	// Register default encodings, content type handlers, and link parsers.
 	cli.Defaults()
 
-	bulk.Setup(cli.Root)
+	bulk.Init(cli.Root)
 
 	// Register format loaders to auto-discover API descriptions
 	cli.AddLoader(openapi.New())

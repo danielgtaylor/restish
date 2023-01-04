@@ -41,8 +41,10 @@ func isFalsey(v any) bool {
 	switch t := v.(type) {
 	case bool:
 		return !t
-	case int, int8, int16, int32, uint, uint8, uint16, uint32, float32, float64:
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return t == 0
+	case float32, float64:
+		return t == 0.0
 	case string:
 		return len(t) == 0
 	case []byte:
@@ -50,6 +52,8 @@ func isFalsey(v any) bool {
 	case []any:
 		return len(t) == 0
 	case map[string]any:
+		return len(t) == 0
+	case map[any]any:
 		return len(t) == 0
 	}
 	return false
@@ -134,6 +138,7 @@ func collectFiles(meta *Meta, args []string, match string, includeDeleted bool) 
 	}
 
 	if match != "" {
+		// We want to filter by an experession.
 		newArgs := []string{}
 
 		interpreters := map[string]mexpr.Interpreter{}
@@ -196,7 +201,7 @@ func getStatus() error {
 	}
 
 	if len(remote) > 0 {
-		fmt.Fprintf(cli.Stdout, "Remote changes\n  (use \"%s bulk pull\" to update)\n", os.Args[0])
+		fmt.Fprintf(cli.Stdout, "Remote changes on %s\n  (use \"%s bulk pull\" to update)\n", meta.URL, os.Args[0])
 		for _, changed := range remote {
 			fmt.Fprintln(cli.Stdout, changed)
 		}
@@ -218,7 +223,7 @@ func getStatus() error {
 }
 
 // diff a single file
-func diff(path, url string, original, modified []byte) {
+func diff(originalPath, modifiedPath string, original, modified []byte) {
 	var parsedOrig, parsedMod any
 	var err error
 
@@ -240,7 +245,7 @@ func diff(path, url string, original, modified []byte) {
 		fmt.Fprintln(cli.Stdout, "No changes made.")
 		return
 	} else {
-		diff := fmt.Sprint(gotextdiff.ToUnified("remote "+url, "local "+path, string(original), edits))
+		diff := fmt.Sprint(gotextdiff.ToUnified(originalPath, modifiedPath, string(original), edits))
 		if viper.GetBool("color") {
 			d, _ := cli.Highlight("diff", []byte(diff))
 			diff = string(d)
@@ -249,13 +254,12 @@ func diff(path, url string, original, modified []byte) {
 	}
 }
 
-// getAllDiffs for the given set of file paths. Displays one diff per file
+// getLocalDiffs for the given set of file paths. Displays one diff per file
 // without any separators.
-func getAllDiffs(files []string) error {
-	meta := mustLoadMeta()
+func getLocalDiffs(meta *Meta, files []string) error {
 	changed := false
 	for _, path := range files {
-		var orig, modified []byte
+		var orig []byte
 		if f, ok := meta.Files[path]; ok {
 			if !f.IsChangedLocal(false) {
 				continue
@@ -263,8 +267,8 @@ func getAllDiffs(files []string) error {
 			orig, _ = f.Fetch()
 		}
 		changed = true
-		modified, _ = afero.ReadFile(afs, path)
-		diff(path, meta.Base+strings.TrimSuffix(path, ".json"), orig, modified)
+		modified, _ := afero.ReadFile(afs, path)
+		diff("remote "+meta.Base+strings.TrimSuffix(path, ".json"), "local "+path, orig, modified)
 	}
 
 	if !changed {
@@ -274,20 +278,64 @@ func getAllDiffs(files []string) error {
 	return nil
 }
 
-// Setup the bulk commands given a parent command.
-func Setup(cmd *cobra.Command) {
+// getRemoteDiffs shows a diff for all the changed remote files.
+func getRemoteDiffs(meta *Meta) error {
+	_, remote, err := meta.GetChanged(collectFiles(meta, []string{}, "", true))
+	if err != nil {
+		return err
+	}
+
+	if len(remote) == 0 {
+		fmt.Fprintln(cli.Stdout, "No remote changes")
+		return nil
+	}
+
+	for _, f := range remote {
+		path := f.File.Path
+		modified, _ := f.File.Fetch()
+		orig, _ := afero.ReadFile(afs, path)
+		diff("local "+path, "remote "+meta.Base+strings.TrimSuffix(path, ".json"), orig, modified)
+	}
+
+	return nil
+}
+
+// Init the bulk commands given a parent command.
+func Init(cmd *cobra.Command) {
 	bulk := cobra.Command{
 		GroupID: "generic",
 		Use:     "bulk",
-		Short:   "Client-side bulk resource management",
+		Short:   "Client-side bulk resource management https://rest.sh/#/bulk",
+		Example: "  " + os.Args[0] + " bulk init api.rest.sh/books\n  " + os.Args[0] + " bulk list -m 'rating_average >= 4.8'\n  " + os.Args[0] + " bulk status",
 	}
 
+	bulk.AddGroup(
+		&cobra.Group{ID: "init", Title: "Start Here:"},
+		&cobra.Group{ID: "info", Title: "Informational Commands:"},
+		&cobra.Group{ID: "local", Title: "Local Edit Commands:"},
+		&cobra.Group{ID: "remote", Title: "Remote Sync Commands:"},
+	)
+
 	init := cobra.Command{
-		Use:     "init URL [-f filter]",
-		Aliases: []string{"i"},
-		Short:   "Initialize a new bulk checkout. Start here.",
+		GroupID:    "init",
+		Use:        "init URL [-f filter] [--url-template tmpl]",
+		Aliases:    []string{"i"},
+		SuggestFor: []string{"checkout", "co", "clone", "cl"},
+		Short:      "Initialize a new bulk checkout. Start here.",
+		Long: "Initialize a new bulk checkout via a URL that returns a list that contains a link and version for each resource. Use a `-f` filter to massage the response and the `--url-template` option to create a URL from a resource ID if no link is available. The response should look something like:\n\n```json" + `
+[
+  {
+    "url": "...",
+    "version": "..."
+  },
+  {
+    "url": "...",
+    "version": "..."
+  }
+]
+` + "```\n\nThe following fields will automatically be found and used:\n\n- Resource URL: `url`, `uri`, `self`, `link`\n- Resource version: `version`, `etag`, `last_modified`, `lastModified`, `modified`.\n\nFiltering (if used) runs *before* URL template rendering.\n\nRestish assumes resources have client-generated IDs and use HTTP `PUT`, but if that's not the case then you can still create new resources manually with `restish post ...`.",
 		Args:    cobra.ExactArgs(1),
-		Example: "  " + os.Args[0] + " bulk init api.example.com/users -f 'body.{url, version: last_modified}'",
+		Example: "  " + os.Args[0] + " bulk init api.example.com/users -f 'body.{url, version: last_login}'\n  " + os.Args[0] + " bulk init api.example.com/users -f 'body.{id, version: last_login}' --url-template='/users/{id}'",
 		Run: func(cmd *cobra.Command, args []string) {
 			var m Meta
 			loadMeta(&m)
@@ -298,7 +346,8 @@ func Setup(cmd *cobra.Command) {
 	init.Flags().String("url-template", "", "URL template to build links (e.g. from item IDs)")
 
 	list := cobra.Command{
-		Use:     "list [-m match]",
+		GroupID: "info",
+		Use:     "list [--match expr]",
 		Aliases: []string{"ls"},
 		Short:   "List checked out files",
 		Args:    cobra.NoArgs,
@@ -313,6 +362,7 @@ func Setup(cmd *cobra.Command) {
 	list.Flags().StringP("match", "m", "", "Expression to match")
 
 	pull := cobra.Command{
+		GroupID: "remote",
 		Use:     "pull",
 		Aliases: []string{"pl"},
 		Short:   "Pull remote updates. Does not overwrite local changes.",
@@ -323,6 +373,7 @@ func Setup(cmd *cobra.Command) {
 	}
 
 	status := cobra.Command{
+		GroupID: "info",
 		Use:     "status",
 		Aliases: []string{"st"},
 		Short:   "Show the local & remote added/changed/removed files",
@@ -333,25 +384,36 @@ func Setup(cmd *cobra.Command) {
 	}
 
 	diff := cobra.Command{
-		Use:     "diff [file]...",
+		GroupID: "info",
+		Use:     "diff [file... | --match expr | --remote]",
 		Aliases: []string{"di"},
-		Short:   "Show a diff of local changed files",
+		Short:   "Show a diff of local or remote changed files",
 		Run: func(cmd *cobra.Command, args []string) {
 			match, _ := cmd.Flags().GetString("match")
-			panicOnErr(getAllDiffs(collectFiles(mustLoadMeta(), args, match, true)))
+			remote, _ := cmd.Flags().GetBool("remote")
+			meta := mustLoadMeta()
+			if remote {
+				panicOnErr(getRemoteDiffs(meta))
+			} else {
+				panicOnErr(getLocalDiffs(meta, collectFiles(meta, args, match, true)))
+			}
 		},
 	}
 	diff.Flags().StringP("match", "m", "", "Expression to match")
+	diff.Flags().Bool("remote", false, "Show remote diffs instead of local")
 
 	reset := cobra.Command{
-		Use:     "reset [file]...",
+		GroupID: "local",
+		Use:     "reset [file... | --match expr]",
 		Aliases: []string{"re"},
 		Short:   "Undo local changes to files",
 		Run: func(cmd *cobra.Command, args []string) {
 			meta := mustLoadMeta()
 			match, _ := cmd.Flags().GetString("match")
 			for _, name := range collectFiles(meta, args, match, true) {
-				panicOnErr(meta.Files[name].Reset())
+				if f, ok := meta.Files[name]; ok {
+					panicOnErr(f.Reset())
+				}
 			}
 			panicOnErr(meta.Save())
 		},
@@ -359,12 +421,13 @@ func Setup(cmd *cobra.Command) {
 	reset.Flags().StringP("match", "m", "", "Expression to match")
 
 	push := cobra.Command{
+		GroupID: "remote",
 		Use:     "push",
 		Aliases: []string{"ps"},
 		Short:   "Upload local changes to the remote server",
 		Args:    cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			// TODO: limit, pause-every, wait-between, etc to control uploads.
+			// TODO: limit, pause-every, wait-between, concurrent, etc to control uploads?
 			panicOnErr(mustLoadMeta().Push())
 		},
 	}

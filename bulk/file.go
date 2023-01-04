@@ -3,7 +3,9 @@ package bulk
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -85,7 +87,11 @@ func (f *File) Fetch() ([]byte, error) {
 		return nil, err
 	}
 
-	// TODO: HTTP error code handling
+	if resp.Status >= http.StatusBadRequest {
+		cli.LogError("Error fetching %s from %s\n", f.Path, f.URL)
+		cli.Formatter.Format(resp)
+		return nil, fmt.Errorf("error fetching %s", f.URL)
+	}
 
 	if etag := resp.Headers["Etag"]; etag != "" {
 		f.ETag = etag
@@ -96,12 +102,14 @@ func (f *File) Fetch() ([]byte, error) {
 	}
 
 	if db := resp.Links["describedby"]; len(db) > 0 {
-		// TODO: resolve against base URL
-		f.Schema = db[0].URI
+		baseURL, _ := url.Parse(f.URL)
+		u, _ := url.Parse(db[0].URI)
+		f.Schema = baseURL.ResolveReference(u).String()
 	} else {
 		v := reflect.ValueOf(resp.Body)
 		if v.Kind() == reflect.Map && !v.IsNil() {
 			if s := v.MapIndex(reflect.ValueOf("$schema")); s.Kind() == reflect.String {
+				// Assume this is not a relative URL as it lives within the doc.
 				f.Schema = v.String()
 			}
 		}

@@ -179,7 +179,7 @@ func getRequestInfo(op *v3.Operation) (string, *base.Schema, []interface{}) {
 			}
 
 			if schema != nil && len(examples) == 0 {
-				examples = append(examples, genExample(schema, modeWrite))
+				examples = append(examples, GenExample(schema, modeWrite))
 			}
 
 			mts[mt] = []any{schema, examples}

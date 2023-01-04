@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/danielgtaylor/restish/bulk"
 	"github.com/danielgtaylor/restish/cli"
 	"github.com/danielgtaylor/restish/oauth"
 	"github.com/danielgtaylor/restish/openapi"
@@ -26,6 +27,8 @@ func main() {
 	// Register default encodings, content type handlers, and link parsers.
 	cli.Defaults()
 
+	bulk.Init(cli.Root)
+
 	// Register format loaders to auto-discover API descriptions
 	cli.AddLoader(openapi.New())
 
@@ -34,5 +37,7 @@ func main() {
 	cli.AddAuth("oauth-authorization-code", &oauth.AuthorizationCodeHandler{})
 
 	// Run the CLI, parsing arguments, making requests, and printing responses.
-	cli.Run()
+	if err := cli.Run(); err != nil {
+		os.Exit(1)
+	}
 }

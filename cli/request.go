@@ -16,6 +16,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+// FixAddress can convert `:8000` or `example.com` to a full URL.
+func FixAddress(addr string) string {
+	return fixAddress(addr)
+}
+
 // fixAddress can convert `:8000` or `example.com` to a full URL.
 func fixAddress(addr string) string {
 	if strings.HasPrefix(addr, ":") {

@@ -306,7 +306,7 @@ func TestExample(t *testing.T) {
 			// spew.Dump(ls)
 
 			s := base.NewSchema(&ls)
-			assert.EqualValues(t, example.out, genExample(s, example.mode))
+			assert.EqualValues(t, example.out, GenExample(s, example.mode))
 		})
 	}
 }

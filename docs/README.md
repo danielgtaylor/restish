@@ -40,6 +40,7 @@
   - [Terrifically Simple JSON](https://github.com/mpnally/Terrifically-Simple-JSON)
   - [JSON:API](https://jsonapi.org/)
 - Local caching that respects [RFC 7234](https://tools.ietf.org/html/rfc7234) `Cache-Control` and `Expires` headers
+- Client-side bulk resource management (like git for API resources)
 - CLI [shorthand](https://github.com/danielgtaylor/openapi-cli-generator/tree/master/shorthand#cli-shorthand-syntax) for structured data input (e.g. for JSON)
 - [Shorthand query](https://github.com/danielgtaylor/shorthand#querying) response filtering & projection
 - Colorized prettified readable output

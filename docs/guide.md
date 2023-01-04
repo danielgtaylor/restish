@@ -196,11 +196,11 @@ Accept-Ranges: bytes
 
 APIs can be registered in order to provide API description auto-discovery (e.g. OpenAPI 3) with convenience commands and authentication. The following API description formats and versions are supported:
 
-| Format  | Version | Notes                              |
-| ------- | ------- | ---------------------------------- |
-| Swagger | 2.0     | :x: Not supported                  |
-| OpenAPI | 3.0     | :white_check_mark: Fully supported |
-| OpenAPI | 3.1     | :white_check_mark: Fully supported |
+| Format  | Version | Notes              |
+| ------- | ------- | ------------------ |
+| Swagger | 2.0     | ❌ Not supported   |
+| OpenAPI | 3.0     | ✅ Fully supported |
+| OpenAPI | 3.1     | ✅ Fully supported |
 
 APIs are registered with a short nickname. For example the GitHub v3 API might be called `github` or the Digital Ocean API might be called `do`.
 

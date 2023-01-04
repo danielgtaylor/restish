@@ -199,6 +199,7 @@ func Init(name string, version string) {
 	tty := false
 	if isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd()) || viper.GetBool("tty") {
 		tty = true
+		viper.Set("tty", true)
 	}
 
 	useColor = false
@@ -210,6 +211,8 @@ func Init(name string, version string) {
 		// Support colored output across operating systems.
 		Stdout = colorable.NewColorableStdout()
 		Stderr = colorable.NewColorableStderr()
+
+		viper.Set("color", useColor)
 	}
 
 	au = aurora.NewAurora(useColor)
@@ -671,7 +674,7 @@ func Defaults() {
 }
 
 // Run the CLI! Parse arguments, make requests, print responses.
-func Run() {
+func Run() error {
 	// We need to register new commands at runtime based on the selected API
 	// so that we don't have to potentially refresh and parse every single
 	// registered API just to run. So this is a little hacky, but we hijack
@@ -782,15 +785,23 @@ func Run() {
 		}
 	}
 
+	var returnErr error
+
 	// Phew, we made it. Execute the command now that everything is loaded
 	// and all the relevant sub-commands are registered.
 	defer func() {
 		if err := recover(); err != nil {
 			LogError("Caught error: %v", err)
 			LogDebug("%s", string(debug.Stack()))
+			if e, ok := err.(error); ok {
+				returnErr = e
+			}
 		}
 	}()
 	if err := Root.Execute(); err != nil {
 		LogError("Error: %v", err)
+		returnErr = err
 	}
+
+	return returnErr
 }

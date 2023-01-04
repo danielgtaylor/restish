@@ -159,6 +159,16 @@
         color: #d6ffb7;
         font-style: italic;
       }
+
+      .token.diffAdded {
+        color: #afd787;
+      }
+      .token.diffModified {
+        color: #d78700;
+      }
+      .token.diffRemoved {
+        color: #ff5f87;
+      }
     </style>
   </head>
   <body>
@@ -262,17 +272,20 @@
           },
         },
         string: {
-          // pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))|('(?:\\.|[^\\'\r\n])*'(?!\s*:))/,
-          pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))/,
+          pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))|('(?:\\.|[^\\'\r\n])*'(?!\s*:))/,
+          // pattern: /("(?:\\.|[^\\"\r\n])*"(?!\s*:))/,
           greedy: true,
         },
         keypress: /<\S+>/,
+        diffAdded: /\s+added: /,
+        diffModified: /\s+modified: /,
+        diffRemoved: /\s+removed: /,
         property: /[A-Za-z0-9.-]+(?=[:[{][a-z0-9.^ _-\}[\]])/,
         number: /\b[0-9]+(\.[0-9]+)?/,
         boolean: /\b(?:true|false)\b/i,
         null: /\bnull\b/i,
         function: /contains|startsWith/,
-        keyword: /restish|<|[|]|\b(for|do|done)(?!\/)\b/,
+        keyword: /restish|rb|<|>|[|]|\b(for|do|done)(?!\/)\b/,
       };
     </script>
   </body>

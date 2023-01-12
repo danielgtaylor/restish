@@ -8,6 +8,14 @@
 
 [Restish](https://rest.sh/) is a CLI for interacting with [REST](https://apisyouwonthate.com/blog/rest-and-hypermedia-in-2019)-ish HTTP APIs with some nice features built-in, like always having the latest API resources, fields, and operations available when they go live on the API without needing to install or update anything.
 
+## Why use this?
+
+Every API deserves a CLI for quick access and for power users to script against the service. Building CLIs from scratch is a pain. Restish provides one tool your users can install that just works for multiple APIs and is always up to date, because the interface is defined by the server. See how it [compares](/comparison.md) to cURL and HTTPie.
+
+## Getting started
+
+Start with the [guide](/guide.md) to learn how to install and configure Restish as well as getting an overview of all of its features.
+
 ## Features
 
 - HTTP/2 ([RFC 7540](https://tools.ietf.org/html/rfc7540)) with TLS by _default_ with fallback to HTTP/1.1
@@ -50,11 +58,3 @@
 
 - [A CLI for REST APIs](https://dev.to/danielgtaylor/a-cli-for-rest-apis-part-1-104b)
 - [Mapping OpenAPI to the CLI](https://dev.to/danielgtaylor/mapping-openapi-to-the-cli-37pb)
-
-## Why use this?
-
-Every API deserves a CLI for quick access and for power users to script against the service. Building CLIs from scratch is a pain. Restish provides one tool your users can install that just works for multiple APIs and is always up to date, because the interface is defined by the server. See how it [compares](/comparison.md) to cURL and HTTPie.
-
-## Getting started
-
-Start with the [guide](/guide.md) to learn how to install and configure Restish as well as getting an overview of all of its features.

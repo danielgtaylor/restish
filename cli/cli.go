@@ -782,7 +782,7 @@ func Run() error {
 		if !loaded {
 			// This could be a URL or short-name as part of a URL for generic
 			// commands. We should load the config for shell completion.
-			if apiName == "head" || apiName == "options" || apiName == "get" || apiName == "post" || apiName == "put" || apiName == "patch" || apiName == "delete" && len(args) > 2 {
+			if (apiName == "head" || apiName == "options" || apiName == "get" || apiName == "post" || apiName == "put" || apiName == "patch" || apiName == "delete") && len(args) > 2 {
 				apiName = args[2]
 			}
 			apiName = fixAddress(apiName)

@@ -94,6 +94,7 @@ func matchTemplate(url, template string) string {
 			matcher := regexp.MustCompile(templateVarRegex.ReplaceAllString(tplPart, ".*"))
 			if matcher.MatchString(urlPart) && urlPart != "" {
 				tplParts[i] = urlPart
+				continue
 			}
 		} else if urlPart == tplPart {
 			// This is an exact path match.

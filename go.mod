@@ -10,8 +10,8 @@ require (
 	github.com/andybalholm/brotli v1.0.4
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3
-	github.com/danielgtaylor/mexpr v1.7.3
-	github.com/danielgtaylor/shorthand/v2 v2.0.2
+	github.com/danielgtaylor/mexpr v1.8.0
+	github.com/danielgtaylor/shorthand/v2 v2.1.0
 	github.com/eliukblau/pixterm v1.3.1
 	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/gbl08ma/httpcache v1.0.2
@@ -24,7 +24,6 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/nmrshll/go-cp v0.0.0-20180115193924-61436d3b7cfa
 	github.com/pb33f/libopenapi v0.3.7
 	github.com/schollz/progressbar/v3 v3.12.2
 	github.com/shamaton/msgpack/v2 v2.1.1
@@ -35,7 +34,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9
 	github.com/zeebo/xxh3 v1.0.2
-	golang.org/x/exp v0.0.0-20221204150635-6dcec336b2bb
+	golang.org/x/exp v0.0.0-20230113213754-f9f960f08ad4
 	golang.org/x/oauth2 v0.2.0
 	golang.org/x/term v0.3.0
 	golang.org/x/text v0.5.0

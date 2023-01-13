@@ -269,6 +269,7 @@ func Init(name string, version string) {
 	head := &cobra.Command{
 		GroupID:           "generic",
 		Use:               "head uri",
+		Aliases:           []string{"HEAD"},
 		Short:             "Head a URI",
 		Long:              "Perform an HTTP HEAD on the given URI",
 		Args:              cobra.MinimumNArgs(1),
@@ -282,6 +283,7 @@ func Init(name string, version string) {
 	options := &cobra.Command{
 		GroupID:           "generic",
 		Use:               "options uri",
+		Aliases:           []string{"OPTIONS"},
 		Short:             "Options a URI",
 		Long:              "Perform an HTTP OPTIONS on the given URI",
 		Args:              cobra.MinimumNArgs(1),
@@ -295,6 +297,7 @@ func Init(name string, version string) {
 	get := &cobra.Command{
 		GroupID:           "generic",
 		Use:               "get uri",
+		Aliases:           []string{"GET"},
 		Short:             "Get a URI",
 		Long:              "Perform an HTTP GET on the given URI",
 		Args:              cobra.MinimumNArgs(1),
@@ -308,6 +311,7 @@ func Init(name string, version string) {
 	post := &cobra.Command{
 		GroupID:           "generic",
 		Use:               "post uri [body...]",
+		Aliases:           []string{"POST"},
 		Short:             "Post a URI",
 		Long:              "Perform an HTTP POST on the given URI",
 		Args:              cobra.MinimumNArgs(1),
@@ -321,6 +325,7 @@ func Init(name string, version string) {
 	put := &cobra.Command{
 		GroupID:           "generic",
 		Use:               "put uri [body...]",
+		Aliases:           []string{"PUT"},
 		Short:             "Put a URI",
 		Long:              "Perform an HTTP PUT on the given URI",
 		Args:              cobra.MinimumNArgs(1),
@@ -334,6 +339,7 @@ func Init(name string, version string) {
 	patch := &cobra.Command{
 		GroupID:           "generic",
 		Use:               "patch uri [body...]",
+		Aliases:           []string{"PATCH"},
 		Short:             "Patch a URI",
 		Long:              "Perform an HTTP PATCH on the given URI",
 		Args:              cobra.MinimumNArgs(1),
@@ -347,6 +353,7 @@ func Init(name string, version string) {
 	delete := &cobra.Command{
 		GroupID:           "generic",
 		Use:               "delete uri [body...]",
+		Aliases:           []string{"DELETE"},
 		Short:             "Delete a URI",
 		Long:              "Perform an HTTP DELETE on the given URI",
 		Args:              cobra.MinimumNArgs(1),

@@ -160,6 +160,16 @@ func TestWorkflow(t *testing.T) {
 	require.Contains(t, out, "b/items/b1.json")
 	require.Contains(t, out, "c/items/c1.json")
 
+	// List with filter to show contents
+	// ---------------------------------
+	gock.Flush()
+	out, err = run("bulk", "list", "-m", "", "-f", "id")
+	require.NoError(t, err)
+	require.Contains(t, out, `"a1"`)
+	require.Contains(t, out, `"a2"`)
+	require.Contains(t, out, `"b1"`)
+	require.Contains(t, out, `"c1"`)
+
 	// Remote files changed
 	// --------------------
 	gock.Flush()

@@ -13,6 +13,7 @@ import (
 	"github.com/danielgtaylor/mexpr"
 	"github.com/danielgtaylor/restish/cli"
 	"github.com/danielgtaylor/restish/openapi"
+	"github.com/danielgtaylor/shorthand/v2"
 	"github.com/hexops/gotextdiff"
 	"github.com/hexops/gotextdiff/myers"
 	"github.com/hexops/gotextdiff/span"
@@ -347,7 +348,7 @@ func Init(cmd *cobra.Command) {
 
 	list := cobra.Command{
 		GroupID: "info",
-		Use:     "list [--match expr]",
+		Use:     "list [--match expr] [-f filter]",
 		Aliases: []string{"ls"},
 		Short:   "List checked out files",
 		Args:    cobra.NoArgs,
@@ -355,6 +356,23 @@ func Init(cmd *cobra.Command) {
 		Run: func(cmd *cobra.Command, args []string) {
 			match, _ := cmd.Flags().GetString("match")
 			for _, path := range collectFiles(mustLoadMeta(), args, match, false) {
+				if filter := viper.GetString("rsh-filter"); filter != "" {
+					var content any
+					b, err := afero.ReadFile(afs, path)
+					panicOnErr(err)
+					if err := json.Unmarshal(b, &content); err == nil {
+						if res, _, err := shorthand.GetPath(filter, content, shorthand.GetOptions{}); err == nil && !isFalsey(res) {
+							fmt.Fprintln(cli.Stdout, path)
+							b, _ := json.MarshalIndent(res, "", "  ")
+							if viper.GetBool("color") {
+								b, _ = cli.Highlight("readable", b)
+							}
+							fmt.Fprintln(cli.Stdout, string(b))
+							continue
+						}
+					}
+				}
+
 				fmt.Fprintln(cli.Stdout, path)
 			}
 		},

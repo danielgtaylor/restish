@@ -91,6 +91,15 @@ func TestPutURI400(t *testing.T) {
 	}`)
 }
 
+func TestHeaderWithComma(t *testing.T) {
+	defer gock.Off()
+
+	gock.New("http://example.com").Get("/").MatchHeader("Foo", "a,b,c").Reply(204)
+
+	out := run("http://example.com/ -H Foo:a,b,c")
+	assert.Contains(t, out, "204 No Content")
+}
+
 type TestAuth struct{}
 
 // Parameters returns a list of OAuth2 Authorization Code inputs.

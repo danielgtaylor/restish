@@ -44,8 +44,8 @@ func AddGlobalFlag(name, short, description string, defaultValue interface{}, mu
 				v = strings.Split(s, ",")
 				viper.Set(name, v)
 			}
-			flags.StringSliceP(name, short, v.([]string), description)
-			GlobalFlags.StringSliceP(name, short, v.([]string), description)
+			flags.StringArrayP(name, short, v.([]string), description)
+			GlobalFlags.StringArrayP(name, short, v.([]string), description)
 		} else {
 			flags.StringP(name, short, fmt.Sprintf("%v", viper.Get(name)), description)
 			GlobalFlags.StringP(name, short, fmt.Sprintf("%v", viper.Get(name)), description)

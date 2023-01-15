@@ -757,6 +757,11 @@ func Run() error {
 			// there is no need to do anything since the normal flow will catch
 			// the command being missing and print help.
 			if cfg, ok := configs[apiName]; ok {
+
+				// This is used to give context to findApi
+				// Smallest fix for https://github.com/danielgtaylor/restish/issues/128
+				viper.Set("api-name", apiName)
+
 				currentConfig = cfg
 				for _, cmd := range Root.Commands() {
 					if cmd.Use == apiName {

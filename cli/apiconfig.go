@@ -217,7 +217,14 @@ func initAPIConfig() {
 }
 
 func findAPI(uri string) (string, *APIConfig) {
+	apiName := viper.GetString("api-name")
+
 	for name, config := range configs {
+		// fixes https://github.com/danielgtaylor/restish/issues/128
+		if len(apiName) > 0 && name != apiName {
+			continue
+		}
+
 		profile := viper.GetString("rsh-profile")
 		if profile != "default" {
 			if config.Profiles[profile] == nil {

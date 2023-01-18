@@ -682,7 +682,7 @@ func Defaults() {
 }
 
 // Run the CLI! Parse arguments, make requests, print responses.
-func Run() error {
+func Run() (returnErr error) {
 	// We need to register new commands at runtime based on the selected API
 	// so that we don't have to potentially refresh and parse every single
 	// registered API just to run. So this is a little hacky, but we hijack
@@ -798,8 +798,6 @@ func Run() error {
 		}
 	}
 
-	var returnErr error
-
 	// Phew, we made it. Execute the command now that everything is loaded
 	// and all the relevant sub-commands are registered.
 	defer func() {
@@ -808,6 +806,8 @@ func Run() error {
 			LogDebug("%s", string(debug.Stack()))
 			if e, ok := err.(error); ok {
 				returnErr = e
+			} else {
+				returnErr = fmt.Errorf("%v", err)
 			}
 		}
 	}()

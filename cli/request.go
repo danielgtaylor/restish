@@ -16,6 +16,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+// lastStatus is the last HTTP status code returned by a request.
+var lastStatus int
+
+// GetLastStatus returns the last HTTP status code returned by a request. A
+// request can opt out of this via the IgnoreStatus option.
+func GetLastStatus() int {
+	return lastStatus
+}
+
 // FixAddress can convert `:8000` or `example.com` to a full URL.
 func FixAddress(addr string) string {
 	return fixAddress(addr)
@@ -60,8 +69,9 @@ func fixAddress(addr string) string {
 }
 
 type requestOption struct {
-	client     *http.Client
-	disableLog bool
+	client       *http.Client
+	disableLog   bool
+	ignoreStatus bool
 }
 
 // WithClient sets the client to use for the request.
@@ -75,6 +85,13 @@ func WithClient(c *http.Client) requestOption {
 func WithoutLog() requestOption {
 	return requestOption{
 		disableLog: true,
+	}
+}
+
+// IgnoreStatus ignores the response status code.
+func IgnoreStatus() requestOption {
+	return requestOption{
+		ignoreStatus: true,
 	}
 }
 
@@ -226,6 +243,7 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 	}
 
 	log := true
+	setStatus := true
 	for _, option := range options {
 		if option.client != nil {
 			client = option.client
@@ -233,6 +251,10 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 
 		if option.disableLog {
 			log = false
+		}
+
+		if option.ignoreStatus {
+			setStatus = false
 		}
 	}
 
@@ -243,6 +265,10 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if setStatus {
+		lastStatus = resp.StatusCode
 	}
 
 	if log {
@@ -350,8 +376,8 @@ func ParseResponse(resp *http.Response) (Response, error) {
 // GetParsedResponse makes a request and gets the parsed response back. It
 // handles any auto-pagination or linking that needs to be done and may
 // return a psuedo-responsse that is a combination of all responses.
-func GetParsedResponse(req *http.Request) (Response, error) {
-	resp, err := MakeRequest(req)
+func GetParsedResponse(req *http.Request, options ...requestOption) (Response, error) {
+	resp, err := MakeRequest(req, options...)
 	if err != nil {
 		return Response{}, err
 	}
@@ -388,7 +414,7 @@ func GetParsedResponse(req *http.Request) (Response, error) {
 		next = base.ResolveReference(next)
 		req, _ = http.NewRequest(http.MethodGet, next.String(), nil)
 
-		resp, err = MakeRequest(req)
+		resp, err = MakeRequest(req, options...)
 		if err != nil {
 			return Response{}, err
 		}

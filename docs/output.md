@@ -238,3 +238,18 @@ $ restish api.rest.sh/types -H Accept:application/json -r >types.json
 ```
 
 ?> Raw mode without filtering will not parse the response, but _will_ decode it if compressed (e.g. with gzip or brotli).
+
+## Exit Status Codes
+
+Restish will exit with the following status codes by default in order to facilitate scripting. The most recent HTTP status code is used when a command makes more than one request.
+
+| Code | Description          |
+| ---- | -------------------- |
+| 0    | Success              |
+| 1    | Unrecoverable errors |
+| 2    | -                    |
+| 3    | 3xx HTTP response    |
+| 4    | 4xx HTTP response    |
+| 5    | 5xx HTTP response    |
+
+Use the `--rsh-ignore-status-code` option or `RSH_IGNORE_STATUS_CODE=1` environment variable to ignore the exit status code and always return 0 for 3xx/4xx/5xx responses.

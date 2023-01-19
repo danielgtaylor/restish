@@ -40,4 +40,7 @@ func main() {
 	if err := cli.Run(); err != nil {
 		os.Exit(1)
 	}
+
+	// Exit based on the status code of the last request.
+	os.Exit(cli.GetExitCode())
 }

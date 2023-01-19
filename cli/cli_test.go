@@ -53,6 +53,10 @@ func expectJSON(t *testing.T, cmd string, expected string) {
 	assert.JSONEq(t, expected, captured)
 }
 
+func expectExitCode(t *testing.T, expected int) {
+	assert.Equal(t, expected, GetExitCode())
+}
+
 func TestGetURI(t *testing.T) {
 	defer gock.Off()
 
@@ -63,6 +67,7 @@ func TestGetURI(t *testing.T) {
 	expectJSON(t, "http://example.com/foo", `{
 		"Hello": "World"
 	}`)
+	expectExitCode(t, 0)
 }
 
 func TestPostURI(t *testing.T) {
@@ -82,13 +87,27 @@ func TestPostURI(t *testing.T) {
 func TestPutURI400(t *testing.T) {
 	defer gock.Off()
 
-	gock.New("http://example.com").Put("/foo/1").Reply(400).JSON(map[string]interface{}{
+	gock.New("http://example.com").Put("/foo/1").Reply(422).JSON(map[string]interface{}{
 		"detail": "Invalid input",
 	})
 
 	expectJSON(t, "put http://example.com/foo/1 value: 123", `{
 		"detail": "Invalid input"
 	}`)
+	expectExitCode(t, 4)
+}
+
+func TestIgnoreStatusCodeExit(t *testing.T) {
+	defer gock.Off()
+
+	gock.New("http://example.com").Put("/foo/1").Reply(400).JSON(map[string]interface{}{
+		"detail": "Invalid input",
+	})
+
+	expectJSON(t, "put http://example.com/foo/1 value: 123 --rsh-ignore-status-code", `{
+		"detail": "Invalid input"
+	}`)
+	expectExitCode(t, 0)
 }
 
 func TestHeaderWithComma(t *testing.T) {

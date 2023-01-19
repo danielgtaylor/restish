@@ -85,3 +85,41 @@ func TestAuthHookFailure(t *testing.T) {
 		MakeRequest(r)
 	})
 }
+
+func TestGetStatus(t *testing.T) {
+	defer gock.Off()
+
+	reset(false)
+	lastStatus = 0
+
+	gock.New("http://example.com").
+		Get("/").
+		Reply(http.StatusOK)
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	resp, err := MakeRequest(req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+	assert.Equal(t, http.StatusOK, GetLastStatus())
+}
+
+func TestIgnoreStatus(t *testing.T) {
+	defer gock.Off()
+
+	reset(false)
+	lastStatus = 0
+
+	gock.New("http://example.com").
+		Get("/").
+		Reply(http.StatusOK)
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	resp, err := MakeRequest(req, IgnoreStatus())
+
+	assert.NoError(t, err)
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+
+	assert.Equal(t, 0, GetLastStatus())
+}

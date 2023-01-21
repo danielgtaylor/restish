@@ -5,7 +5,6 @@ import (
 
 	"github.com/lucasjones/reggen"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"golang.org/x/exp/maps"
 )
 
@@ -50,21 +49,21 @@ func genExampleInternal(s *base.Schema, mode schemaMode, known map[[32]byte]bool
 	}
 
 	if s.Minimum != nil {
-		if s.ExclusiveMinimumBool != nil && *s.ExclusiveMinimumBool {
+		if s.ExclusiveMinimum != nil && s.ExclusiveMinimum.IsA() && s.ExclusiveMinimum.A {
 			return *s.Minimum + 1
 		}
 		return *s.Minimum
-	} else if s.ExclusiveMinimum != nil {
-		return *s.ExclusiveMinimum + 1
+	} else if s.ExclusiveMinimum != nil && (s.ExclusiveMinimum.IsB() /*|| s.ExclusiveMinimum.B != 0*/) {
+		return s.ExclusiveMinimum.B + 1
 	}
 
 	if s.Maximum != nil {
-		if s.ExclusiveMaximumBool != nil && *s.ExclusiveMaximumBool {
+		if s.ExclusiveMaximum != nil && s.ExclusiveMaximum.IsA() && s.ExclusiveMaximum.A {
 			return *s.Maximum - 1
 		}
 		return *s.Maximum
-	} else if s.ExclusiveMaximum != nil {
-		return *s.ExclusiveMaximum - 1
+	} else if s.ExclusiveMaximum != nil && s.ExclusiveMaximum.IsB() {
+		return s.ExclusiveMaximum.B - 1
 	}
 
 	if s.MultipleOf != nil && *s.MultipleOf != 0 {
@@ -153,8 +152,8 @@ func genExampleInternal(s *base.Schema, mode schemaMode, known map[[32]byte]bool
 
 		return "string"
 	case "array":
-		if len(s.Items) > 0 {
-			items := s.Items[0].Schema()
+		if s.Items != nil && s.Items.IsA() {
+			items := s.Items.A.Schema()
 			simple := isSimpleSchema(items)
 			hash := items.GoLow().Hash()
 			if simple || !known[hash] {
@@ -210,13 +209,10 @@ func genExampleInternal(s *base.Schema, mode schemaMode, known map[[32]byte]bool
 
 		if s.AdditionalProperties != nil {
 			ap := s.AdditionalProperties
-			if sp, ok := ap.(*lowbase.SchemaProxy); ok {
-				ap = sp.Schema()
-			}
-			if low, ok := ap.(*lowbase.Schema); ok {
-				addl := base.NewSchema(low)
+			if sp, ok := ap.(*base.SchemaProxy); ok {
+				addl := sp.Schema()
 				simple := isSimpleSchema(addl)
-				hash := low.Hash()
+				hash := addl.GoLow().Hash()
 				if simple || !known[hash] {
 					known[hash] = true
 					value["<any>"] = genExampleInternal(addl, mode, known)

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
 type schemaMode int
@@ -104,22 +103,22 @@ func renderSchemaInternal(s *base.Schema, indent string, mode schemaMode, known 
 
 		if s.Minimum != nil {
 			key := "min"
-			if s.ExclusiveMinimumBool != nil && *s.ExclusiveMinimumBool {
+			if s.ExclusiveMinimum != nil && s.ExclusiveMinimum.IsA() && s.ExclusiveMinimum.A {
 				key = "exclusiveMin"
 			}
 			tags = append(tags, fmt.Sprintf("%s:%d", key, *s.Minimum))
-		} else if s.ExclusiveMinimum != nil {
-			tags = append(tags, fmt.Sprintf("exclusiveMin:%d", *s.ExclusiveMinimum))
+		} else if s.ExclusiveMinimum != nil && s.ExclusiveMinimum.IsB() {
+			tags = append(tags, fmt.Sprintf("exclusiveMin:%d", s.ExclusiveMinimum.B))
 		}
 
 		if s.Maximum != nil {
 			key := "max"
-			if s.ExclusiveMaximumBool != nil && *s.ExclusiveMaximumBool {
+			if s.ExclusiveMaximum != nil && s.ExclusiveMaximum.IsA() && s.ExclusiveMaximum.A {
 				key = "exclusiveMax"
 			}
 			tags = append(tags, fmt.Sprintf("%s:%d", key, *s.Maximum))
-		} else if s.ExclusiveMaximum != nil {
-			tags = append(tags, fmt.Sprintf("exclusiveMax:%d", *s.ExclusiveMaximum))
+		} else if s.ExclusiveMaximum != nil && s.ExclusiveMaximum.IsB() {
+			tags = append(tags, fmt.Sprintf("exclusiveMax:%d", s.ExclusiveMaximum.B))
 		}
 
 		if s.MultipleOf != nil && *s.MultipleOf != 0 {
@@ -165,8 +164,8 @@ func renderSchemaInternal(s *base.Schema, indent string, mode schemaMode, known 
 		}
 		return fmt.Sprintf("(%s%s)%s", strings.Join(s.Type, "|"), tagStr, doc)
 	case "array":
-		if len(s.Items) > 0 {
-			items := s.Items[0].Schema()
+		if s.Items != nil && s.Items.IsA() {
+			items := s.Items.A.Schema()
 			simple := isSimpleSchema(items)
 			hash := items.GoLow().Hash()
 			if simple || !known[hash] {
@@ -225,13 +224,10 @@ func renderSchemaInternal(s *base.Schema, indent string, mode schemaMode, known 
 
 		if s.AdditionalProperties != nil {
 			ap := s.AdditionalProperties
-			if sp, ok := ap.(*lowbase.SchemaProxy); ok {
-				ap = sp.Schema()
-			}
-			if low, ok := ap.(*lowbase.Schema); ok {
-				addl := base.NewSchema(low)
+			if sp, ok := ap.(*base.SchemaProxy); ok {
+				addl := sp.Schema()
 				simple := isSimpleSchema(addl)
-				hash := low.Hash()
+				hash := addl.GoLow().Hash()
 				if simple || !known[hash] {
 					known[hash] = true
 					obj += indent + "  " + "<any>: " + renderSchemaInternal(addl, indent+"  ", mode, known) + "\n"

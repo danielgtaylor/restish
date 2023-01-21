@@ -218,8 +218,8 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 			}
 
 			if typ == "array" {
-				if len(s.Items) > 0 {
-					items := s.Items[0].Schema()
+				if s.Items != nil && s.Items.IsA() {
+					items := s.Items.A.Schema()
 					if len(items.Type) > 0 {
 						typ += "[" + items.Type[0] + "]"
 					}

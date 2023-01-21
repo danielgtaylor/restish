@@ -54,18 +54,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
   /pets/{petId}:
+    parameters:
+      - $ref: "#/components/parameters/petId"
     get:
       summary: Info for a specific pet
       operationId: showPetById
       tags:
         - pets
-      parameters:
-        - name: petId
-          in: path
-          required: true
-          description: The id of the pet to retrieve
-          schema:
-            type: string
       responses:
         "200":
           description: Expected response to a valid request
@@ -109,3 +104,11 @@ components:
           format: int32
         message:
           type: string
+  parameters:
+    petId:
+      name: petId
+      in: path
+      description: The id of the pet to retrieve
+      required: true
+      schema:
+        type: string

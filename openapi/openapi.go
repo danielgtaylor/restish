@@ -201,7 +201,21 @@ func getRequestInfo(op *v3.Operation) (string, *base.Schema, []interface{}) {
 func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, path *v3.PathItem, op *v3.Operation) cli.Operation {
 	var pathParams, queryParams, headerParams []*cli.Param
 
+	// Combine path and operation parameters, with operation params having
+	// precedence when there are name conflicts.
+	combinedParams := []*v3.Parameter{}
+	seen := map[string]bool{}
 	for _, p := range op.Parameters {
+		combinedParams = append(combinedParams, p)
+		seen[p.Name] = true
+	}
+	for _, p := range path.Parameters {
+		if !seen[p.Name] {
+			combinedParams = append(combinedParams, p)
+		}
+	}
+
+	for _, p := range combinedParams {
 		if getExt(p.Extensions, ExtIgnore, false) {
 			continue
 		}

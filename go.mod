@@ -2,8 +2,6 @@ module github.com/danielgtaylor/restish
 
 go 1.18
 
-replace github.com/pb33f/libopenapi => ../libopenapi
-
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/alecthomas/chroma v0.10.0
@@ -26,7 +24,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/pb33f/libopenapi v0.4.17
+	github.com/pb33f/libopenapi v0.4.18-0.20230121110523-de1a42c72ff4
 	github.com/schollz/progressbar/v3 v3.12.2
 	github.com/shamaton/msgpack/v2 v2.1.1
 	github.com/spf13/afero v1.9.3

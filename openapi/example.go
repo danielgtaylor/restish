@@ -53,7 +53,7 @@ func genExampleInternal(s *base.Schema, mode schemaMode, known map[[32]byte]bool
 			return *s.Minimum + 1
 		}
 		return *s.Minimum
-	} else if s.ExclusiveMinimum != nil && (s.ExclusiveMinimum.IsB() /*|| s.ExclusiveMinimum.B != 0*/) {
+	} else if s.ExclusiveMinimum != nil && (s.ExclusiveMinimum.IsB()) {
 		return s.ExclusiveMinimum.B + 1
 	}
 

@@ -735,6 +735,7 @@ func Run() error {
 		viper.Set("rsh-header", headers)
 	}
 	profile, _ := GlobalFlags.GetString("rsh-profile")
+	viper.Set("rsh-profile", profile)
 
 	// Now that global flags are parsed we can enable verbose mode if requested.
 	if viper.GetBool("rsh-verbose") {

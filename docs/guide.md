@@ -192,7 +192,7 @@ Accept-Ranges: bytes
 ╚════════╧════════════════════════════╧══════════════╝
 ```
 
-## API operation commands
+## API-specific commands
 
 APIs can be registered in order to provide API description auto-discovery (e.g. OpenAPI 3) with convenience commands and authentication. The following API description formats and versions are supported:
 

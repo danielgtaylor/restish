@@ -87,7 +87,7 @@ $ j hello: world, question: how are you?
 }
 ```
 
-### Types and type coercion
+### Types & type coercion
 
 Well-known values like `null`, `true`, and `false` get converted to their respective types automatically. Numbers also get converted. Similar to YAML, anything that doesn't fit one of those is treated as a string. If needed, you can disable this automatic coercion by forcing a value to be treated as a string with the `~` operator. **Note**: the `~` modifier must come _directly after_ the colon.
 

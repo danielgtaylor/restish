@@ -46,7 +46,7 @@ $ echo '{"name": "hello"}' | restish put api.rest.sh
 
 ### CLI Shorthand
 
-The [CLI Shorthand](shorthand.md) is a convenient way of providing structured data on the commandline. It is a JSON-like syntax that enables you to easily create nested structured data. For example:
+The [CLI Shorthand](shorthand.md) language is a convenient way of providing structured data on the commandline. It is a JSON-like syntax that enables you to easily create nested structured data. For example:
 
 ```bash
 $ restish post api.rest.sh 'foo.bar[]{baz: 1, hello: world}'

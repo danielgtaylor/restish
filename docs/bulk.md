@@ -57,7 +57,7 @@ $ rb list --match='author.lower contains brian'
 the-fabric-of-the-cosmos.json
 ```
 
-Restish also understands JSON Schema, so if the resources advertise a schema (e.g. via a `describedby` link relation of a `$schema` property) then it can provide useful errors when filtering. Since the example books advertise a schema at https://api.rest.sh/schemas/Book.json we can get warnings about potential expression problems:
+Restish also understands JSON Schema, so if the resources advertise a schema (e.g. via a `describedby` link relation of a `$schema` property) then it can provide useful errors when filtering. Since the example books advertise a schema at <https://api.rest.sh/schemas/Book.json> we can get warnings about potential expression problems:
 
 ```bash
 $ rb list --match='recent_ratings > 5'

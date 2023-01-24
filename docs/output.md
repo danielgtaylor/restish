@@ -32,7 +32,7 @@ $ RSH_NO_CACHE=1 restish api.rest.sh/cached/15?private=true
 
 Even if caching is disabled, the local disk cache will get updated. The setting above prevents the _use_ of a cached response.
 
-## Readable Output
+## Readable output
 
 Readable output is a custom format that is similar to JSON or YAML and meant to be easily consumed by humans while supporting both text and binary formats. Here is an example of how various types look:
 
@@ -96,7 +96,7 @@ $ restish rest.sh/logo.png
 $ restish api.rest.sh/images/gif
 ```
 
-## Response Structure
+## Response structure
 
 Internally, the response is structured like this:
 
@@ -131,7 +131,7 @@ The above is the same structure used when setting the output format to something
 $ restish -o json api.rest.sh/images
 ```
 
-## Filtering & Projection
+## Filtering & projection
 
 Restish includes basic response filtering functionality through the [Shorthand Query Syntax](shorthand.md#Querying). It's a language for filtering and projecting the response value that's useful for paring down and massaging the response data for scripts.
 
@@ -148,7 +148,7 @@ $ restish api.rest.sh/images -f 'body.{name}'
 $ restish api.rest.sh/example -f '..url|[@ contains github]'
 ```
 
-## Output Defaults
+## Output defaults
 
 Like some other well-known tools, the output defaults are different depending on whether the command is running in an interactive shell or output is being redirected to a pipe or file.
 
@@ -188,7 +188,7 @@ $ COLOR=1 restish api.rest.sh/types -o readable -f '@' | less
 
 !> Use `restish api content-types` to see the avialable content types and output formats you can use.
 
-## Raw Mode
+## Raw mode
 
 Raw mode, when enabled, will remove JSON formatting from the filtered output if the result matches one of the following:
 
@@ -219,7 +219,7 @@ If the filtered output result doesn't match one of the above types, then `-r` is
 
 This feature is mainly useful for shell scripting, where you don't want to have to parse the JSON and instead just want to loop through a list of IDs and run further commands.
 
-## Downloading Files & Saving Responses
+## Downloading files & saving responses
 
 Output redirection and/or raw mode can be used to download files & save structured responses in various formats (e.g. JSON, CBOR, YAML, etc):
 
@@ -239,7 +239,7 @@ $ restish api.rest.sh/types -H Accept:application/json -r >types.json
 
 ?> Raw mode without filtering will not parse the response, but _will_ decode it if compressed (e.g. with gzip or brotli).
 
-## Exit Status Codes
+## Exit status codes
 
 Restish will exit with the following status codes by default in order to facilitate scripting. The most recent HTTP status code is used when a command makes more than one request.
 

@@ -29,7 +29,7 @@ $ restish --version
 
 ?> If using `zsh` as your shell (the default on macOS), you should set `alias restish="noglob restish"` in your `~/.zshrc` to prevent it from trying to handle `?` in URLs and `[]` in shorthand input. Alternatively you can use quotes around your inputs.
 
-## Basic Usage
+## Basic usage
 
 Generic HTTP verbs require no setup and are easy to use. If no verb is supplied then a GET is assumed. The `https://` is also optional as it is the default.
 
@@ -75,7 +75,7 @@ $ restish api.rest.sh/example
 
 !> Note that the output above is **not** JSON! By default, Restish outputs an HTTP+JSON-like format meant to be more readable. See [output](/output.md) for more info.
 
-### Input Parameters & Body
+### Input parameters & body
 
 Various inputs can be passed in as needed:
 
@@ -90,7 +90,7 @@ $ restish -H Accept:application/json api.rest.sh
 # Pass in a body via a file
 $ restish post api.rest.sh <input.json
 
-# Pass in body via CLI shorthand
+# Pass in body via CLI Shorthand
 $ restish post api.rest.sh name: Kari, tags[]: admin
 ```
 
@@ -104,7 +104,7 @@ $ restish api.rest.sh
 
 ?> If you have persistent headers or query params you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Read on to find out how.
 
-### Editing Resources
+### Editing resources
 
 If an API supports both a `GET` and a `PUT` for a resource, there is a client-side `edit` convenience operation which allows you to edit the resource similar to how you might use a `PATCH` if the API were available.
 
@@ -120,7 +120,7 @@ To use interactive mode you must have the `VISUAL` or `EDITOR` environment varia
 
 Editing resources will make use of [conditional requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Conditional_requests) if any relevant headers are found on the `GET` response. For example, if an `ETag` header is present in the `GET` response then an `If-Match` header will be send on the `PUT` to prevent performing the write operation if the resource was modified by someone else while you are editing.
 
-### Output Filtering
+### Output filtering
 
 Restish includes built-in filtering using [Shorthand queries](shorthand.md#querying) which enable you to filter & project the response data. Using a filter only prints the result of the filter expression. Here are some basic examples:
 
@@ -157,7 +157,7 @@ Sat, 1 Jan 2022 12:00:00 GMT
 
 See [filtering & projection](output.md#filtering--projection) for more info & examples.
 
-### Output Defaults
+### Output defaults
 
 Like some other well-known tools, the output defaults are different depending on whether the command is running in an interactive shell or output is being redirected to a pipe or file.
 
@@ -171,7 +171,7 @@ See [output defaults](output.md#output-defaults) for more information.
 
 !> Use `restish api content-types` to see the avialable content types and output formats you can use.
 
-### Tabular Output
+### Tabular output
 
 Sometimes it's easier to read a response when you can see it in the form of a two-dimentional table. Restish supports the `table` output format for this purpose if the response (or filtered result) is an array of objects. For example:
 
@@ -192,7 +192,7 @@ Accept-Ranges: bytes
 ╚════════╧════════════════════════════╧══════════════╝
 ```
 
-## API Operation Commands
+## API operation commands
 
 APIs can be registered in order to provide API description auto-discovery (e.g. OpenAPI 3) with convenience commands and authentication. The following API description formats and versions are supported:
 
@@ -294,7 +294,7 @@ $ restish example get-image jpeg
 
 For more details, check out [OpenAPI](openapi.md).
 
-### Shell Command Line Completion
+### Shell command line completion
 
 Restish has support for dynamic shell completion built-in. See the help for your shell for how to enable this:
 

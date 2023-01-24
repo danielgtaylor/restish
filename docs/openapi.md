@@ -2,7 +2,7 @@
 
 In general, OpenAPI 3 just works with Restish. There are a couple of things you can do to make sure your users can more easily use Restish with your API.
 
-## Anatomy of a CLI Command
+## Anatomy of a CLI command
 
 A CLI command generated from an OpenAPI 3 document has the form:
 
@@ -59,11 +59,11 @@ If no such link relations are found, then the OpenAPI loader defaults to looking
 
 If neither one of those returns an OpenAPI spec, then the loader gives up.
 
-### Loading from Files
+### Loading from files
 
 For local testing or an API you don't control or can't update, you can load from OpenAPI files. See [Configuration: Loading from Files](configuration.md#loading-from-files) for an example configuration.
 
-## OpenAPI Extensions
+## OpenAPI extensions
 
 Several extensions properties may be used to change the behavior of the CLI.
 
@@ -140,7 +140,7 @@ x-cli-config:
 
 The above will prompt the user for an `org` and then fill in the params using the value from the user when creating the API configuration profile. Since `exclude` is set, the `org` parameter is never sent to the server and is only used to fill in the param template for `audience`.
 
-#### Auth Parameters
+#### Auth parameters
 
 Each auth scheme has different built-in parameters you can prompt for or provide directly in the API. Please do not put secrets into your API description!
 
@@ -222,7 +222,7 @@ paths:
 
 With the above, you would be able to call `restish my-api my-op --item-id=12`.
 
-## Compatible Frameworks
+## Compatible frameworks
 
 The following work out of the box with Restish:
 

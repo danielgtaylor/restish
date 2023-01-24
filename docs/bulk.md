@@ -1,4 +1,4 @@
-# Bulk Resource Management
+# Bulk resource management
 
 Restish includes support for a `git`-like client-side bulk resource management interface, enabling you to pull resources onto disk and track both remote and local changes, get diffs, batch submit updates, etc.
 
@@ -19,7 +19,7 @@ DELETE /books/{book-id} Delete book
 
 ?> Resource creation via Restish `bulk` requires the use of client-generated identifiers and HTTP `PUT` requests. Use plain old `restish post ...` otherwise.
 
-## Getting Started & Demo
+## Getting started & demo
 
 Let's see how it works in action by using an example CRUD API:
 
@@ -137,7 +137,7 @@ Alias: `i`
 | `-f`, `--rsh-filter` | Filter the response via [Shorthand Query](./shorthand.md#querying)<br/>Example: `-f 'body.{id, version: last_modified_dt}'`                                                    |
 | `--url-template`     | Template string to build URLs from list response items. If a filter is passed, it is processed _before_ rendering the URL template.<br/>Example: `--url-template='/items/{id}` |
 
-#### Automatically Recognized Fields
+#### Automatically recognized fields
 
 The following fields are automatically recognized and used when available in the list response items, allowing bulk resource management to just work out of the box with a large number of APIs. Fields are checked in the order listed below and the first that is found will be used.
 
@@ -146,7 +146,7 @@ The following fields are automatically recognized and used when available in the
 | Resource URL     | `url`, `uri`, `self`, `link`                                   |
 | Resource version | `version`, `etag`, `last_modified`, `lastModified`, `modified` |
 
-#### Complex Example
+#### Complex example
 
 For a more complex example, let's assume you have an API at `example.com/items` which returns resources for multiple people via a list operation like this:
 

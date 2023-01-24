@@ -5,7 +5,7 @@ There are two types of configuration in Restish:
 1. Global configuration
 2. API-specific configuration
 
-## Global Configuration
+## Global configuration
 
 Global configuration affects all commands and can be set in one of three ways, going from highest to lowest precedence:
 
@@ -53,7 +53,7 @@ $ restish api.rest.sh/images
 
 Should TTY autodetection for colored output cause any problems, you can manually disable colored output via the `NOCOLOR=1` environment variable.
 
-## API Configuration
+## API configuration
 
 ### Adding an API
 
@@ -105,7 +105,7 @@ $ restish api sync $NAME
 
 ?> This is usually not necessary, as Restish will update the API description every 24 hours. Use this if you want to force an update sooner!
 
-### Persistent Headers & Query Params
+### Persistent headers & query params
 
 Follow the prompts to add or edit persistent headers or query params. These are values that get sent with **every request** when using that profile.
 
@@ -136,7 +136,7 @@ Example:
 }
 ```
 
-### API Auth
+### API auth
 
 The following auth types are supported:
 
@@ -256,7 +256,7 @@ For example, to integrate with a third-party service like [Auth0](https://auth0.
 }
 ```
 
-#### External Tool
+#### External tool
 
 To allow interaction with APIs which have custom signature schemes, a
 third-party tool or script can be used. The script will need to accept
@@ -311,7 +311,7 @@ parameters only will be considered:
 - `uri`: Will replace the destination URL entirely (allowing the
   addition of query arguments if needed).
 
-### Loading From Files or URLs
+### Loading from files or URLs
 
 Sometimes an API won't provide a way to fetch its spec document, or a third-party will provide a spec for an existing public API, for example GitHub or Stripe.
 

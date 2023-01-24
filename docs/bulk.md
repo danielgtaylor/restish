@@ -10,7 +10,7 @@ If common response field names and standard conditional update headers are used,
 
 For example, you might have a simple CRUD-style API like this, which fully supports bulk operations:
 
-```
+```text
 GET    /books           List books returns [{url: "...", version: "..."}]
 GET    /books/{book-id} Get book
 PUT    /books/{book-id} Create/update book

@@ -94,7 +94,7 @@ $ restish post api.rest.sh <input.json
 $ restish post api.rest.sh name: Kari, tags[]: admin
 ```
 
-Read more about [CLI Shorthand](/shorthand.md). Headers and query params can also be set via environment variables by prefixing with `RSH_`, for example:
+Read more about [CLI Shorthand](/shorthand.md). Headers and query parameters can also be set via environment variables by prefixing with `RSH_`, for example:
 
 ```bash
 # Set via env vars
@@ -102,7 +102,7 @@ $ export RSH_HEADER=header1:value1,header2:value2
 $ restish api.rest.sh
 ```
 
-?> If you have persistent headers or query params you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Read on to find out how.
+?> If you have persistent headers or query parameters you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Read on to find out how.
 
 ### Editing resources
 
@@ -206,7 +206,7 @@ APIs are registered with a short nickname. For example the GitHub v3 API might b
 
 Each registered API can have a number of named profiles which can be selected via the `-p` or `--rsh-profile` argument. The default profile is called `default`.
 
-Each profile can have a number of preset headers or query params, a type of auth, and any auth-specific params.
+Each profile can have a number of preset headers or query parameters, a type of auth, and any auth-specific parameters.
 
 Getting started registering an API is easy and uses an interactive prompt to set up profiles, auth, etc. At a minimum you must provide a short nickname and a base URL:
 

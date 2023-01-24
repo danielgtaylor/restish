@@ -68,7 +68,7 @@ time (repeat 10 {restish https://httpbin.org/cache/60})
 
 ## Detailed comparisons
 
-### Passing headers & query params
+### Passing headers & query parameters
 
 This is how you pass parameters to the API.
 

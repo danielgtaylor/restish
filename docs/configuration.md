@@ -63,7 +63,7 @@ Adding or editing an API is possible via an interactive terminal UI:
 $ restish api configure $NAME [$BASE_URI]
 ```
 
-You should see something like the following, which enables you to create and edit profiles, headers, query params, and auth, eventually saving the data to `~/.restish/apis.json`:
+You should see something like the following, which enables you to create and edit profiles, headers, query parameters, and auth, eventually saving the data to `~/.restish/apis.json`:
 
 <img alt="Screen Shot" src="https://user-images.githubusercontent.com/106826/83099522-79dd3200-a062-11ea-8a78-b03a2fecf030.png">
 
@@ -105,9 +105,9 @@ $ restish api sync $NAME
 
 ?> This is usually not necessary, as Restish will update the API description every 24 hours. Use this if you want to force an update sooner!
 
-### Persistent headers & query params
+### Persistent headers & query parameters
 
-Follow the prompts to add or edit persistent headers or query params. These are values that get sent with **every request** when using that profile.
+Follow the prompts to add or edit persistent headers or query parameters. These are values that get sent with **every request** when using that profile.
 
 Use cases:
 
@@ -173,7 +173,7 @@ HTTP Basic Auth is sent via an `Authorization` HTTP header and requires a `usern
 
 #### API key
 
-API keys are values given to you by the API operator that identify you as the caller. There is no explicit auth support for API keys because they are already handled by persistend headers or query params.
+API keys are values given to you by the API operator that identify you as the caller. There is no explicit auth support for API keys because they are already handled by persistend headers or query parameters.
 
 For example, if your API operator has given you a JWT of `abc123`, you might set a persistent header like `Authorization: bearer abc123` in the default profile.
 

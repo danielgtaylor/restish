@@ -124,7 +124,7 @@ Valid types for the security setting when not using a security scheme defined wi
 | `oauth-client-credentials` | OAuth2 pre-shared client key/secret (m2m) |
 | `oauth-authorization-code` | OAuth2 authorization code (user login)    |
 
-By default, all prompt variables become auth parameters of the same name. This can be disabled by setting `exclude` to `true` if desired. Additionally, a template system can be used to augment the value or create new params. Any value within `{...}` will get replaced by the value of the param with the given name. For example:
+By default, all prompt variables become auth parameters of the same name. This can be disabled by setting `exclude` to `true` if desired. Additionally, a template system can be used to augment the value or create new parameters. Any value within `{...}` will get replaced by the value of the param with the given name. For example:
 
 ```yaml
 x-cli-config:
@@ -138,7 +138,7 @@ x-cli-config:
     some_static_value: foo
 ```
 
-The above will prompt the user for an `org` and then fill in the params using the value from the user when creating the API configuration profile. Since `exclude` is set, the `org` parameter is never sent to the server and is only used to fill in the param template for `audience`.
+The above will prompt the user for an `org` and then fill in the parameters using the value from the user when creating the API configuration profile. Since `exclude` is set, the `org` parameter is never sent to the server and is only used to fill in the param template for `audience`.
 
 #### Auth parameters
 
@@ -205,7 +205,7 @@ paths:
 
 ### Name
 
-You can override the default name for the API, operations, and params:
+You can override the default name for the API, operations, and parameters:
 
 ```yaml
 info:

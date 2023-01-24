@@ -21,7 +21,7 @@ $ restish -H MyHeader:value api.rest.sh
 $ restish -H Header1:val1 -H Header2:val2 api.rest.sh
 ```
 
-?> Note that query params use `=` as a delimiter while haders use `:`, just like with HTTP.
+?> Note that query parameters use `=` as a delimiter while haders use `:`, just like with HTTP.
 
 ## Request body
 

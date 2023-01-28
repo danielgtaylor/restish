@@ -5,7 +5,7 @@ There are two types of configuration in Restish:
 1. Global configuration
 2. API-specific configuration
 
-## Global Configuration
+## Global configuration
 
 Global configuration affects all commands and can be set in one of three ways, going from highest to lowest precedence:
 
@@ -53,7 +53,7 @@ $ restish api.rest.sh/images
 
 Should TTY autodetection for colored output cause any problems, you can manually disable colored output via the `NOCOLOR=1` environment variable.
 
-## API Configuration
+## API configuration
 
 ### Adding an API
 
@@ -63,7 +63,7 @@ Adding or editing an API is possible via an interactive terminal UI:
 $ restish api configure $NAME [$BASE_URI]
 ```
 
-You should see something like the following, which enables you to create and edit profiles, headers, query params, and auth, eventually saving the data to `~/.restish/apis.json`:
+You should see something like the following, which enables you to create and edit profiles, headers, query parameters, and auth, eventually saving the data to `~/.restish/apis.json`:
 
 <img alt="Screen Shot" src="https://user-images.githubusercontent.com/106826/83099522-79dd3200-a062-11ea-8a78-b03a2fecf030.png">
 
@@ -105,9 +105,9 @@ $ restish api sync $NAME
 
 ?> This is usually not necessary, as Restish will update the API description every 24 hours. Use this if you want to force an update sooner!
 
-### Persistent Headers & Query Params
+### Persistent headers & query parameters
 
-Follow the prompts to add or edit persistent headers or query params. These are values that get sent with **every request** when using that profile.
+Follow the prompts to add or edit persistent headers or query parameters. These are values that get sent with **every request** when using that profile.
 
 Use cases:
 
@@ -136,7 +136,7 @@ Example:
 }
 ```
 
-### API Auth
+### API auth
 
 The following auth types are supported:
 
@@ -173,7 +173,7 @@ HTTP Basic Auth is sent via an `Authorization` HTTP header and requires a `usern
 
 #### API key
 
-API keys are values given to you by the API operator that identify you as the caller. There is no explicit auth support for API keys because they are already handled by persistend headers or query params.
+API keys are values given to you by the API operator that identify you as the caller. There is no explicit auth support for API keys because they are already handled by persistend headers or query parameters.
 
 For example, if your API operator has given you a JWT of `abc123`, you might set a persistent header like `Authorization: bearer abc123` in the default profile.
 
@@ -256,7 +256,7 @@ For example, to integrate with a third-party service like [Auth0](https://auth0.
 }
 ```
 
-#### External Tool
+#### External tool
 
 To allow interaction with APIs which have custom signature schemes, a
 third-party tool or script can be used. The script will need to accept
@@ -311,7 +311,7 @@ parameters only will be considered:
 - `uri`: Will replace the destination URL entirely (allowing the
   addition of query arguments if needed).
 
-### Loading From Files or URLs
+### Loading from files or URLs
 
 Sometimes an API won't provide a way to fetch its spec document, or a third-party will provide a spec for an existing public API, for example GitHub or Stripe.
 

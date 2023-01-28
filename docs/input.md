@@ -2,7 +2,7 @@
 
 You can set headers, query parameters, and a body for each outgoing request.
 
-## Request Parameters
+## Request parameters
 
 Request headers and query parameters are set via arguments or in the URI itself:
 
@@ -21,16 +21,16 @@ $ restish -H MyHeader:value api.rest.sh
 $ restish -H Header1:val1 -H Header2:val2 api.rest.sh
 ```
 
-?> Note that query params use `=` as a delimiter while haders use `:`, just like with HTTP.
+?> Note that query parameters use `=` as a delimiter while haders use `:`, just like with HTTP.
 
-## Request Body
+## Request body
 
 A request body can be set in two ways (or a combination of both) for requests that support bodies (e.g. `POST` / `PUT` / `PATCH`):
 
 1. Standard input
 2. CLI shorthand
 
-### Standard Input
+### Standard input
 
 Any stream of data passed to standard input will be sent as the request body.
 
@@ -46,7 +46,7 @@ $ echo '{"name": "hello"}' | restish put api.rest.sh
 
 ### CLI Shorthand
 
-The [CLI Shorthand](shorthand.md) is a convenient way of providing structured data on the commandline. It is a JSON-like syntax that enables you to easily create nested structured data. For example:
+The [CLI Shorthand](shorthand.md) language is a convenient way of providing structured data on the commandline. It is a JSON-like syntax that enables you to easily create nested structured data. For example:
 
 ```bash
 $ restish post api.rest.sh 'foo.bar[]{baz: 1, hello: world}'
@@ -73,7 +73,7 @@ Host: api.rest.sh
 
 The shorthand supports nested objects, arrays, automatic type coercion, and loading data from files. See the [CLI Shorthand Syntax](shorthand.md) for more info.
 
-### Combined Body Input
+### Combined body input
 
 It's also possible to use standard in as a template and replace or set values via commandline arguments, getting the best of both worlds. For example:
 

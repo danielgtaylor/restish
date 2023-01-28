@@ -11,7 +11,7 @@ Restish uses a standardized internal representation of hypermedia links to make 
 
 The URI is always resolved so you don't need to worry about absolute or relative paths.
 
-## Automatic Pagination
+## Automatic pagination
 
 Restish uses these standardized links to automatically handle paginated collections, returning the full collection to you whenever possible.
 
@@ -69,9 +69,9 @@ Link: </images?cursor=abc123>; rel="next", </schemas/ImageItemList.json>; rel="d
 ]
 ```
 
-## Links Command
+## Links command
 
-The links command provides a shorthand for displaying the available links. All links are normalized to include the full URL. Paginated responses may generate the same link multiple times.
+The `links` command provides a shorthand for displaying the available links. All links are normalized to include the full URL. Paginated responses may generate the same link multiple times.
 
 ```bash
 # Display available links

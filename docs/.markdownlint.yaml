@@ -1,0 +1,13 @@
+default: true
+
+# no-hard-tabs
+MD010: false
+
+# line-length
+MD013: false
+
+# commands-show-output
+MD014: false
+
+# no-inline-html
+MD033: false

@@ -39,7 +39,7 @@ The shorthand syntax supports the following features, described in more detail w
 - Loading property values from files
   - Supports structured, forced string, and base64 data
 
-## Alternatives & Inspiration
+## Alternatives & inspiration
 
 The built-in CLI shorthand syntax is not the only one you can use to generate data for CLI commands. Here are some alternatives:
 
@@ -65,7 +65,7 @@ It seems reasonable to ask, why create a new syntax?
 2. No need to use sub-shells to build complex structured data.
 3. Syntax is closer to YAML & JSON and mimics how we do queries using tools like `jq` and `jmespath`.
 
-## Features in Depth
+## Features in depth
 
 You can use the `j` executable from the [CLI Shorthand](https://github.com/danielgtaylor/shorthand) project to try out the shorthand format examples below. Examples are shown in JSON, but the shorthand parses into structured data that can be marshalled as other formats, like YAML or CBOR if you prefer.
 
@@ -75,7 +75,7 @@ $ go install github.com/danielgtaylor/shorthand/cmd/j@latest
 
 Also feel free to use this tool to generate structured data for input to other commands.
 
-### Keys & Values
+### Keys & values
 
 At its most basic, a structure is built out of key & value pairs. They are separated by commas:
 
@@ -87,7 +87,7 @@ $ j hello: world, question: how are you?
 }
 ```
 
-### Types and Type Coercion
+### Types & type coercion
 
 Well-known values like `null`, `true`, and `false` get converted to their respective types automatically. Numbers also get converted. Similar to YAML, anything that doesn't fit one of those is treated as a string. If needed, you can disable this automatic coercion by forcing a value to be treated as a string with the `~` operator. **Note**: the `~` modifier must come _directly after_ the colon.
 
@@ -249,7 +249,7 @@ $ j name: foo, tags[]{id: 1, count.clicks: 5, .sales: 1}, []{id: 2, count.clicks
 }
 ```
 
-### Loading from Files
+### Loading from files
 
 Sometimes a field makes more sense to load from a file than to be specified on the commandline. The `@` preprocessor and `~` & `%` modifiers let you load structured data, strings, and base64-encoded data into values.
 

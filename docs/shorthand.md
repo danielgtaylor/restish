@@ -83,7 +83,7 @@ Note:
 - `string` can be quoted (with `"`) or unquoted.
 - The `query` syntax in the diagram above is described below in the [Querying](#querying) section.
 
-## Alternatives & Inspiration
+## Alternatives & inspiration
 
 The CLI shorthand syntax is not the only one you can use to generate data for CLI commands. Here are some alternatives:
 
@@ -110,7 +110,7 @@ It seems reasonable to ask, why create a new syntax?
 3. Syntax is closer to YAML & JSON and mimics how you do queries using tools like `jq` and `jmespath`.
 4. It's _optional_, so you can use your favorite tool/language instead, while at the same time it provides a minimum feature set everyone will have in common.
 
-## Features in Depth
+## Features in depth
 
 You can use the included `j` executable to try out the shorthand format examples below. Examples are shown in JSON, but the shorthand parses into structured data that can be marshalled as other formats, like YAML or TOML if you prefer.
 
@@ -122,7 +122,7 @@ Also feel free to use this tool to generate structured data for input to other c
 
 ?> Note: for the examples below, you may need to escape or quote the values depending on your shell & settings. Instead of `foo.bar[].baz: 1`, use `'foo.bar[].baz: 1'`. If using `zsh` you can prefix a command with `noglob` to ignore `?` and `[]`.
 
-### Keys & Values
+### Keys & values
 
 At its most basic, a structure is built out of key & value pairs. They are separated by commas:
 
@@ -149,7 +149,7 @@ Shorthand supports the standard JSON types, but adds some of its own as well to 
 | `array`   | JSON array, e.g. `[1, 2, 3]`                                     |
 | `object`  | JSON object, e.g. `{"hello": "world"}`                           |
 
-### Type Coercion
+### Type coercion
 
 Well-known values like `null`, `true`, and `false` get converted to their respective types automatically. Numbers, bytes, and times also get converted. Similar to YAML, anything that doesn't fit one of those is treated as a string. This automatic coercion can be disabled by just wrapping your value in quotes.
 
@@ -251,7 +251,7 @@ $ j a[]: 1, a[]: 2, a[]: 3
 }
 ```
 
-### Loading from Files
+### Loading from files
 
 Sometimes a field makes more sense to load from a file than to be specified on the commandline. The `@` preprocessor lets you load structured data, text, and bytes depending on the file extension and whether all bytes are valid UTF-8:
 
@@ -280,7 +280,7 @@ $ j 'twitter: "@user"'
 }
 ```
 
-### Patch (Partial Update)
+### Patch (partial update)
 
 Partial updates are supported on existing data, which can be used to implement HTTP `PATCH`, templating, and other similar features. The suggested content type for HTTP `PATCH` is `application/shorthand-patch`. This feature combines the best of both:
 

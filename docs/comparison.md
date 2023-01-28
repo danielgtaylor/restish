@@ -31,7 +31,7 @@ See how Restish compares to other tools below:
 | Automatic pagination for `next` link relations       | ✅      | ❌            | ❌              |
 | URL & command shell completion hints                 | ✅      | ❌            | ❌              |
 
-# Performance Comparison
+## Performance comparison
 
 Test were run on a Macbook Pro and averages of several requests are reported as latency can and does vary. The general takeaway is that performance is better than HTTPie and very close to cURL but with many more features. Numbers below are in seconds.
 
@@ -66,9 +66,9 @@ time (repeat 10 {https https://httpbin.org/cache/60})
 time (repeat 10 {restish https://httpbin.org/cache/60})
 ```
 
-# Detailed Comparisons
+## Detailed comparisons
 
-## Passing Headers & Query Params
+### Passing headers & query parameters
 
 This is how you pass parameters to the API.
 
@@ -93,7 +93,7 @@ restish -H Header:value 'api.rest.sh/?a=1&b=true'
 restish -H Header:value api.rest.sh/ -q a=1 -q b=true
 ```
 
-## Input Shorthand
+### Input shorthand
 
 This is one mechanism to generate and pass a request body to the API.
 
@@ -124,7 +124,7 @@ restish post api.rest.sh \
   platform.apps: [Terminal, Desktop, Web, Mobile]
 ```
 
-## Getting Header Values
+### Getting header values
 
 How easy is it to read the output of a header in a shell environment?
 

@@ -141,15 +141,16 @@ func getBasePath(location *url.URL, servers []*v3.Server) (string, error) {
 
 		for i := range endpoints {
 			if strings.HasPrefix(endpoints[i], prefix) {
-				base, err := url.Parse(endpoints[i])
+				baseURL, err := url.Parse(endpoints[i])
 				if err != nil {
 					return "", err
 				}
-				return strings.TrimSuffix(base.Path, "/"), nil
+				return strings.TrimSuffix(baseURL.Path, "/"), nil
 			}
 		}
 	}
-	return "", nil
+
+	return strings.TrimSuffix(location.Path, "/"), nil
 }
 
 func getRequestInfo(op *v3.Operation) (string, *base.Schema, []interface{}) {

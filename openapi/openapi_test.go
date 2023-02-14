@@ -224,13 +224,12 @@ func TestLoader(t *testing.T) {
 			require.NoError(t, yaml.Unmarshal(outBytes, &output))
 
 			base, _ := url.Parse("http://api.example.com")
-			spec, _ := url.Parse("/openapi.yaml")
 
 			resp := &http.Response{
 				Body: io.NopCloser(bytes.NewReader(input)),
 			}
 
-			api, err := New().Load(*base, *spec, resp)
+			api, err := New().Load(*base, *base, resp)
 			assert.NoError(t, err)
 
 			sort.Slice(api.Operations, func(i, j int) bool {

@@ -11,7 +11,7 @@ Global configuration affects all commands and can be set in one of three ways, g
 
 1. Command line arguments
 2. Environment variables
-3. Configuration files (`/etc/restish/config.json` or `~/.restish/config.json`)
+3. Configuration files (`/etc/restish/config.json` or `~/.config/restish/config.json`)
 
 The global options in addition to `--help` and `--version` are:
 
@@ -47,7 +47,7 @@ $ RSH_VERBOSE=1 RSH_PROFILE=testing restish api.rest.sh/images
 
 ```bash
 # Configuration file
-$ echo '{"rsh-verbose": true, "rsh-profile": "testing"}' > ~/.restish/config.json
+$ echo '{"rsh-verbose": true, "rsh-profile": "testing"}' > ~/.config/restish/config.json
 $ restish api.rest.sh/images
 ```
 

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"gopkg.in/h2non/gock.v1"

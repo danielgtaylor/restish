@@ -582,18 +582,29 @@ func getConfigDir(appName string) string {
 	configDir := os.Getenv(configDirEnv)
 
 	if configDir == "" {
+		// Create new config directory
 		configBase, _ := os.UserConfigDir()
 		configDir = filepath.Join(configBase, appName)
-		configFile := filepath.Join(configDir, "apis.json")
-		// Check for legacy config dir
+		os.Mkdir(configDir, 0770)
+		// Define files to migrate
+		configFile := filepath.Join(configDir, "config.json")
+		apiFile := filepath.Join(configDir, "apis.json")
 		legacyConfigDir := filepath.Join(viper.GetString("home-directory"), "."+appName)
-		legacyConfigFile := filepath.Join(legacyConfigDir, "apis.json")
-		_, err := os.Stat(legacyConfigFile)
+		legacyAPIFile := filepath.Join(legacyConfigDir, "apis.json")
+		legacyConfigFile := filepath.Join(legacyConfigDir, "config.json")
+		// Check for legacy config dir
+		_, err := os.Stat(legacyConfigDir)
 		if err == nil {
-			// Create new config directory
-			os.Mkdir(configDir, 770)
+			// Migrate config.json
+			_, err = os.Stat(legacyConfigFile)
+			if err == nil {
+				os.Rename(legacyConfigFile, configFile)
+			}
 			// Migrate apis.json
-			os.Rename(legacyConfigFile, configFile)
+			_, err = os.Stat(legacyAPIFile)
+			if err == nil {
+				os.Rename(legacyAPIFile, apiFile)
+			}
 			// Everything else is a cache that can be regenerated
 			os.RemoveAll(legacyConfigDir)
 		}

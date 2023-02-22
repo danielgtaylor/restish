@@ -3,7 +3,7 @@ package cli
 import (
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"

@@ -218,7 +218,7 @@ $ restish api configure $SHORT_NAME $URL
 $ restish api configure example https://api.rest.sh
 ```
 
-What exactly does this do? It sets up the API short name `example` to point to `https://api.rest.sh` in a configuration file (usually `~/.restish/apis.json`) and finds [https://api.rest.sh/openapi.json](https://api.rest.sh/openapi.json) in order to discover available API operations, documentation, parameters, schemas, etc. You can see the available operations via:
+What exactly does this do? It sets up the API short name `example` to point to `https://api.rest.sh` in a configuration file (usually `~/.config/restish/apis.json`) and finds [https://api.rest.sh/openapi.json](https://api.rest.sh/openapi.json) in order to discover available API operations, documentation, parameters, schemas, etc. You can see the available operations via:
 
 ```bash
 # If an OpenAPI or other API description document was found, this will show

@@ -63,7 +63,7 @@ Adding or editing an API is possible via an interactive terminal UI:
 $ restish api configure $NAME [$BASE_URI]
 ```
 
-You should see something like the following, which enables you to create and edit profiles, headers, query parameters, and auth, eventually saving the data to `~/.restish/apis.json`:
+You should see something like the following, which enables you to create and edit profiles, headers, query parameters, and auth, eventually saving the data to `~/.config/restish/apis.json`:
 
 <img alt="Screen Shot" src="https://user-images.githubusercontent.com/106826/83099522-79dd3200-a062-11ea-8a78-b03a2fecf030.png">
 
@@ -315,7 +315,7 @@ parameters only will be considered:
 
 Sometimes an API won't provide a way to fetch its spec document, or a third-party will provide a spec for an existing public API, for example GitHub or Stripe.
 
-In this case you can download the spec files to your machine and link to them (or provide a URL) in the API configuration. Use the `spec_files` array configuration directive for this in `~/.restish/apis.json`:
+In this case you can download the spec files to your machine and link to them (or provide a URL) in the API configuration. Use the `spec_files` array configuration directive for this in `~/.config/restish/apis.json`:
 
 ```json
 {

@@ -8,10 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -572,23 +570,33 @@ Not after (expires): %s (%s)
 }
 
 func userHomeDir() string {
-	if runtime.GOOS == "windows" {
-		home := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
-		if home == "" {
-			home = os.Getenv("USERPROFILE")
-		}
-		return home
+	home, err := os.UserHomeDir()
+	if err != nil {
+		panic("HOME directoy is not defined")
 	}
-	return os.Getenv("HOME")
+	return home
 }
 
 func getConfigDir(appName string) string {
 	configDirEnv := strings.ToUpper(appName) + "_CONFIG_DIR"
-
 	configDir := os.Getenv(configDirEnv)
 
 	if configDir == "" {
-		configDir = path.Join(userHomeDir(), "."+appName)
+		configBase, _ := os.UserConfigDir()
+		configDir = filepath.Join(configBase, appName)
+		configFile := filepath.Join(configDir, "apis.json")
+		// Check for legacy config dir
+		legacyConfigDir := filepath.Join(viper.GetString("home-directory"), "."+appName)
+		legacyConfigFile := filepath.Join(legacyConfigDir, "apis.json")
+		_, err := os.Stat(legacyConfigFile)
+		if err == nil {
+			// Create new config directory
+			os.Mkdir(configDir, 770)
+			// Migrate apis.json
+			os.Rename(legacyConfigFile, configFile)
+			// Everything else is a cache that can be regenerated
+			os.RemoveAll(legacyConfigDir)
+		}
 	}
 	return configDir
 }
@@ -600,7 +608,8 @@ func getCacheDir() string {
 	cacheDir := os.Getenv(cacheDirEnv)
 
 	if cacheDir == "" {
-		cacheDir = path.Join(userHomeDir(), "."+appName)
+		cache, _ := os.UserCacheDir()
+		cacheDir = filepath.Join(cache, appName)
 	}
 	return cacheDir
 }
@@ -608,6 +617,9 @@ func getCacheDir() string {
 func initConfig(appName, envPrefix string) {
 	// One-time setup to ensure the path exists so we can write files into it
 	// later as needed.
+	home := userHomeDir()
+	viper.Set("home-directory", home)
+
 	configDir := getConfigDir(appName)
 	if err := os.MkdirAll(configDir, 0700); err != nil {
 		panic(err)
@@ -615,8 +627,9 @@ func initConfig(appName, envPrefix string) {
 
 	// Load configuration from file(s) if provided.
 	viper.SetConfigName("config")
-	viper.AddConfigPath("/etc/" + appName + "/")
-	viper.AddConfigPath("$HOME/." + appName + "/")
+	viper.AddConfigPath(filepath.Join("/etc/", appName))
+	viper.AddConfigPath(filepath.Join(viper.GetString("home-directory"), "."+appName))
+	viper.AddConfigPath(configDir)
 	viper.ReadInConfig()
 
 	// Load configuration from the environment if provided. Flags below get
@@ -644,13 +657,13 @@ func initCache(appName string) {
 
 	// Write a blank cache if no file is already there. Later you can use
 	// cli.Cache.SaveConfig() to write new values.
-	filename := path.Join(cacheDir, "cache.json")
+	filename := filepath.Join(cacheDir, "cache.json")
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		if err := os.WriteFile(filename, []byte("{}"), 0600); err != nil {
 			panic(err)
 		}
 	}
-
+	viper.Set("cache-dir", cacheDir)
 	Cache.ReadInConfig()
 }
 

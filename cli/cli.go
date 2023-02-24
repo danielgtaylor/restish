@@ -585,7 +585,7 @@ func getConfigDir(appName string) string {
 		// Create new config directory
 		configBase, _ := os.UserConfigDir()
 		configDir = filepath.Join(configBase, appName)
-		os.Mkdir(configDir, 0770)
+		os.MkdirAll(configDir, 0770)
 		// Define files to migrate
 		configFile := filepath.Join(configDir, "config.json")
 		apiFile := filepath.Join(configDir, "apis.json")

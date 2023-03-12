@@ -36,10 +36,10 @@ Any stream of data passed to standard input will be sent as the request body.
 
 ```bash
 # Set body from file
-$ restish put api.rest.sh <input.json
+$ restish PUT api.rest.sh <input.json
 
 # Set body from piped command
-$ echo '{"name": "hello"}' | restish put api.rest.sh
+$ echo '{"name": "hello"}' | restish PUT api.rest.sh
 ```
 
 ?> Don't forget to set the `Content-Type` header if needed. It will default to JSON if unset.
@@ -49,7 +49,7 @@ $ echo '{"name": "hello"}' | restish put api.rest.sh
 The [CLI Shorthand](shorthand.md) language is a convenient way of providing structured data on the commandline. It is a JSON-like syntax that enables you to easily create nested structured data. For example:
 
 ```bash
-$ restish post api.rest.sh 'foo.bar[]{baz: 1, hello: world}'
+$ restish POST api.rest.sh 'foo.bar[]{baz: 1, hello: world}'
 ```
 
 Will send the following request:
@@ -79,8 +79,8 @@ It's also possible to use standard in as a template and replace or set values vi
 
 ```bash
 # Use both a file and override a value
-$ restish post api.rest.sh <template.json id: test1
-$ restish post api.rest.sh <template.json id: test2, tags[]: group1
+$ restish POST api.rest.sh <template.json id: test1
+$ restish POST api.rest.sh <template.json id: test2, tags[]: group1
 ```
 
 If you have a known small set of fields that need to change between calls, this makes it easy to do so without large complex commands.

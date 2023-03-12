@@ -31,14 +31,14 @@ $ restish --version
 
 ## Basic usage
 
-Generic HTTP verbs require no setup and are easy to use. If no verb is supplied then a GET is assumed. The `https://` is also optional as it is the default.
+Generic HTTP verbs require no setup and are easy to use. If no verb is supplied then a `GET` is assumed. The `https://` is also optional as it is the default.
 
 ```bash
 # Perform an HTTP GET request
 $ restish api.rest.sh/types
 
 # Above is equivalent to:
-$ restish get https://api.rest.sh/types
+$ restish GET https://api.rest.sh/types
 ```
 
 You will see a response like:
@@ -88,10 +88,10 @@ $ restish -q active=true api.rest.sh
 $ restish -H Accept:application/json api.rest.sh
 
 # Pass in a body via a file
-$ restish post api.rest.sh <input.json
+$ restish POST api.rest.sh <input.json
 
 # Pass in body via CLI Shorthand
-$ restish post api.rest.sh name: Kari, tags[]: admin
+$ restish POST api.rest.sh name: Kari, tags[]: admin
 ```
 
 Read more about [CLI Shorthand](/shorthand.md). Headers and query parameters can also be set via environment variables by prefixing with `RSH_`, for example:

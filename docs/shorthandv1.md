@@ -10,7 +10,7 @@ For example:
 
 ```bash
 # Make an HTTP POST with a JSON body
-$ restish post api.rest.sh foo.bar[].baz: 1, .hello: world
+$ restish POST api.rest.sh foo.bar[].baz: 1, .hello: world
 ```
 
 Would result in the following body contents being sent on the wire (assuming a JSON content type):
@@ -49,7 +49,7 @@ The built-in CLI shorthand syntax is not the only one you can use to generate da
 For example, the shorthand example given above could be rewritten as:
 
 ```bash
-$ jo -p foo=$(jo -p bar=$(jo -a $(jo baz=1 hello=world))) | restish post api.rest.sh
+$ jo -p foo=$(jo -p bar=$(jo -a $(jo baz=1 hello=world))) | restish POST api.rest.sh
 ```
 
 The built-in shorthand syntax implementation described herein uses those and the following for inspiration:

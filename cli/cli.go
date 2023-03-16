@@ -750,7 +750,7 @@ func Run() (returnErr error) {
 	if rps, _ := GlobalFlags.GetInt("rsh-load-rate"); rps > 0 {
 		viper.Set("rsh-load-rate", rps)
 		// doesn't make sense to flood with requests and obtain a cached response
-		viper.Set("rsh-no-cache", false)
+		viper.Set("rsh-no-cache", true)
 	}
 	profile, _ := GlobalFlags.GetString("rsh-profile")
 	viper.Set("rsh-profile", profile)

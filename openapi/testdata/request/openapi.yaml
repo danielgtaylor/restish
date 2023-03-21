@@ -4,14 +4,15 @@ info:
   title: Test API
 paths:
   /items/{item-id}:
+    parameters:
+      - name: item-id
+        in: path
+        required: true
+        schema:
+          type: string
     put:
       operationId: put-item
       parameters:
-        - name: item-id
-          in: path
-          required: true
-          schema:
-            type: string
         - name: MyHeader
           in: header
           example: abc123

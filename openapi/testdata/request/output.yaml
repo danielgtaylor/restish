@@ -9,6 +9,9 @@ operations:
       Response has no body
     method: DELETE
     uri_template: http://api.example.com/items/{item-id}
+    path_params:
+      - type: string
+        name: item-id
   - name: put-item
     aliases: []
     short: ""

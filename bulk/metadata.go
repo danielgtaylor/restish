@@ -268,7 +268,7 @@ func (m *Meta) Pull() error {
 
 	updates := []*File{}
 	for _, f := range m.Files {
-		if f.VersionLocal == f.VersionRemote {
+		if f.VersionLocal != "" && f.VersionLocal == f.VersionRemote {
 			// No need to redownload this.
 			continue
 		}

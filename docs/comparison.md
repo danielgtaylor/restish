@@ -102,7 +102,7 @@ cURL Example: n/a
 HTTPie Example:
 
 ```bash
-https post api.rest.sh \
+https POST api.rest.sh \
   platform[name]=HTTPie \
   platform[about][mission]='Make APIs simple and intuitive' \
   platform[about][homepage]=httpie.io \
@@ -116,7 +116,7 @@ https post api.rest.sh \
 Restish equivalent:
 
 ```bash
-restish post api.rest.sh \
+restish POST api.rest.sh \
   platform.name: HTTPie, \
   platform.about.mission: Make APIs simple and intuitive, \
   platform.about.homepage: httpie.io, \

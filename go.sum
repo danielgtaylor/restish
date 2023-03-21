@@ -73,8 +73,8 @@ github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3 h1:qDsADtCM9A
 github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3/go.mod h1:eFdYmNxcuLDrRNW0efVoxSaApmvGXfHZ9k2CT/RSUF0=
 github.com/danielgtaylor/mexpr v1.8.0 h1:Dx9nLzakvveIJ8CYhxfFdTiulMITec/Uiv6kmvACyDk=
 github.com/danielgtaylor/mexpr v1.8.0/go.mod h1:+JIK75BxmwIf+iIfXM2aLVqED3l2EMPBB8QKct8YEDs=
-github.com/danielgtaylor/shorthand/v2 v2.1.0 h1:sH+CQuDf5yr2MSejX9VVzDFY/cFgz604OnXf2DEgClQ=
-github.com/danielgtaylor/shorthand/v2 v2.1.0/go.mod h1:x7GO2Q24udYaQh+tS/MoCDEtbAm+8b40TgqMiFxqxEs=
+github.com/danielgtaylor/shorthand/v2 v2.1.1 h1:clfPx8e+p2DptB69Em1EzonQguPPau+MjmBN9s5FaeI=
+github.com/danielgtaylor/shorthand/v2 v2.1.1/go.mod h1:x7GO2Q24udYaQh+tS/MoCDEtbAm+8b40TgqMiFxqxEs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -364,8 +364,8 @@ golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
-golang.org/x/exp v0.0.0-20230113213754-f9f960f08ad4 h1:CNkDRtCj8otM5CFz5jYvbr8ioXX8flVsLfDWEj0M5kk=
-golang.org/x/exp v0.0.0-20230113213754-f9f960f08ad4/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
+golang.org/x/exp v0.0.0-20230321023759-10a507213a29 h1:ooxPy7fPvB4kwsA2h+iBNHkAbp/4JxTSwCmvdjEYmug=
+golang.org/x/exp v0.0.0-20230321023759-10a507213a29/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=

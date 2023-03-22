@@ -11,7 +11,7 @@ require (
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/danielgtaylor/casing v0.0.0-20210126043903-4e55e6373ac3
 	github.com/danielgtaylor/mexpr v1.8.0
-	github.com/danielgtaylor/shorthand/v2 v2.1.0
+	github.com/danielgtaylor/shorthand/v2 v2.1.1
 	github.com/eliukblau/pixterm v1.3.1
 	github.com/fxamacker/cbor/v2 v2.4.0
 	github.com/gbl08ma/httpcache v1.0.2
@@ -34,7 +34,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/tent/http-link-go v0.0.0-20130702225549-ac974c61c2f9
 	github.com/zeebo/xxh3 v1.0.2
-	golang.org/x/exp v0.0.0-20230113213754-f9f960f08ad4
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
 	golang.org/x/oauth2 v0.2.0
 	golang.org/x/term v0.5.0
 	golang.org/x/text v0.7.0

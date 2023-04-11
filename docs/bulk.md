@@ -17,7 +17,7 @@ PUT    /books/{book-id} Create/update book
 DELETE /books/{book-id} Delete book
 ```
 
-?> Resource creation via Restish `bulk` requires the use of client-generated identifiers and HTTP `PUT` requests. Use plain old `restish post ...` otherwise.
+?> Resource creation via Restish `bulk` requires the use of client-generated identifiers and HTTP `PUT` requests. Use plain old `restish POST ...` otherwise.
 
 ## Getting started & demo
 

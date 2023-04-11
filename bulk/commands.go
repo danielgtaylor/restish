@@ -334,7 +334,7 @@ func Init(cmd *cobra.Command) {
     "version": "..."
   }
 ]
-` + "```\n\nThe following fields will automatically be found and used:\n\n- Resource URL: `url`, `uri`, `self`, `link`\n- Resource version: `version`, `etag`, `last_modified`, `lastModified`, `modified`.\n\nFiltering (if used) runs *before* URL template rendering.\n\nRestish assumes resources have client-generated IDs and use HTTP `PUT`, but if that's not the case then you can still create new resources manually with `restish post ...`.",
+` + "```\n\nThe following fields will automatically be found and used:\n\n- Resource URL: `url`, `uri`, `self`, `link`\n- Resource version: `version`, `etag`, `last_modified`, `lastModified`, `modified`.\n\nFiltering (if used) runs *before* URL template rendering.\n\nRestish assumes resources have client-generated IDs and use HTTP `PUT`, but if that's not the case then you can still create new resources manually with `restish POST ...`.",
 		Args:    cobra.ExactArgs(1),
 		Example: "  " + os.Args[0] + " bulk init api.example.com/users -f 'body.{url, version: last_login}'\n  " + os.Args[0] + " bulk init api.example.com/users -f 'body.{id, version: last_login}' --url-template='/users/{id}'",
 		Run: func(cmd *cobra.Command, args []string) {

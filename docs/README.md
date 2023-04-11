@@ -19,7 +19,7 @@ Start with the [guide](/guide.md) to learn how to install and configure Restish 
 ## Features
 
 - HTTP/2 ([RFC 7540](https://tools.ietf.org/html/rfc7540)) with TLS by _default_ with fallback to HTTP/1.1
-- Generic head/get/post/put/patch/delete verbs like `curl` or [HTTPie](https://httpie.org/)
+- Generic HEAD/GET/POST/PUT/PATCH/DELETE verbs like `curl` or [HTTPie](https://httpie.org/)
 - Generated commands for CLI operations, e.g. `restish my-api list-users`
   - Automatically discovers API descriptions
     - [RFC 8631](https://tools.ietf.org/html/rfc8631) `service-desc` link relation

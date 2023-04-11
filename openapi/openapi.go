@@ -59,6 +59,7 @@ type autoConfig struct {
 
 // Resolver is able to resolve relative URIs against a base.
 type Resolver interface {
+	GetBase() *url.URL
 	Resolve(uri string) (*url.URL, error)
 }
 
@@ -104,7 +105,7 @@ func getBasePath(location *url.URL, servers []*v3.Server) (string, error) {
 	prefix := fmt.Sprintf("%s://%s", location.Scheme, location.Host)
 
 	for _, s := range servers {
-		// Interprete all operation paths as relative to the provided location
+		// Interpret all operation paths as relative to the provided location
 		if strings.HasPrefix(s.URL, "/") {
 			return s.URL, nil
 		}
@@ -149,7 +150,7 @@ func getBasePath(location *url.URL, servers []*v3.Server) (string, error) {
 			}
 		}
 	}
-	return "", nil
+	return location.Path, nil
 }
 
 func getRequestInfo(op *v3.Operation) (string, *base.Schema, []interface{}) {
@@ -542,7 +543,7 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 	}
 
 	// See if this server has any base path prefix we need to account for.
-	basePath, err := getBasePath(location, model.Servers)
+	basePath, err := getBasePath(cfg.GetBase(), model.Servers)
 	if err != nil {
 		return cli.API{}, err
 	}
@@ -554,7 +555,7 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 				continue
 			}
 
-			resolved, err := cfg.Resolve(basePath + uri)
+			resolved, err := cfg.Resolve(strings.TrimSuffix(basePath, "/") + uri)
 			if err != nil {
 				return cli.API{}, err
 			}
@@ -714,6 +715,10 @@ func loadAutoConfig(api *cli.API, model *v3.Document) {
 type loader struct {
 	location *url.URL
 	base     *url.URL
+}
+
+func (l *loader) GetBase() *url.URL {
+	return l.base
 }
 
 func (l *loader) Resolve(relURI string) (*url.URL, error) {

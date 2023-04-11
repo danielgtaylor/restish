@@ -90,10 +90,18 @@ Read on the learn more about the available API options.
 Showing an API is possible via the following command:
 
 ```bash
-$ restish api configure $NAME
+$ restish api show $NAME
 ```
 
 Output is in JSON by default. It can be displayed as a YAML by using `--rsh-output-format yaml` or `-o yaml`
+
+### Interactive update of an API configuration
+
+Interactive prompt used to create API configuration can be used to update an existing one.
+
+```bash
+$ restish api configure $NAME
+```
 
 ### Syncing an API configuration
 

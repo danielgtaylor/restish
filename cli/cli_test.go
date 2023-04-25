@@ -271,7 +271,7 @@ func TestAPISync(t *testing.T) {
 
 func TestDuplicateAPIBase(t *testing.T) {
 	defer func() {
-		os.Remove(filepath.Join(userHomeDir(), ".test", "apis.json"))
+		os.Remove(filepath.Join(getConfigDir("test"), "apis.json"))
 		reset(false)
 	}()
 	reset(false)

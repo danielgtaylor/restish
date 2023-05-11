@@ -95,9 +95,9 @@ $ restish api show $NAME
 
 Output is in JSON by default. It can be displayed as a YAML by using `--rsh-output-format yaml` or `-o yaml`
 
-### Interactive update of an API configuration
+### Updating an API configuration
 
-Interactive prompt used to create API configuration can be used to update an existing one.
+The `configure` command used to create an API configuration can also be used to update an existing one.
 
 ```bash
 $ restish api configure $NAME
@@ -148,11 +148,11 @@ Example:
 
 The following auth types are supported:
 
-- HTTP Basic Auth
-- API key
-- OAuth 2.0 client credentials
-- OAuth 2.0 authorization code
-- External Tool
+- [HTTP Basic Auth](#http-basic-auth)
+- [API key](#api-key)
+- [OAuth 2.0 client credentials](#oauth-20-client-credentials)
+- [OAuth 2.0 authorization code](#oauth-20-authorization-code)
+- [External tool](#external-tool)
 
 Each has its own set of parameters and setup. Any additional parameters beyond the default will get sent as additional request parameters when fetching tokens.
 
@@ -181,7 +181,7 @@ HTTP Basic Auth is sent via an `Authorization` HTTP header and requires a `usern
 
 #### API key
 
-API keys are values given to you by the API operator that identify you as the caller. There is no explicit auth support for API keys because they are already handled by persistend headers or query parameters.
+API keys are values given to you by the API operator that identify you as the caller. There is no explicit auth support for API keys because they are already handled by persistent headers or query parameters.
 
 For example, if your API operator has given you a JWT of `abc123`, you might set a persistent header like `Authorization: bearer abc123` in the default profile.
 

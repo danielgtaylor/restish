@@ -193,7 +193,7 @@ func (t Table) Unmarshal(data []byte, value interface{}) error {
 // Only applicable to collection of repeating objects.
 // Filter down to a collection of objects first then apply the table output.
 // Simpletable has much more styling that can be applied.
-func setTable(data []interface{}) (*[]byte, error) {
+func setTable(data []interface{}) ([]byte, error) {
 	table := simpletable.New()
 
 	var headerCells []*simpletable.Cell
@@ -243,7 +243,7 @@ func setTable(data []interface{}) (*[]byte, error) {
 	table.SetStyle(simpletable.StyleCompactLite)
 
 	ret := []byte(table.String())
-	return &ret, nil
+	return ret, nil
 }
 
 // JSON describes content types like `application/json` or

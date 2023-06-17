@@ -135,7 +135,7 @@ func askLoadBaseAPI(a asker, config *APIConfig) {
 				params[name] = rendered
 			}
 
-			// Setup auth for the profile based on the rendered params.
+			// Set up auth for the profile based on the rendered params.
 			auth = APIAuth{
 				Name:   ac.Auth.Name,
 				Params: params,
@@ -152,7 +152,7 @@ func askLoadBaseAPI(a asker, config *APIConfig) {
 			config.Profiles = map[string]*APIProfile{}
 		}
 
-		// Setup the default profile, taking care not to blast away any existing
+		// Set up the default profile, taking care not to blast away any existing
 		// custom configuration if we are just updating the values.
 		def := config.Profiles["default"]
 
@@ -246,7 +246,7 @@ func askEditProfile(a asker, name string, profile *APIProfile) {
 			options = append(options, "Remove custom base URL")
 		}
 
-		options = append(options, "Setup auth", "Finished with profile")
+		options = append(options, "Set up auth", "Finished with profile")
 
 		choice := a.askSelect("Select option for profile `"+name+"`", options, nil, "")
 
@@ -275,7 +275,7 @@ func askEditProfile(a asker, name string, profile *APIProfile) {
 			if a.askConfirm("Are you sure you want to delete the "+q+" query param?", false, "") {
 				delete(profile.Query, q)
 			}
-		case choice == "Setup auth":
+		case choice == "Set up auth":
 			if profile.Auth == nil {
 				profile.Auth = &APIAuth{}
 			}

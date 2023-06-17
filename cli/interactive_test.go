@@ -61,7 +61,7 @@ func TestInteractive(t *testing.T) {
 			"Add query param",
 			"search",
 			"bar",
-			"Setup auth",
+			"Set up auth",
 			"http-basic",
 			"u",
 			"p",

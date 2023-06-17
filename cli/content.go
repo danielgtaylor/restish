@@ -90,7 +90,7 @@ func MarshalShort(name string, pretty bool, value any) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if encoded[len(encoded)-1] != '\n' {
+		if len(encoded) > 0 && encoded[len(encoded)-1] != '\n' {
 			encoded = append(encoded, '\n')
 		}
 	} else {
@@ -244,6 +244,28 @@ func setTable(data []interface{}) ([]byte, error) {
 
 	ret := []byte(table.String())
 	return ret, nil
+}
+
+// Gron describes an output format for easier grepping. This is based on the
+// excellent https://github.com/tomnomnom/gron tool, but makes the format
+// available as a built-in Restish output option.
+type Gron struct{}
+
+// Detect if the content type is gron.
+func (t Gron) Detect(contentType string) bool {
+	return false
+}
+
+// Marshal the value to a gron string.
+func (t Gron) Marshal(value interface{}) ([]byte, error) {
+	pb := NewPathBuffer([]byte("body"), 4)
+	out := make([]byte, 0, 1024)
+	return marshalGron(pb, value, false, out)
+}
+
+// Unmarshal the value from a gron string.
+func (t Gron) Unmarshal(data []byte, value interface{}) error {
+	return fmt.Errorf("unimplemented")
 }
 
 // JSON describes content types like `application/json` or

@@ -670,6 +670,7 @@ func Defaults() {
 	AddContentType("text", "text/*", 0.2, &Text{})
 	AddContentType("table", "", -1, &Table{})
 	AddContentType("readable", "", -1, &Readable{})
+	AddContentType("gron", "", -1, &Gron{})
 
 	// Add link relation parsers
 	AddLinkParser(&LinkHeaderParser{})

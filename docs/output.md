@@ -148,6 +148,35 @@ $ restish api.rest.sh/images -f 'body.{name}'
 $ restish api.rest.sh/example -f '..url|[@ contains github]'
 ```
 
+## Greppable Output
+
+Sometimes you may not know the response structure or may be looking for a specific value and would like to know where it is within some large API response. Piping the output to `grep` is okay, but it's not that useful. Restish includes a built-in output format based on [Gron](https://github.com/tomnomnom/gron) to facilitate better grepping. It prints out the path to each value along with the value itself in a Javascript-style format.
+
+```bash
+# Find anything dealing with REST
+$ restish api.rest.sh/example -o gron | grep -i rest
+body["$schema"] = "https://api.rest.sh/schemas/Resume.json";
+body.volunteer[0].organization = "Restish";
+body.volunteer[0].summary = "A CLI for interacting with REST-ish HTTP APIs with OpenAPI 3 support built-in.";
+body.volunteer[0].url = "https://rest.sh/";
+```
+
+Each line is a path to a value and the value itself. The path is a Javascript-style path and can mostly be used with the `-f` option to filter the response. Now that we know we should care about `body.volunteer[0]` we can filter it to see all the fields:
+
+```bash
+# Filter the response to just the volunteer object
+$ restish api.rest.sh/example -f 'body.volunteer[0]'
+{
+  organization: "Restish"
+  position: "Owner / Maintainer"
+  startDate: 2018-09-29
+  summary: "A CLI for interacting with REST-ish HTTP APIs with OpenAPI 3 support built-in."
+  url: "https://rest.sh/"
+}
+```
+
+The combination of greppable output with filtering & projection is an extremely powerful tool for exploring APIs and writing scripts.
+
 ## Output defaults
 
 Like some other well-known tools, the output defaults are different depending on whether the command is running in an interactive shell or output is being redirected to a pipe or file.

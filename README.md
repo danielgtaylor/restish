@@ -2,9 +2,10 @@
 
 [![Works With Restish](https://img.shields.io/badge/Works%20With-Restish-ff5f87)](https://rest.sh/) [![User Guide](https://img.shields.io/badge/Docs-Guide-5fafd7)](https://rest.sh/#/guide) [![CI](https://github.com/danielgtaylor/restish/workflows/CI/badge.svg?branch=main)](https://github.com/danielgtaylor/restish/actions?query=workflow%3ACI+branch%3Amain++) [![codecov](https://codecov.io/gh/danielgtaylor/restish/branch/main/graph/badge.svg)](https://codecov.io/gh/danielgtaylor/restish) [![Docs](https://img.shields.io/badge/godoc-reference-5fafd7)](https://pkg.go.dev/github.com/danielgtaylor/restish?tab=subdirectories) [![Go Report Card](https://goreportcard.com/badge/github.com/danielgtaylor/restish)](https://goreportcard.com/report/github.com/danielgtaylor/restish)
 
-[Restish](https://rest.sh/) is a CLI for interacting with [REST](https://apisyouwonthate.com/blog/rest-and-hypermedia-in-2019)-ish HTTP APIs with some nice features built-in, like always having the latest API resources, fields, and operations available when they go live on the API without needing to install or update anything.
+[Restish](https://rest.sh/) is a CLI for interacting with [REST](https://apisyouwonthate.com/blog/rest-and-hypermedia-in-2019)-ish HTTP APIs with some nice features built-in — like always having the latest API resources, fields, and operations available when they go live on the API without needing to install or update anything.
+Check out [how Restish compares to cURL & HTTPie](https://rest.sh/#/comparison).
 
-See the [user guide](https://rest.sh/#/guide) to get started, or how Restish [compares to cURL & HTTPie](https://rest.sh/#/comparison).
+See the [user guide](https://rest.sh/#/guide) for how to install Restish and get started.
 
 Features include:
 

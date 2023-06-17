@@ -102,7 +102,7 @@ $ export RSH_HEADER=header1:value1,header2:value2
 $ restish api.rest.sh
 ```
 
-?> If you have persistent headers or query parameters you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Read on to find out how.
+?> If you have persistent headers or query parameters you'd like to set, then consider registering the API endpoint with Restish rather than exporting environment variables. Find out how in the [API configuration](configuration.md#api-configuration) documentation.
 
 ### Editing resources
 

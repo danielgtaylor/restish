@@ -26,7 +26,7 @@ import (
 )
 
 // reOpenAPI3 is a regex used to detect OpenAPI files from their contents.
-var reOpenAPI3 = regexp.MustCompile(`['"]?openapi['"]?:\s*['"]?3`)
+var reOpenAPI3 = regexp.MustCompile(`['"]?openapi['"]?\s*:\s*['"]?3`)
 
 // OpenAPI Extensions
 const (

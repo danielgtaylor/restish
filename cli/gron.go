@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // PathBuffer is a low-allocation helper for building a path string like
@@ -47,12 +48,27 @@ func NewPathBuffer(buf []byte, offset int) *PathBuffer {
 	return &PathBuffer{buf: buf, off: offset}
 }
 
+// validFirstRune returns true for runes that are valid
+// as the first rune in an identifier.
+func validFirstRune(r rune) bool {
+	return unicode.In(r, unicode.Lu, unicode.Ll, unicode.Lm, unicode.Lo, unicode.Nl) || r == '$' || r == '_'
+}
+
 // identifier returns a JS-safe identifier string.
 func identifier(s string) string {
-	if len(s) > 0 {
-		if (s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z') || s[0] == '_' || s[0] == '$' {
-			return s
+	valid := true
+	for i, r := range s {
+		if i == 0 {
+			valid = validFirstRune(r)
+		} else {
+			valid = validFirstRune(r) || unicode.In(r, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc)
 		}
+		if !valid {
+			break
+		}
+	}
+	if valid {
+		return s
 	}
 
 	return fmt.Sprintf(`["%s"]`, s)

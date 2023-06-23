@@ -16,7 +16,13 @@ graph LR
 
 ## Caching
 
-By default, Restish will cache responses with appropriate [RFC 7234](https://tools.ietf.org/html/rfc7234) caching headers set. When fetching API service descriptions, a 24-hour cache is used if _no cache headers_ are sent by the API. This is to prevent hammering the API each time the CLI is run. The cached responses are stored in `~/.cache/restish/responses`.
+By default, Restish will cache responses with appropriate [RFC 7234](https://tools.ietf.org/html/rfc7234) caching headers set. When fetching API service descriptions, a 24-hour cache is used if _no cache headers_ are sent by the API. This is to prevent hammering the API each time the CLI is run. The cached responses are stored in one of the following operating-system dependent locations:
+
+| OS      | Path                                 |
+| ------- | ------------------------------------ |
+| Mac     | `~/Library/Caches/restish/responses` |
+| Windows | `%LocalAppData%\restish\responses`   |
+| Linux   | `~/.cache/restish/responses`         |
 
 The easiest way to tell if a cached response has been used is to look at the `Date` header, which will not change from request to request if a cached response is returned.
 

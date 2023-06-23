@@ -585,28 +585,34 @@ func getConfigDir(appName string) string {
 		// Create new config directory
 		configBase, _ := os.UserConfigDir()
 		configDir = filepath.Join(configBase, appName)
-		os.MkdirAll(configDir, 0770)
-		// Define files to migrate
-		configFile := filepath.Join(configDir, "config.json")
-		apiFile := filepath.Join(configDir, "apis.json")
-		legacyConfigDir := filepath.Join(viper.GetString("home-directory"), "."+appName)
-		legacyAPIFile := filepath.Join(legacyConfigDir, "apis.json")
-		legacyConfigFile := filepath.Join(legacyConfigDir, "config.json")
+
 		// Check for legacy config dir
-		_, err := os.Stat(legacyConfigDir)
-		if err == nil {
-			// Migrate config.json
-			_, err = os.Stat(legacyConfigFile)
-			if err == nil {
-				os.Rename(legacyConfigFile, configFile)
+		legacyConfigDir := filepath.Join(viper.GetString("home-directory"), "."+appName)
+		if _, err := os.Stat(legacyConfigDir); err == nil {
+			// Only migrate if the new config dir doesn't exist, so that this
+			// is a one-time operation. There are edge cases where configs could
+			// get lost if we migrate every time (e.g. running an old version
+			// that creates an empty ~/.restish/apis.json).
+			if _, err := os.Stat(configDir); err != nil {
+				// Define files to migrate
+				for _, filename := range []string{
+					"config.json",
+					"apis.json",
+					"cache.json",
+				} {
+					oldPath := filepath.Join(legacyConfigDir, filename)
+					newDir := configDir
+					if filename == "cache.json" {
+						newDir = getCacheDir()
+					}
+					if _, err := os.Stat(oldPath); err == nil {
+						os.MkdirAll(newDir, 0700)
+						os.Rename(oldPath, filepath.Join(newDir, filename))
+					}
+				}
+				// Everything else is a cache that can be regenerated
+				os.RemoveAll(legacyConfigDir)
 			}
-			// Migrate apis.json
-			_, err = os.Stat(legacyAPIFile)
-			if err == nil {
-				os.Rename(legacyAPIFile, apiFile)
-			}
-			// Everything else is a cache that can be regenerated
-			os.RemoveAll(legacyConfigDir)
 		}
 	}
 	return configDir
@@ -626,6 +632,8 @@ func getCacheDir() string {
 }
 
 func initConfig(appName, envPrefix string) {
+	viper.Set("app-name", appName)
+
 	// One-time setup to ensure the path exists so we can write files into it
 	// later as needed.
 	home := userHomeDir()
@@ -650,7 +658,6 @@ func initConfig(appName, envPrefix string) {
 	viper.AutomaticEnv()
 
 	// Save a few things that will be useful elsewhere.
-	viper.Set("app-name", appName)
 	viper.Set("config-directory", configDir)
 	viper.SetDefault("server-index", 0)
 }

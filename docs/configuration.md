@@ -11,7 +11,17 @@ Global configuration affects all commands and can be set in one of three ways, g
 
 1. Command line arguments
 2. Environment variables
-3. Configuration files (`/etc/restish/config.json` or `~/.restish/config.json`)
+3. Configuration files
+
+Configuration file locations are operating-system dependent:
+
+| OS      | Path                                                |
+| ------- | --------------------------------------------------- |
+| Mac     | `~/Library/Application Support/restish/config.json` |
+| Windows | `%AppData%\restish\config.json`                     |
+| Linux   | `~/.config/restish/config.json`                     |
+
+You can quickly determine which is being used via `restish localhost -v 2>&1 | grep config-directory`.
 
 The global options in addition to `--help` and `--version` are:
 
@@ -46,8 +56,8 @@ $ RSH_VERBOSE=1 RSH_PROFILE=testing restish api.rest.sh/images
 ```
 
 ```bash
-# Configuration file
-$ echo '{"rsh-verbose": true, "rsh-profile": "testing"}' > ~/.restish/config.json
+# Configuration file (Linux example)
+$ echo '{"rsh-verbose": true, "rsh-profile": "testing"}' > ~/.config/restish/config.json
 $ restish api.rest.sh/images
 ```
 
@@ -63,9 +73,17 @@ Adding or editing an API is possible via an interactive terminal UI:
 $ restish api configure $NAME [$BASE_URI]
 ```
 
-You should see something like the following, which enables you to create and edit profiles, headers, query parameters, and auth, eventually saving the data to `~/.restish/apis.json`:
+You should see something like the following, which enables you to create and edit profiles, headers, query parameters, and auth:
 
 <img alt="Screen Shot" src="https://user-images.githubusercontent.com/106826/83099522-79dd3200-a062-11ea-8a78-b03a2fecf030.png">
+
+Eventually the data is saved to one of the following:
+
+| OS      | Path                                              |
+| ------- | ------------------------------------------------- |
+| Mac     | `~/Library/Application Support/restish/apis.json` |
+| Windows | `%AppData%\restish\apis.json`                     |
+| Linux   | `~/.config/restish/apis.json`                     |
 
 If the API offers autoconfiguration data (e.g. through the [`x-cli-config` OpenAPI extension](/openapi.md#AutoConfiguration)) then you may be prompted for other values and some settings may already be configured for you.
 
@@ -300,13 +318,13 @@ Two parameters are accepted for this authentication method:
 The serialized body will be supplied in the following form to the
 helper commandline:
 
-``` json
+```json
 {
   "method": "GET",
   "uri": "http://...",
   "headers": {
-      "content-type": ["…"],
-      // …
+    "content-type": ["…"]
+    // …
   },
   "body": "…"
 }
@@ -323,7 +341,7 @@ parameters only will be considered:
 
 Sometimes an API won't provide a way to fetch its spec document, or a third-party will provide a spec for an existing public API, for example GitHub or Stripe.
 
-In this case you can download the spec files to your machine and link to them (or provide a URL) in the API configuration. Use the `spec_files` array configuration directive for this in `~/.restish/apis.json`:
+In this case you can download the spec files to your machine and link to them (or provide a URL) in the API configuration. Use the `spec_files` array configuration directive for this in the [`apis.json` file](#/configuration?id=adding-an-api):
 
 ```json
 {

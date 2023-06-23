@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -89,7 +89,7 @@ func initAPIConfig() {
 
 	// Write a blank cache if no file is already there. Later you can use
 	// configs.SaveConfig() to write new values.
-	filename := path.Join(viper.GetString("config-directory"), "apis.json")
+	filename := filepath.Join(viper.GetString("config-directory"), "apis.json")
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		if err := os.WriteFile(filename, []byte("{}"), 0600); err != nil {
 			panic(err)

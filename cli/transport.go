@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -44,7 +44,7 @@ func shouldCache(resp *http.Response) bool {
 
 // CachedTransport returns an HTTP transport with caching abilities.
 func CachedTransport() *httpcache.Transport {
-	t := httpcache.NewTransport(diskcache.New(path.Join(getCacheDir(), "responses")))
+	t := httpcache.NewTransport(diskcache.New(filepath.Join(getCacheDir(), "responses")))
 	t.MarkCachedResponses = false
 	return t
 }

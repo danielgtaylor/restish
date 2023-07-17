@@ -17,6 +17,7 @@ import (
 	"github.com/danielgtaylor/shorthand/v2"
 	"github.com/gosimple/slug"
 	"github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/resolver"
@@ -518,7 +519,7 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		return cli.API{}, err
 	}
 
-	doc, err := libopenapi.NewDocument(data)
+	doc, err := libopenapi.NewDocumentWithConfiguration(data, datamodel.NewOpenDocumentConfiguration())
 	if err != nil {
 		return cli.API{}, err
 	}

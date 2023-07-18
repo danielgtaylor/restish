@@ -4,21 +4,38 @@ This guide will help you to get started installing and using Restish.
 
 ## Installation
 
-You can install in one of three ways: Homebrew tap, GitHub release, or via `go get`.
+You can install Restish via Homebrew, Nixpkgs, GitHub releases, or `go get`.
 
-If you have [Homebrew](https://brew.sh/) then install via the official tap:
+### Install via Homebrew
+
+If you have [Homebrew](https://brew.sh/), you can install Restish via the [official tap](https://github.com/danielgtaylor/homebrew-restish):
 
 ```bash
-# Install directly through the Homebrew tap
 $ brew install danielgtaylor/restish/restish
 ```
 
-If you don't have Homebrew, you can grab a [release](https://github.com/danielgtaylor/restish/releases) for your platform and manually copy the executable to the right location (e.g. `/usr/local/bin/restish`), otherwise if you have Go installed:
+### Install via Nixpkgs
+
+If you use Nixpkgs, you can install the [Restish derivation](https://search.nixos.org/packages?channel=unstable&query=restish), e.g. using `nix-env`:
 
 ```bash
-# Download / build / install
+$ nix-env --install --attr nixpkgs.restish
+```
+
+### Install by downloading a GitHub release
+
+You can grab a [release](https://github.com/danielgtaylor/restish/releases) for your platform,
+and manually copy the executable to a location in your `$PATH` (e.g. `/usr/local/bin/restish`).
+
+### Install via `go get`
+
+If you have Go set up, you can install the [restish package](https://pkg.go.dev/github.com/danielgtaylor/restish):
+
+```bash
 $ go install github.com/danielgtaylor/restish@latest
 ```
+
+### Validate the installation
 
 You can confirm the installation worked by trying to run Restish:
 

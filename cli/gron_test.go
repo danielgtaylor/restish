@@ -26,7 +26,7 @@ func TestGronMarshal(t *testing.T) {
 		B: 42,
 		C: true,
 		D: D{[]map[string]any{
-			{"e": "world"},
+			{"e": "world & i <3 restish"},
 			{"f": []any{1, 2}, "g": time.Time{}, "h": []byte("foo")},
 			{"for": map[int]int{1: 2}},
 		}},
@@ -42,7 +42,7 @@ body.b = 42;
 body.c = true;
 body.d = [];
 body.d[0] = {};
-body.d[0].e = "world";
+body.d[0].e = "world & i <3 restish";
 body.d[1] = {};
 body.d[1].f = [];
 body.d[1].f[0] = 1;

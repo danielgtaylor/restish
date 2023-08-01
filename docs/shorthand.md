@@ -282,7 +282,7 @@ $ j 'twitter: "@user"'
 
 ### Patch (partial update)
 
-Partial updates are supported on existing data, which can be used to implement HTTP `PATCH`, templating, and other similar features. The suggested content type for HTTP `PATCH` is `application/shorthand-patch`. This feature combines the best of both:
+Partial updates are supported on existing data, which can be used to implement HTTP `PATCH`, templating, and other similar features. The suggested content type for HTTP `PATCH` is `application/merge-patch+shorthand`. This feature combines the best of both:
 
 - [JSON Merge Patch](https://datatracker.ietf.org/doc/html/rfc7386)
 - [JSON Patch](https://www.rfc-editor.org/rfc/rfc6902)

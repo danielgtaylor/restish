@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URL of the JSON Schema that describes the structure and semantics of the remainder of the document"
+    }
+  },
+  "additionalProperties": {
+    "type": "object",
+    "required": ["base"],
+    "properties": {
+      "base": {
+        "type": "string",
+        "format": "uri-reference",
+        "description": "The base URL of the API. This is used to try and fetch the OpenAPI spec as well as resolve relative references. If the base contains a path, OpenAPI operations are assumed relative to that base path."
+      },
+      "spec_files": {
+        "type": "array",
+        "description": "The local filename or remote URL of the OpenAPI spec file(s) to load for this API if autodetection cannot be used. If multiple files are specified, their operations will be merged together.",
+        "items": {
+          "type": "string"
+        }
+      },
+      "profiles": {
+        "type": "object",
+        "description": "A map of profile names (e.g. 'default') to profile information that can include headers, query params, auth, and custom TLS settings. A default profile is required.",
+        "required": ["default"],
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "base": {
+              "type": "string",
+              "format": "uri",
+              "description": "Override the base URL of the API"
+            },
+            "headers": {
+              "type": "object",
+              "description": "Header names and values to send on each request.",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "query": {
+              "type": "object",
+              "description": "Query parameters to send on each request.",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "auth": {
+              "type": "object",
+              "description": "Authentication & authorization setting for this API profile.",
+              "required": ["name"],
+              "properties": {
+                "name": {
+                  "description": "Authentication & authorization scheme name.",
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "oauth-client-credentials",
+                        "oauth-authorization-code",
+                        "external-tool"
+                      ]
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "params": {
+                  "type": "object",
+                  "description": "Auth parameter names and values to send as additional values in the auth request. These are specific to each auth scheme name and implementation, and include things like the OAuth2 authorize / token URLs, client ID / secret, audience, etc. See https://rest.sh/#/configuration?id=api-auth.",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "tls": {
+              "type": "object",
+              "description": "Custom TLS (HTTPS) certificate verification settings.",
+              "properties": {
+                "insecure": {
+                  "type": "boolean",
+                  "description": "If true, do not verify TLS certificates when making requests to this API."
+                },
+                "cert": {
+                  "type": "string",
+                  "description": "The local filename of a TLS certificate."
+                },
+                "key": {
+                  "type": "string",
+                  "description": "The local filename of a TLS private key."
+                },
+                "ca_cert": {
+                  "type": "string",
+                  "description": "The local filename of a TLS certificate authority."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -175,11 +176,18 @@ func marshalGron(pb *PathBuffer, data any, isAnon bool, out []byte) ([]byte, err
 		}
 	default:
 		// This is a primitive type, just take the JSON representation.
-		v, err := json.Marshal(data)
-		if err != nil {
+		// The default encoder escapes '<', '>', and '&' which we don't want
+		// since we are not a browser. Disable this with an encoder instance.
+		// See https://stackoverflow.com/a/28596225/164268
+		buf := &bytes.Buffer{}
+		enc := json.NewEncoder(buf)
+		enc.SetEscapeHTML(false)
+		if err := enc.Encode(makeJSONSafe(data)); err != nil {
 			return nil, err
 		}
-		out = apnd(out, pb.Bytes(), " = ", v, ";\n")
+		// Note: encoder adds it's own ending newline we need to strip out.
+		b := bytes.TrimSuffix(buf.Bytes(), []byte("\n"))
+		out = apnd(out, pb.Bytes(), " = ", b, ";\n")
 	}
 
 	return out, nil

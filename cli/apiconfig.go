@@ -44,11 +44,12 @@ type APIProfile struct {
 // APIConfig describes per-API configuration options like the base URI and
 // auth scheme, if any.
 type APIConfig struct {
-	name      string
-	Base      string                 `json:"base" yaml:"base"`
-	SpecFiles []string               `json:"spec_files,omitempty" yaml:"spec_files,omitempty" mapstructure:"spec_files,omitempty"`
-	Profiles  map[string]*APIProfile `json:"profiles,omitempty" yaml:"profiles,omitempty" mapstructure:",omitempty"`
-	TLS       *TLSConfig             `json:"tls,omitempty" yaml:"tls,omitempty" mapstructure:",omitempty"`
+	name          string
+	Base          string                 `json:"base" yaml:"base"`
+	OperationBase string                 `json:"operation_base,omitempty" yaml:"operation_base,omitempty" mapstructure:"operation_base,omitempty"`
+	SpecFiles     []string               `json:"spec_files,omitempty" yaml:"spec_files,omitempty" mapstructure:"spec_files,omitempty"`
+	Profiles      map[string]*APIProfile `json:"profiles,omitempty" yaml:"profiles,omitempty" mapstructure:",omitempty"`
+	TLS           *TLSConfig             `json:"tls,omitempty" yaml:"tls,omitempty" mapstructure:",omitempty"`
 }
 
 // Save the API configuration to disk.

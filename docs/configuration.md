@@ -131,6 +131,16 @@ $ restish api sync $NAME
 
 ?> This is usually not necessary, as Restish will update the API description every 24 hours. Use this if you want to force an update sooner!
 
+### Editing All APIs
+
+You can edit all APIs at once in your editor of choice via:
+
+```bash
+$ restish api edit
+```
+
+You will need to have `EDITOR` or `VISUAL` environment variables set to which editor you want to use, e.g. `export VISUAL='code --wait'` for VSCode.
+
 ### Persistent headers & query parameters
 
 Follow the prompts to add or edit persistent headers or query parameters. These are values that get sent with **every request** when using that profile.
@@ -353,3 +363,20 @@ In this case you can download the spec files to your machine and link to them (o
 ```
 
 !> If more than one file path is specified, then the loaded APIs are merged in the order specified. You will get operations from both APIs, but there can only be a single API title or description so the first encountered non-zero value is used.
+
+### Operation Base Path
+
+Most of the time when an API is served at some sub-path like `https://example.com/my-api` the operation paths should be treated as relative to that sub-path, that is an operation `/foo` would result in a request to `https://example.com/my-api/foo`. Sometimes that is not the behavior you want, for example the OpenAPI operations may already contain the full path including the sub-path.
+
+The `operation_base` parameter can be used to change this behavior. It defaults to the API base path, but can be changed to any URL reference and will be resolved against the base path. For example, to make an operation use `/my-op` rather than `/my-api/v2-beta1/my-op` as its URL path:
+
+```json
+{
+  "my-api-beta": {
+    "base": "https://example.com/my-api/v2-beta1",
+    "operation_base": "/"
+  }
+}
+```
+
+?> This is an advanced feature which is not needed in most cases.

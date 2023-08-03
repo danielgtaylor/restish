@@ -224,7 +224,7 @@ func TestLoader(t *testing.T) {
 			require.NoError(t, yaml.Unmarshal(outBytes, &output))
 
 			base, _ := url.Parse("http://api.example.com")
-			spec, _ := url.Parse("/openapi.yaml")
+			spec, _ := url.Parse("http://api.example.com/openapi.yaml")
 
 			resp := &http.Response{
 				Body: io.NopCloser(bytes.NewReader(input)),

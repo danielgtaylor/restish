@@ -167,10 +167,8 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 				return API{}, err
 			}
 
-			uriSpec, err := url.Parse(filename)
-			if err != nil {
-				uriSpec = &url.URL{Scheme: "file", Path: filename}
-			}
+			// No need to check error, it was checked above in `fromFileOrUrl`.
+			uriSpec, _ := url.Parse(filename)
 
 			for _, l := range loaders {
 				// Reset the body

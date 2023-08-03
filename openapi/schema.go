@@ -106,9 +106,9 @@ func renderSchemaInternal(s *base.Schema, indent string, mode schemaMode, known 
 			if s.ExclusiveMinimum != nil && s.ExclusiveMinimum.IsA() && s.ExclusiveMinimum.A {
 				key = "exclusiveMin"
 			}
-			tags = append(tags, fmt.Sprintf("%s:%0.f", key, *s.Minimum))
+			tags = append(tags, fmt.Sprintf("%s:%g", key, *s.Minimum))
 		} else if s.ExclusiveMinimum != nil && s.ExclusiveMinimum.IsB() {
-			tags = append(tags, fmt.Sprintf("exclusiveMin:%0.f", s.ExclusiveMinimum.B))
+			tags = append(tags, fmt.Sprintf("exclusiveMin:%g", s.ExclusiveMinimum.B))
 		}
 
 		if s.Maximum != nil {
@@ -116,13 +116,13 @@ func renderSchemaInternal(s *base.Schema, indent string, mode schemaMode, known 
 			if s.ExclusiveMaximum != nil && s.ExclusiveMaximum.IsA() && s.ExclusiveMaximum.A {
 				key = "exclusiveMax"
 			}
-			tags = append(tags, fmt.Sprintf("%s:%0.f", key, *s.Maximum))
+			tags = append(tags, fmt.Sprintf("%s:%g", key, *s.Maximum))
 		} else if s.ExclusiveMaximum != nil && s.ExclusiveMaximum.IsB() {
-			tags = append(tags, fmt.Sprintf("exclusiveMax:%0.f", s.ExclusiveMaximum.B))
+			tags = append(tags, fmt.Sprintf("exclusiveMax:%g", s.ExclusiveMaximum.B))
 		}
 
 		if s.MultipleOf != nil && *s.MultipleOf != 0 {
-			tags = append(tags, fmt.Sprintf("multiple:%0.f", *s.MultipleOf))
+			tags = append(tags, fmt.Sprintf("multiple:%g", *s.MultipleOf))
 		}
 
 		if s.Default != nil {

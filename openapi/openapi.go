@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -519,7 +520,17 @@ func loadOpenAPI3(cfg Resolver, cmd *cobra.Command, location *url.URL, resp *htt
 		return cli.API{}, err
 	}
 
-	doc, err := libopenapi.NewDocumentWithConfiguration(data, datamodel.NewOpenDocumentConfiguration())
+	config := datamodel.NewOpenDocumentConfiguration()
+	schemeLower := strings.ToLower(location.Scheme)
+	if schemeLower == "http" || schemeLower == "https" {
+		// Set the base URL to resolve relative references.
+		config.BaseURL = &url.URL{Scheme: location.Scheme, Host: location.Host, Path: path.Dir(location.Path)}
+	} else {
+		// Set the base local directory path to resolve relative references.
+		config.BasePath = path.Dir(location.Path)
+	}
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(data, config)
 	if err != nil {
 		return cli.API{}, err
 	}

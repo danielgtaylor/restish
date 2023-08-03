@@ -167,6 +167,11 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 				return API{}, err
 			}
 
+			uriSpec, err := url.Parse(filename)
+			if err != nil {
+				uriSpec = &url.URL{Scheme: "file", Path: filename}
+			}
+
 			for _, l := range loaders {
 				// Reset the body
 				resp.Body = io.NopCloser(bytes.NewReader(body))
@@ -174,7 +179,7 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 				if l.Detect(resp) {
 					found = true
 					resp.Body = io.NopCloser(bytes.NewReader(body))
-					tmp, err := load(root, *uri, *uri, resp, name, l)
+					tmp, err := load(root, *uri, *uriSpec, resp, name, l)
 					if err != nil {
 						return API{}, err
 					}

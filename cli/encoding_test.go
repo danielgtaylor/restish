@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"compress/flate"
 	"compress/gzip"
 	"io"
 	"net/http"
@@ -14,6 +15,14 @@ import (
 func gzipEnc(data string) []byte {
 	b := bytes.NewBuffer(nil)
 	w := gzip.NewWriter(b)
+	w.Write([]byte(data))
+	w.Close()
+	return b.Bytes()
+}
+
+func deflateEnc(data string) []byte {
+	b := bytes.NewBuffer(nil)
+	w, _ := flate.NewWriter(b, 1)
 	w.Write([]byte(data))
 	w.Close()
 	return b.Bytes()
@@ -34,6 +43,7 @@ var encodingTests = []struct {
 }{
 	{"none", "", []byte("hello world")},
 	{"gzip", "gzip", gzipEnc("hello world")},
+	{"deflate", "deflate", deflateEnc("hello world")},
 	{"brotli", "br", brEnc("hello world")},
 }
 

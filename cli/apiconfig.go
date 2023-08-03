@@ -4,10 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/google/shlex"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/exp/maps"
@@ -41,11 +44,12 @@ type APIProfile struct {
 // APIConfig describes per-API configuration options like the base URI and
 // auth scheme, if any.
 type APIConfig struct {
-	name      string
-	Base      string                 `json:"base" yaml:"base"`
-	SpecFiles []string               `json:"spec_files,omitempty" yaml:"spec_files,omitempty" mapstructure:"spec_files,omitempty"`
-	Profiles  map[string]*APIProfile `json:"profiles,omitempty" yaml:"profiles,omitempty" mapstructure:",omitempty"`
-	TLS       *TLSConfig             `json:"tls,omitempty" yaml:"tls,omitempty" mapstructure:",omitempty"`
+	name          string
+	Base          string                 `json:"base" yaml:"base"`
+	OperationBase string                 `json:"operation_base,omitempty" yaml:"operation_base,omitempty" mapstructure:"operation_base,omitempty"`
+	SpecFiles     []string               `json:"spec_files,omitempty" yaml:"spec_files,omitempty" mapstructure:"spec_files,omitempty"`
+	Profiles      map[string]*APIProfile `json:"profiles,omitempty" yaml:"profiles,omitempty" mapstructure:",omitempty"`
+	TLS           *TLSConfig             `json:"tls,omitempty" yaml:"tls,omitempty" mapstructure:",omitempty"`
 }
 
 // Save the API configuration to disk.
@@ -101,6 +105,12 @@ func initAPIConfig() {
 		panic(err)
 	}
 
+	if apis.GetString("$schema") == "" {
+		// Attempt to update the config to add the schema for docs/validation.
+		apis.Set("$schema", "https://rest.sh/schemas/apis.json")
+		apis.WriteConfig()
+	}
+
 	// Register api init sub-command to register the API.
 	apiCommand = &cobra.Command{
 		GroupID: "generic",
@@ -153,6 +163,14 @@ func initAPIConfig() {
 	})
 
 	apiCommand.AddCommand(&cobra.Command{
+		Use:   "edit",
+		Short: "Edit APIs configuration",
+		Long:  "Edit the APIs configuration in your default editor.",
+		Args:  cobra.NoArgs,
+		Run:   func(cmd *cobra.Command, args []string) { editAPIs(os.Exit) },
+	})
+
+	apiCommand.AddCommand(&cobra.Command{
 		Use:   "show short-name",
 		Short: "Show API config",
 		Long:  "Show an API configuration as JSON/YAML.",
@@ -188,7 +206,14 @@ func initAPIConfig() {
 
 	// Register API sub-commands
 	configs = apiConfigs{}
-	if err := apis.Unmarshal(&configs); err != nil {
+	tmp := viper.New()
+	for k, v := range apis.AllSettings() {
+		if k == "$schema" {
+			continue
+		}
+		tmp.Set(k, v)
+	}
+	if err := tmp.Unmarshal(&configs); err != nil {
 		panic(err)
 	}
 
@@ -246,4 +271,29 @@ func findAPI(uri string) (string, *APIConfig) {
 	}
 
 	return "", nil
+}
+
+func editAPIs(exitFunc func(int)) {
+	editor := getEditor()
+	if editor == "" {
+		fmt.Fprintln(os.Stderr, `Please set the VISUAL or EDITOR environment variable with your preferred editor. Examples:
+
+export VISUAL="code --wait"
+export EDITOR="vim"`)
+		exitFunc(1)
+		return
+	}
+
+	parts, err := shlex.Split(editor)
+	panicOnErr(err)
+	name := parts[0]
+	args := append(parts[1:], path.Join(
+		getConfigDir(viper.GetString("app-name")), "apis.json",
+	))
+
+	c := exec.Command(name, args...)
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	panicOnErr(c.Run())
 }

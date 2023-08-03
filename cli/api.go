@@ -266,7 +266,13 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 			if l.Detect(resp) {
 				resp.Body = io.NopCloser(bytes.NewReader(body))
 
-				api, err := load(root, *uri, *resolved, resp, name, l)
+				// Override the operation base path if requested, otherwise
+				// default to the API entrypoint.
+				opsBase := uri
+				if config.OperationBase != "" {
+					opsBase = uri.ResolveReference(&url.URL{Path: config.OperationBase})
+				}
+				api, err := load(root, *opsBase, *resolved, resp, name, l)
 				if err == nil {
 					cacheAPI(name, &api)
 				}

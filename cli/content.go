@@ -251,8 +251,13 @@ func setTable(data []interface{}) ([]byte, error) {
 // available as a built-in Restish output option.
 type Gron struct{}
 
-// Detect if the content type is gron.
+// Detect if the content type is gron-able.
 func (t Gron) Detect(contentType string) bool {
+	first := strings.Split(contentType, ";")[0]
+	if first == "application/json" || strings.HasSuffix(first, "+json") {
+		return true
+	}
+
 	return false
 }
 
@@ -265,7 +270,7 @@ func (t Gron) Marshal(value interface{}) ([]byte, error) {
 
 // Unmarshal the value from a gron string.
 func (t Gron) Unmarshal(data []byte, value interface{}) error {
-	return fmt.Errorf("unimplemented")
+	return json.Unmarshal(data, value)
 }
 
 // JSON describes content types like `application/json` or

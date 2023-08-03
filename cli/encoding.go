@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"compress/flate"
 	"compress/gzip"
 	"fmt"
 	"io"
@@ -60,6 +61,14 @@ func DecodeResponse(resp *http.Response) error {
 	resp.Body = io.NopCloser(reader)
 
 	return nil
+}
+
+// DeflateEncoding supports gzip-encoded response content.
+type DeflateEncoding struct{}
+
+// Reader returns a new reader for the stream that removes the gzip encoding.
+func (g DeflateEncoding) Reader(stream io.Reader) (io.Reader, error) {
+	return flate.NewReader(stream), nil
 }
 
 // GzipEncoding supports gzip-encoded response content.

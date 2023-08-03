@@ -1,0 +1,227 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri",
+      "description": "The URL of the JSON Schema that describes the structure and semantics of the remainder of the document"
+    }
+  },
+  "additionalProperties": {
+    "type": "object",
+    "required": ["base"],
+    "properties": {
+      "base": {
+        "type": "string",
+        "format": "uri-reference",
+        "description": "The base URL of the API. This is used to try and fetch the OpenAPI spec as well as resolve relative references. If the base contains a path, OpenAPI operations are assumed relative to that base path."
+      },
+      "operation_base": {
+        "type": "string",
+        "format": "uri-reference",
+        "description": "Overrides the base URL path of API operations. This can be used to treat the OpenAPI paths as absolute even when an API is served from a subpath on the server, or make other modifications to support additional use-cases. If unset, this matches the base URL path."
+      },
+      "spec_files": {
+        "type": "array",
+        "description": "The local filename or remote URL of the OpenAPI spec file(s) to load for this API if autodetection cannot be used. If multiple files are specified, their operations will be merged together.",
+        "items": {
+          "type": "string"
+        }
+      },
+      "profiles": {
+        "type": "object",
+        "description": "A map of profile names (e.g. 'default') to profile information that can include headers, query params, auth, and custom TLS settings. A default profile is required.",
+        "required": ["default"],
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "base": {
+              "type": "string",
+              "format": "uri",
+              "description": "Override the base URL of the API"
+            },
+            "headers": {
+              "type": "object",
+              "description": "Header names and values to send on each request.",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "query": {
+              "type": "object",
+              "description": "Query parameters to send on each request.",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "auth": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "description": "Authentication & authorization setting for this API profile.",
+                  "additionalProperties": false,
+                  "required": ["name", "params"],
+                  "properties": {
+                    "name": {
+                      "const": "http-basic",
+                      "description": "Auth scheme name."
+                    },
+                    "params": {
+                      "type": "object",
+                      "description": "Parameters for the auth scheme. For http-basic, this is the username and password to send with each request.",
+                      "additionalProperties": false,
+                      "required": ["username", "password"],
+                      "properties": {
+                        "username": {
+                          "type": "string",
+                          "description": "The username to send with each request."
+                        },
+                        "password": {
+                          "type": "string",
+                          "description": "The password to send with each request."
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "description": "Authentication & authorization setting for this API profile.",
+                  "additionalProperties": false,
+                  "required": ["name", "params"],
+                  "properties": {
+                    "name": {
+                      "const": "oauth-client-credentials",
+                      "description": "Auth scheme name."
+                    },
+                    "params": {
+                      "type": "object",
+                      "description": "Parameters for the auth scheme. For oauth-client-credentials, this is at least the client ID, client secret, and token URL.",
+                      "required": ["client_id", "client_secret", "token_url"],
+                      "properties": {
+                        "audience": {
+                          "type": "string",
+                          "description": "Audience restricts which APIs will accept the generated auth token."
+                        },
+                        "client_id": {
+                          "type": "string",
+                          "description": "The client ID to send with each request."
+                        },
+                        "client_secret": {
+                          "type": "string",
+                          "description": "The client secret to send with each request."
+                        },
+                        "scopes": {
+                          "type": "string",
+                          "description": "A space-separated list of scopes to request, enabling access to certain resources & actions in the API."
+                        },
+                        "token_url": {
+                          "type": "string",
+                          "description": "The URL to request an auth token from."
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "description": "Authentication & authorization setting for this API profile.",
+                  "additionalProperties": false,
+                  "required": ["name", "params"],
+                  "properties": {
+                    "name": {
+                      "const": "oauth-authorization-code",
+                      "description": "Auth scheme name."
+                    },
+                    "params": {
+                      "type": "object",
+                      "description": "Parameters for the auth scheme. For oauth-authorization-code, this is at least the client ID, authorize URL, and token URL.",
+                      "required": ["client_id", "authorize_url", "token_url"],
+                      "properties": {
+                        "audience": {
+                          "type": "string",
+                          "description": "Audience restricts which APIs will accept the generated auth token."
+                        },
+                        "client_id": {
+                          "type": "string",
+                          "description": "The client ID to send with each request."
+                        },
+                        "client_secret": {
+                          "type": "string",
+                          "description": "The client secret (if any) to send with each request."
+                        },
+                        "scopes": {
+                          "type": "string",
+                          "description": "A space-separated list of scopes to request, enabling access to certain resources & actions in the API."
+                        },
+                        "token_url": {
+                          "type": "string",
+                          "description": "The URL to request an auth token from."
+                        },
+                        "authorize_url": {
+                          "type": "string",
+                          "description": "The URL to initiate a web login flow."
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "description": "Authentication & authorization setting for this API profile.",
+                  "additionalProperties": false,
+                  "required": ["name", "params"],
+                  "properties": {
+                    "name": {
+                      "const": "external-tool",
+                      "description": "Auth scheme name."
+                    },
+                    "params": {
+                      "type": "object",
+                      "description": "Parameters for the auth scheme. For external-tool, this is the commandline to run to get the auth token. The commandline must output an object with 'uri' and 'headers' properties.",
+                      "required": ["commandline"],
+                      "properties": {
+                        "commandline": {
+                          "type": "string",
+                          "description": "The commandline to run to get the auth token. The commandline must output an object with 'uri' and 'headers' properties."
+                        },
+                        "omitbody": {
+                          "type": "string",
+                          "description": "If true, do not send the request body to the command on stdin, just the 'method', 'uri', and 'headers' as a JSON object.",
+                          "enum": ["true", "false"]
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "tls": {
+              "type": "object",
+              "description": "Custom TLS (HTTPS) certificate verification settings.",
+              "properties": {
+                "insecure": {
+                  "type": "boolean",
+                  "description": "If true, do not verify TLS certificates when making requests to this API."
+                },
+                "cert": {
+                  "type": "string",
+                  "description": "The local filename of a TLS certificate."
+                },
+                "key": {
+                  "type": "string",
+                  "description": "The local filename of a TLS private key."
+                },
+                "ca_cert": {
+                  "type": "string",
+                  "description": "The local filename of a TLS certificate authority."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

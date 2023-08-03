@@ -689,6 +689,7 @@ func initCache(appName string) {
 // the CLI.
 func Defaults() {
 	// Register content encodings
+	AddEncoding("deflate", &DeflateEncoding{})
 	AddEncoding("gzip", &GzipEncoding{})
 	AddEncoding("br", &BrotliEncoding{})
 

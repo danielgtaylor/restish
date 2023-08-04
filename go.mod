@@ -24,7 +24,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/pb33f/libopenapi v0.4.18-0.20230121110523-de1a42c72ff4
+	github.com/pb33f/libopenapi v0.9.7
 	github.com/schollz/progressbar/v3 v3.12.2
 	github.com/shamaton/msgpack/v2 v2.1.1
 	github.com/spf13/afero v1.9.3
@@ -84,6 +84,7 @@ require (
 	github.com/yuin/goldmark-emoji v1.0.1 // indirect
 	golang.org/x/image v0.5.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

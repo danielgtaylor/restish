@@ -199,8 +199,19 @@ func getRequestInfo(op *v3.Operation) (string, *base.Schema, []interface{}) {
 	return "", nil, nil
 }
 
+// paramSchema returns a rendered schema line for a given parameter, falling
+// back to the param type info if no schema is available.
+func paramSchema(p *cli.Param, s *base.Schema) string {
+	schemaDesc := fmt.Sprintf("(%s): %s", p.Type, p.Description)
+	if s != nil {
+		schemaDesc = renderSchema(s, "  ", modeWrite)
+	}
+	return schemaDesc
+}
+
 func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, path *v3.PathItem, op *v3.Operation) cli.Operation {
 	var pathParams, queryParams, headerParams []*cli.Param
+	var pathSchemas, querySchemas, headerSchemas []*base.Schema = []*base.Schema{}, []*base.Schema{}, []*base.Schema{}
 
 	// Combine path and operation parameters, with operation params having
 	// precedence when there are name conflicts.
@@ -225,8 +236,10 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 		var example interface{}
 
 		typ := "string"
+		var schema *base.Schema
 		if p.Schema != nil && p.Schema.Schema() != nil {
 			s := p.Schema.Schema()
+			schema = s
 			if len(s.Type) > 0 {
 				// TODO: support params of multiple types?
 				typ = s.Type[0]
@@ -277,16 +290,19 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 				pathParams = []*cli.Param{}
 			}
 			pathParams = append(pathParams, param)
+			pathSchemas = append(pathSchemas, schema)
 		case "query":
 			if queryParams == nil {
 				queryParams = []*cli.Param{}
 			}
 			queryParams = append(queryParams, param)
+			querySchemas = append(querySchemas, schema)
 		case "header":
 			if headerParams == nil {
 				headerParams = []*cli.Param{}
 			}
 			headerParams = append(headerParams, param)
+			headerSchemas = append(headerSchemas, schema)
 		}
 	}
 
@@ -304,6 +320,25 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 
 	desc := getExt(op.Extensions, ExtDescription, op.Description)
 	hidden := getExt(op.Extensions, ExtHidden, false)
+
+	if len(pathParams) > 0 {
+		desc += "\n## Argument Schema:\n```schema\n{\n"
+		for i, p := range pathParams {
+			desc += "  " + p.OptionName() + ": " + paramSchema(p, pathSchemas[i]) + "\n"
+		}
+		desc += "}\n```\n"
+	}
+
+	if len(queryParams) > 0 || len(headerParams) > 0 {
+		desc += "\n## Option Schema:\n```schema\n{\n"
+		for i, p := range queryParams {
+			desc += "  --" + p.OptionName() + ": " + paramSchema(p, querySchemas[i]) + "\n"
+		}
+		for i, p := range headerParams {
+			desc += "  --" + p.OptionName() + ": " + paramSchema(p, headerSchemas[i]) + "\n"
+		}
+		desc += "}\n```\n"
+	}
 
 	mediaType := ""
 	var examples []string

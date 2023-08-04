@@ -4,6 +4,13 @@ operations:
     aliases: []
     short: ""
     long: |
+      ## Argument Schema:
+      ```schema
+      {
+        item-id: (string)
+      }
+      ```
+
       ## Response 204
 
       Response has no body
@@ -16,6 +23,20 @@ operations:
     aliases: []
     short: ""
     long: |
+      ## Argument Schema:
+      ```schema
+      {
+        item-id: (string)
+      }
+      ```
+
+      ## Option Schema:
+      ```schema
+      {
+        --my-header: (string)
+      }
+      ```
+
       ## Input Example
 
       ```json

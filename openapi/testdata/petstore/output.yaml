@@ -28,6 +28,13 @@ operations:
       - listpets
     short: List all pets
     long: |
+      ## Option Schema:
+      ```schema
+      {
+        --limit: (integer format:int32)
+      }
+      ```
+
       ## Response 200 (application/json)
 
       A paged array of pets
@@ -66,6 +73,13 @@ operations:
       - showpetbyid
     short: Info for a specific pet
     long: |
+      ## Argument Schema:
+      ```schema
+      {
+        pet-id: (string)
+      }
+      ```
+
       ## Response 200 (application/json)
 
       Expected response to a valid request

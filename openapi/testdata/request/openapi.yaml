@@ -43,7 +43,6 @@ paths:
                   foo:
                     type: string
     delete:
-      operationId: delete-item
       responses:
         "204":
           description: ""

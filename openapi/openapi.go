@@ -309,9 +309,12 @@ func openapiOperation(cmd *cobra.Command, method string, uriTemplate *url.URL, p
 	aliases := getExtSlice(op.Extensions, ExtAliases, []string{})
 
 	name := casing.Kebab(op.OperationId)
+	if name == "" {
+		name = casing.Kebab(method + "-" + strings.Trim(uriTemplate.Path, "/"))
+	}
 	if override := getExt(op.Extensions, ExtName, ""); override != "" {
 		name = override
-	} else if oldName := slug.Make(op.OperationId); oldName != name {
+	} else if oldName := slug.Make(op.OperationId); oldName != "" && oldName != name {
 		// For backward-compatibility, add the old naming scheme as an alias
 		// if it is different. See https://github.com/danielgtaylor/restish/issues/29
 		// for additional context; we prefer kebab casing for readability.

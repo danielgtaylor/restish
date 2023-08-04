@@ -12,13 +12,9 @@ builds:
       - windows
     ignore:
       - goos: darwin
-        goarch: 386
+        goarch: "386"
 archives:
   - name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-    replacements:
-      darwin: mac
-      386: i386
-      amd64: x86_64
     format_overrides:
       - goos: windows
         format: zip

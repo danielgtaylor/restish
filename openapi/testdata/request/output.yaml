@@ -1,6 +1,6 @@
 short: Test API
 operations:
-  - name: delete-item
+  - name: delete-items-item-id
     aliases: []
     short: ""
     long: |

@@ -4,6 +4,13 @@ operations:
     aliases: []
     short: ""
     long: |
+      ## Argument Schema:
+      ```schema
+      {
+        item-id: (string)
+      }
+      ```
+
       ## Input Example
 
       ```json

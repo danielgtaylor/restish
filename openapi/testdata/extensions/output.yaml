@@ -7,6 +7,22 @@ operations:
       - gi
     short: ""
     long: |
+      ## Argument Schema:
+      ```schema
+      {
+        item-id: (string)
+      }
+      ```
+
+      ## Option Schema:
+      ```schema
+      {
+        --query: [
+          (string)
+        ]
+      }
+      ```
+
       ## Response 200 (application/json)
 
       CLI-specific description override

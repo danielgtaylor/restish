@@ -23,6 +23,9 @@ func reset(color bool) {
 		viper.Set("nocolor", true)
 	}
 
+	// Most tests are easier to write without retries.
+	viper.Set("rsh-retry", 0)
+
 	Init("test", "1.0.0'")
 	Defaults()
 }

@@ -1,10 +1,13 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/h2non/gock.v1"
 )
@@ -122,4 +125,84 @@ func TestIgnoreStatus(t *testing.T) {
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 
 	assert.Equal(t, 0, GetLastStatus())
+}
+
+func TestRequestRetryIn(t *testing.T) {
+	defer gock.Off()
+
+	reset(false)
+	viper.Set("rsh-retry", 1)
+
+	// Duration string value (with units)
+	gock.New("http://example.com").
+		Get("/").
+		Times(1).
+		Reply(http.StatusTooManyRequests).
+		SetHeader("X-Retry-In", "1ms")
+
+	gock.New("http://example.com").
+		Get("/").
+		Times(1).
+		Reply(http.StatusOK)
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	resp, err := MakeRequest(req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+}
+
+func TestRequestRetryAfter(t *testing.T) {
+	defer gock.Off()
+
+	reset(false)
+	viper.Set("rsh-retry", 2)
+
+	// Seconds value
+	gock.New("http://example.com").
+		Put("/").
+		Times(1).
+		Reply(http.StatusTooManyRequests).
+		SetHeader("Retry-After", "0")
+
+	// HTTP date value
+	gock.New("http://example.com").
+		Put("/").
+		Times(1).
+		Reply(http.StatusTooManyRequests).
+		SetHeader("Retry-After", time.Now().Format(http.TimeFormat))
+
+	gock.New("http://example.com").
+		Put("/").
+		Times(1).
+		Reply(http.StatusOK)
+
+	req, _ := http.NewRequest(http.MethodPut, "http://example.com/", bytes.NewReader([]byte("hello")))
+	resp, err := MakeRequest(req)
+
+	assert.NoError(t, err)
+	assert.Equal(t, resp.StatusCode, http.StatusOK)
+}
+
+func TestRequestRetryTimeout(t *testing.T) {
+	defer gock.Off()
+
+	reset(false)
+	viper.Set("rsh-retry", 1)
+	viper.Set("rsh-timeout", 1*time.Millisecond)
+
+	// Duration string value (with units)
+	gock.New("http://example.com").
+		Get("/").
+		Times(2).
+		Reply(http.StatusOK).
+		Delay(2 * time.Millisecond)
+		// Note: delay seems to have a bug where subsequent requests without the
+		// delay are still delayed... For now just have it reply twice.
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com/", nil)
+	_, err := MakeRequest(req)
+
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "timed out")
 }

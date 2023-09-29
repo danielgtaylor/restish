@@ -169,6 +169,10 @@
       .token.diffRemoved {
         color: #ff5f87;
       }
+
+      .token.warning {
+        color: #d78700;
+      }
     </style>
   </head>
   <body>
@@ -236,7 +240,7 @@
         comment: /^\s*#.*/m,
         redirect: /2>\/dev\/null/,
         response: {
-          pattern: /^(HTTP\/[12]|\{|\[)(.|\n)+(\]|\}(\n|$))/gm,
+          pattern: /^(HTTP\/[12].*$)|((\{|\[)(.|\n)+(\]|\}(\n|$)))/gm,
           greedy: false,
           inside: Prism.languages.readable
         },
@@ -258,6 +262,13 @@
         varuse: {
           alias: "variable",
           pattern: /\$[A-Z0-9_]+/,
+        },
+        log: {
+          pattern: /(INFO|WARN|ERROR): .*/,
+          inside: {
+            warning: /WARN:/,
+            error: /ERROR:/,
+          },
         },
         header: {
           pattern: /-H [A-Z][a-zA-Z0-9-]+:\S+/,

@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -20,6 +21,13 @@ func AddGlobalFlag(name, short, description string, defaultValue interface{}, mu
 		} else {
 			flags.BoolP(name, short, viper.GetBool(name), description)
 			GlobalFlags.BoolP(name, short, viper.GetBool(name), description)
+		}
+	case time.Duration:
+		if multi {
+			panic(fmt.Errorf("unsupported float slice param"))
+		} else {
+			flags.DurationP(name, short, viper.GetDuration(name), description)
+			GlobalFlags.DurationP(name, short, viper.GetDuration(name), description)
 		}
 	case int, int16, int32, int64, uint16, uint32, uint64:
 		if multi {

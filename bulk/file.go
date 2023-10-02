@@ -76,6 +76,7 @@ func (f *File) IsChangedLocal(ignoreDeleted bool) bool {
 
 	b, err = reformat(b)
 	if err != nil {
+		cli.LogWarning("Warning unable to format %s: %s\n", f.Path, err)
 		return false
 	}
 

@@ -229,13 +229,19 @@ func diff(originalPath, modifiedPath string, original, modified []byte) {
 	var err error
 
 	if len(original) > 0 {
-		json.Unmarshal(original, &parsedOrig)
+		if err := json.Unmarshal(original, &parsedOrig); err != nil {
+			cli.LogWarning("Unable to parse %s: %s", originalPath, err)
+			return
+		}
 		original, err = cli.MarshalShort("json", true, parsedOrig)
 		panicOnErr(err)
 	}
 
 	if len(modified) > 0 {
-		json.Unmarshal(modified, &parsedMod)
+		if err := json.Unmarshal(modified, &parsedMod); err != nil {
+			cli.LogWarning("Unable to parse %s: %s", modifiedPath, err)
+			return
+		}
 		modified, err = cli.MarshalShort("json", true, parsedMod)
 		panicOnErr(err)
 	}
@@ -429,7 +435,7 @@ func Init(cmd *cobra.Command) {
 			meta := mustLoadMeta()
 			match, _ := cmd.Flags().GetString("match")
 			for _, name := range collectFiles(meta, args, match, true) {
-				if f, ok := meta.Files[name]; ok {
+				if f, ok := meta.Files[name]; ok && f.VersionLocal != "" {
 					panicOnErr(f.Reset())
 				}
 			}

@@ -15,6 +15,17 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
+// reformat returns the standardized/formatted JSON representation given JSON
+// byte data as input.
+func reformat(data []byte) ([]byte, error) {
+	// Round-trip to get consistent formatting. This is inefficient but a much
+	// nicer experience for people with auto-formatters set up in their editor
+	// or who may try to undo changes and get the formatting slightly off.
+	var tmp any
+	json.Unmarshal(data, &tmp)
+	return cli.MarshalShort("json", true, tmp)
+}
+
 // hash returns a new fast 128-bit hash of the given bytes.
 func hash(b []byte) []byte {
 	tmp := xxh3.Hash128(b).Bytes()
@@ -63,12 +74,10 @@ func (f *File) IsChangedLocal(ignoreDeleted bool) bool {
 		return !ignoreDeleted
 	}
 
-	// Round-trip to get consistent formatting. This is inefficient but a much
-	// nicer experience for people with auto-formatters set up in their editor
-	// or who may try to undo changes and get the formatting slightly off.
-	var tmp any
-	json.Unmarshal(b, &tmp)
-	b, _ = cli.MarshalShort("json", true, tmp)
+	b, err = reformat(b)
+	if err != nil {
+		return false
+	}
 
 	return !bytes.Equal(hash(b), f.Hash)
 }

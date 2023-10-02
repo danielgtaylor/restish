@@ -355,6 +355,146 @@ func TestWorkflow(t *testing.T) {
 	mustHaveCalledAllHTTPMocks(t)
 }
 
+// TestPullFailure simulates a partial pull failure. The command should still
+// complete successfully, but the failed file should be left alone. The state
+// should be in a good place to retry the pull.
+func TestPullFailure(t *testing.T) {
+	defer gock.Off()
+
+	expectRemote([]remoteFile{
+		{User: "a", ID: "a1", Version: "a11", fetch: true},
+		{User: "a", ID: "a2", Version: "a21", fetch: false},
+		{User: "b", ID: "b1", Version: "b11", fetch: true},
+	})
+
+	// Simulate a pull failure on the server.
+	gock.New("https://example.com").
+		Get("/users/a/items/a2").
+		Reply(http.StatusInternalServerError)
+
+	afs = afero.NewMemMapFs()
+
+	cli.Init("test", "1.0.0")
+	cli.Defaults()
+	Init(cli.Root)
+
+	// Init
+	// ====
+	run("bulk", "init", "example.com/all-items", "--url-template=/users/{user}/items/{id}")
+
+	mustExist(t, ".rshbulk")
+	mustExist(t, ".rshbulk/meta")
+	mustEqualJSON(t, "a/items/a1.json", `{"id": "a1"}`)
+	_, err := afs.Stat("a/items/a2.json")
+	require.Error(t, err)
+	mustEqualJSON(t, "b/items/b1.json", `{"id": "b1"}`)
+	mustHaveCalledAllHTTPMocks(t)
+
+	// Status should show the one failed file as needing to be pulled.
+	// ----------------------------------------------------------------
+	gock.Flush()
+
+	expectRemote([]remoteFile{
+		{User: "a", ID: "a1", Version: "a11", fetch: false},
+		{User: "a", ID: "a2", Version: "a21", fetch: false},
+		{User: "b", ID: "b1", Version: "b11", fetch: false},
+	})
+
+	out, err := run("bulk", "status")
+	require.NoError(t, err)
+	require.Contains(t, out, "Remote changes")
+	require.NotContains(t, out, "a/items/a1.json")
+	require.Contains(t, out, "added:  a/items/a2.json")
+	require.NotContains(t, out, "b/items/b1.json")
+	mustHaveCalledAllHTTPMocks(t)
+}
+
+func TestPushFailure(t *testing.T) {
+	defer gock.Off()
+
+	expectRemote([]remoteFile{
+		{User: "a", ID: "a1", Version: "a11", fetch: true},
+		{User: "a", ID: "a2", Version: "a21", fetch: true},
+		{User: "b", ID: "b1", Version: "b11", fetch: true},
+	})
+
+	afs = afero.NewMemMapFs()
+
+	cli.Init("test", "1.0.0")
+	cli.Defaults()
+	Init(cli.Root)
+
+	// Init
+	// ====
+	run("bulk", "init", "example.com/all-items", "--url-template=/users/{user}/items/{id}")
+
+	mustExist(t, ".rshbulk")
+	mustExist(t, ".rshbulk/meta")
+	mustEqualJSON(t, "a/items/a1.json", `{"id": "a1"}`)
+	mustEqualJSON(t, "a/items/a2.json", `{"id": "a2"}`)
+	mustEqualJSON(t, "b/items/b1.json", `{"id": "b1"}`)
+	mustHaveCalledAllHTTPMocks(t)
+
+	// Modify files
+	// ------------
+
+	afero.WriteFile(afs, "a/items/a1.json", []byte(`{"id": "a1", "labels": ["one"]}`), 0600)
+	afero.WriteFile(afs, "a/items/a2.json", []byte(`{"id": "a2", "labels": ["two"]}`), 0600)
+	afero.WriteFile(afs, "b/items/b1.json", []byte(`{"id": "b1", "labels": ["three"]}`), 0600)
+
+	// Push with partial failure
+	// -------------------------
+	gock.Flush()
+
+	expectRemote([]remoteFile{
+		{User: "a", ID: "a1", Version: "a11"},
+		{User: "a", ID: "a2", Version: "a21"},
+		{User: "b", ID: "b1", Version: "b11"},
+	})
+
+	gock.New("https://example.com").
+		Put("/users/a/items/a1").
+		Reply(http.StatusOK)
+
+	gock.New("https://example.com").
+		Put("/users/a/items/a2").
+		Reply(http.StatusBadRequest) // <--- simulate invalid input
+
+	gock.New("https://example.com").
+		Put("/users/b/items/b1").
+		Reply(http.StatusOK)
+
+	// Remote has changed after push!
+	expectRemote([]remoteFile{
+		{User: "a", ID: "a1", Version: "a12", fetch: true},
+		{User: "a", ID: "a2", Version: "a22", fetch: false},
+		{User: "b", ID: "b1", Version: "b12", fetch: true},
+	})
+
+	out, err := run("bulk", "push")
+	require.NoError(t, err)
+	require.Contains(t, out, "Push complete")
+	mustHaveCalledAllHTTPMocks(t)
+
+	// Status should show the one failed file as needing to still be pushed.
+	// ---------------------------------------------------------------------
+	gock.Flush()
+
+	expectRemote([]remoteFile{
+		{User: "a", ID: "a1", Version: "a12"},
+		{User: "a", ID: "a2", Version: "a22"},
+		{User: "b", ID: "b1", Version: "b12"},
+	})
+
+	out, err = run("bulk", "status")
+	require.NoError(t, err)
+	require.Contains(t, out, "Local changes")
+	require.NotContains(t, out, "a/items/a1.json")
+	require.Contains(t, out, "modified:  a/items/a2.json")
+	require.NotContains(t, out, "b/items/b1.json")
+	mustHaveCalledAllHTTPMocks(t)
+}
+
 func TestFalsey(t *testing.T) {
 	for _, item := range []any{false, 0, 0.0, "", []byte{}, []any{}, map[string]any{}, map[any]any{}} {
 		t.Run(fmt.Sprintf("%T-%+v", item, item), func(t *testing.T) {

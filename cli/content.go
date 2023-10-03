@@ -263,7 +263,7 @@ func (t Gron) Detect(contentType string) bool {
 
 // Marshal the value to a gron string.
 func (t Gron) Marshal(value interface{}) ([]byte, error) {
-	pb := NewPathBuffer([]byte("body"), 4)
+	pb := NewPathBuffer([][]byte{[]byte("body")})
 	out := make([]byte, 0, 1024)
 	return marshalGron(pb, value, false, out)
 }

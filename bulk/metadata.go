@@ -69,6 +69,18 @@ func getFirstKey(item any, keys ...string) string {
 	return ""
 }
 
+// fileMsg prints an error message and optional response to the terminal
+// making sure to clear the progress bar first and then increment it by one
+// after printing the message.
+func fileMsg(bar *progressbar.ProgressBar, resp *cli.Response, format string, args ...any) {
+	bar.Clear()
+	fmt.Fprintf(cli.Stdout, format, args...)
+	if resp != nil {
+		cli.Formatter.Format(*resp)
+	}
+	bar.Add(1)
+}
+
 // listEntry represents a response from a list resources call.
 type listEntry struct {
 	URL     string `json:"url"`
@@ -291,8 +303,12 @@ func (m *Meta) Pull() error {
 		if f.VersionRemote == "" {
 			// This was removed on the remote!
 			delete(m.Files, f.Path)
+			m.Save()
 			if !f.IsChangedLocal(true) {
-				afs.Remove(f.Path)
+				if err := afs.Remove(f.Path); err != nil {
+					fileMsg(bar, nil, "Error removing file %s: %s\n", f.Path, err)
+					continue
+				}
 			}
 			bar.Add(1)
 			continue
@@ -300,14 +316,18 @@ func (m *Meta) Pull() error {
 
 		b, err := f.Fetch()
 		if err != nil {
-			return err
+			fileMsg(bar, nil, "Error fetching %s from %s: %s\n", f.Path, f.URL, err)
+			continue
 		}
+
+		// Best effort to save the metadata between files in case the app crashes
+		// or is killed. This leaves us in a better state for the next run. We
+		// are trading speed and some disk churn for safety.
+		m.Save()
 
 		// Don't overwrite local edits!
 		if f.IsChangedLocal(true) {
-			bar.Clear()
-			fmt.Fprintln(cli.Stdout, "Skipping due to local edits:", f.Path)
-			bar.Add(1)
+			fileMsg(bar, nil, "Skipping due to local edits: %s\n", f.Path)
 			continue
 		}
 
@@ -380,6 +400,11 @@ func (m *Meta) GetChanged(files []string) ([]changedFile, []changedFile, error) 
 		}
 	}
 
+	// Sort by path for consistent output.
+	sort.Slice(remote, func(i, j int) bool {
+		return remote[i].File.Path < remote[j].File.Path
+	})
+
 	// Because deleted files would be appended, we need to sort!
 	sort.Slice(local, func(i, j int) bool {
 		return local[i].File.Path < local[j].File.Path
@@ -402,6 +427,10 @@ func (m *Meta) Push() error {
 		progressbar.OptionSetDescription("Pushing resources..."),
 	)
 
+	// Keep track of which files were successfully pushed so we can update the
+	// metadata for them.
+	success := []changedFile{}
+
 	for _, changed := range local {
 		f := changed.File
 		if changed.Status == statusModified || changed.Status == statusAdded {
@@ -416,12 +445,12 @@ func (m *Meta) Push() error {
 
 			resp, err := cli.GetParsedResponse(req)
 			if err != nil {
-				return err
+				fileMsg(bar, nil, "Error uploading %s to %s: %s\n", f.Path, f.URL, err)
+				continue
 			}
 			if resp.Status >= 400 {
-				fmt.Fprintf(cli.Stdout, "Error uploading %s to %s\n", f.Path, f.URL)
-				cli.Formatter.Format(resp)
-				return err
+				fileMsg(bar, &resp, "Error uploading %s to %s\n", f.Path, f.URL)
+				continue
 			}
 
 			if changed.Status == statusAdded {
@@ -429,13 +458,26 @@ func (m *Meta) Push() error {
 				m.Files[changed.File.Path] = changed.File
 			}
 
+			// In case of fetch or write errors, first mark this file as unmodified
+			// now that the push was successful and the updated data is on the server,
+			// making it not show as locally modified for subsequent commands. If the
+			// write is successful, this hash is overwritten with the updated
+			// contents, including any fields computed on the server at write time.
+			// This is best effort, so if it fails we just ignore it.
+			if formatted, err := reformat(body); err == nil {
+				changed.File.Hash = hash(formatted)
+				m.Save()
+			}
+
 			// Fetch and write the updated metadata/file to disk.
 			b, err := f.Fetch()
 			if err != nil {
-				return err
+				fileMsg(bar, nil, "Error fetching %s from %s: %s\n", f.Path, f.URL, err)
+				continue
 			}
 			if err := f.Write(b); err != nil {
-				return err
+				fileMsg(bar, nil, "Error writing file %s: %s\n", f.Path, err)
+				continue
 			}
 		} else {
 			req, _ := http.NewRequest(http.MethodDelete, f.URL, nil)
@@ -448,15 +490,17 @@ func (m *Meta) Push() error {
 
 			resp, err := cli.GetParsedResponse(req)
 			if err != nil {
-				return err
+				fileMsg(bar, nil, "Error deleting %s from %s: %s\n", f.Path, f.URL, err)
+				continue
 			}
 			if resp.Status >= 400 {
-				fmt.Fprintf(cli.Stdout, "Error uploading %s to %s\n", f.Path, f.URL)
-				cli.Formatter.Format(resp)
-				return err
+				fileMsg(bar, &resp, "Error deleting %s from %s\n", f.Path, f.URL)
+				continue
 			}
 			delete(m.Files, f.Path)
+			m.Save()
 		}
+		success = append(success, changed)
 		bar.Add(1)
 	}
 
@@ -466,7 +510,7 @@ func (m *Meta) Push() error {
 		return err
 	}
 
-	for _, changed := range local {
+	for _, changed := range success {
 		// Mark all the changed files as matching the new remote version. The
 		// file contents were already updated above. This code can't be run until
 		// after we pull the index again to get the updated remote versions.

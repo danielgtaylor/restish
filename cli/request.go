@@ -1,8 +1,11 @@
 package cli
 
 import (
+	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -100,8 +103,6 @@ func IgnoreStatus() requestOption {
 // before sending it out on the wire. If verbose mode is enabled, it will
 // print out both the request and response.
 func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, error) {
-	start := time.Now()
-
 	name, config := findAPI(req.URL.String())
 
 	if config == nil {
@@ -258,11 +259,7 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		}
 	}
 
-	if log {
-		LogDebugRequest(req)
-	}
-
-	resp, err := client.Do(req)
+	resp, err := doRequestWithRetry(log, client, req)
 	if err != nil {
 		return nil, err
 	}
@@ -271,11 +268,109 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		lastStatus = resp.StatusCode
 	}
 
-	if log {
-		LogDebugResponse(start, resp)
+	return resp, nil
+}
+
+// isRetryable returns true if a request should be retried.
+func isRetryable(code int) bool {
+	if code == /* 408 */ http.StatusRequestTimeout ||
+		code == /*  425 */ http.StatusTooEarly ||
+		code == /*  429 */ http.StatusTooManyRequests ||
+		code == /*  500 */ http.StatusInternalServerError ||
+		code == /*  502 */ http.StatusBadGateway ||
+		code == /*  503 */ http.StatusServiceUnavailable ||
+		code == /*  504 */ http.StatusGatewayTimeout {
+		return true
+	}
+	return false
+}
+
+// doRequestWithRetry logs and makes a request, retrying as needed (if
+// configured) and returning the last response.
+func doRequestWithRetry(log bool, client *http.Client, req *http.Request) (*http.Response, error) {
+	retries := viper.GetInt("rsh-retry")
+
+	if retries == 0 {
+		return client.Do(req)
 	}
 
-	return resp, nil
+	var bodyContents []byte
+	if req.Body != nil {
+		bodyContents, _ = io.ReadAll(req.Body)
+	}
+
+	var resp *http.Response
+	var err error
+	triesLeft := 1 + retries
+	for triesLeft > 0 {
+		triesLeft--
+
+		if len(bodyContents) > 0 {
+			// Reset the body reader for each retry.
+			req.Body = io.NopCloser(bytes.NewReader(bodyContents))
+		}
+
+		if log {
+			LogDebugRequest(req)
+		}
+
+		if timeout := viper.GetDuration("rsh-timeout"); timeout > 0 {
+			ctx, cancel := context.WithTimeout(req.Context(), timeout)
+			defer cancel()
+			req = req.WithContext(ctx)
+		}
+
+		start := time.Now()
+		resp, err = client.Do(req)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				if triesLeft > 0 {
+					// Try again after letting the user know.
+					LogWarning("Got request timeout after %s, retrying", viper.GetDuration("rsh-timeout").Truncate(time.Millisecond))
+					continue
+				} else {
+					// Add a human-friendly error before the original (context deadline
+					// exceeded).
+					err = fmt.Errorf("Request timed out after %s: %w", viper.GetDuration("rsh-timeout"), err)
+				}
+			}
+			return resp, err
+		}
+
+		if log {
+			LogDebugResponse(start, resp)
+		}
+
+		if triesLeft > 0 && isRetryable(resp.StatusCode) {
+			// Attempt to parse when to retry! Default is 1 second.
+			retryAfter := 1 * time.Second
+
+			if v := resp.Header.Get("Retry-After"); v != "" {
+				// Could be either an integer number of seconds, or an HTTP date.
+				if d, err := strconv.ParseInt(v, 10, 64); err == nil {
+					retryAfter = time.Duration(d) * time.Second
+				}
+
+				if d, err := http.ParseTime(v); err == nil {
+					retryAfter = time.Until(d)
+				}
+			}
+
+			if v := resp.Header.Get("X-Retry-In"); v != "" {
+				if d, err := time.ParseDuration(v); err == nil {
+					retryAfter = d
+				}
+			}
+
+			LogWarning("Got %s, retrying in %s", resp.Status, retryAfter.Truncate(time.Millisecond))
+			time.Sleep(retryAfter)
+
+			continue
+		}
+		break
+	}
+
+	return resp, err
 }
 
 // Response describes a parsed HTTP response which can be marshalled to enable

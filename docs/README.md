@@ -41,6 +41,7 @@ Start with the [guide](/guide.md) to learn how to install and configure Restish 
   - MessagePack (<https://msgpack.org/>)
   - Amazon Ion (<http://amzn.github.io/ion-docs/>)
   - Gzip ([RFC 1952](https://tools.ietf.org/html/rfc1952)), Deflate ([RFC 1951](https://datatracker.ietf.org/doc/html/rfc1951)), and Brotli ([RFC 7932](https://tools.ietf.org/html/rfc7932)) content encoding
+- Automatic retries with support for [`Retry-After`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After) and `X-Retry-In` headers when APIs are rate-limited.
 - Standardized [hypermedia](https://smartbear.com/learn/api-design/what-is-hypermedia/) parsing into queryable/followable response links:
   - HTTP Link relation headers ([RFC 5988](https://tools.ietf.org/html/rfc5988#section-6.2.2))
   - [HAL](http://stateless.co/hal_specification.html)

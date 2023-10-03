@@ -6,5 +6,6 @@
 - [Input](input.md "Restish Input")
 - [CLI Shorthand](shorthand.md "CLI Shorthand")
 - [Output](output.md "Restish Output")
+- [Retries & Timeouts](retries.md "Retries & Timeouts")
 - [Hypermedia](hypermedia.md "Hypermedia Linking in Restish")
 - [Bulk Management](bulk.md "Bulk Resource Management")

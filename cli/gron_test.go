@@ -29,6 +29,9 @@ func TestGronMarshal(t *testing.T) {
 			{"e": "world & i <3 restish"},
 			{"f": []any{1, 2}, "g": time.Time{}, "h": []byte("foo")},
 			{"for": map[int]int{1: 2}},
+			{"dotted.name": "foo"},
+			{"name[with]brackets": "bar"},
+			{"name\"with": "quote"},
 		}},
 		private: true,
 	}
@@ -52,6 +55,12 @@ body.d[1].h = "Zm9v";
 body.d[2] = {};
 body.d[2].for = {};
 body.d[2].for["1"] = 2;
+body.d[3] = {};
+body.d[3]["dotted.name"] = "foo";
+body.d[4] = {};
+body.d[4]["name[with]brackets"] = "bar";
+body.d[5] = {};
+body.d[5]["name\"with"] = "quote";
 `, string(b))
 
 	// Invalid types should result in an error!

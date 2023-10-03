@@ -12,41 +12,30 @@ import (
 	"unicode"
 )
 
-// PathBuffer is a low-allocation helper for building a path string like
-// `foo.bar[2].baz`. It is not goroutine-safe, but the underlying buffer can
-// be re-used within the same goroutine or via a `sync.Pool`.
+// PathBuffer builds up a path string from multiple parts.
 type PathBuffer struct {
-	buf []byte
-	off int
+	parts [][]byte
 }
 
 func (b *PathBuffer) Push(s string) {
-	if b.off > 0 && s[0] != '[' {
-		b.buf = append(b.buf, '.')
-		b.off++
+	if s[0] != '[' {
+		s = "." + s
 	}
-	b.buf = append(b.buf, s...)
-	b.off += len(s)
+	b.parts = append(b.parts, []byte(s))
 }
 
 func (b *PathBuffer) Pop() {
-	for b.off > 0 {
-		b.off--
-		if b.buf[b.off] == '.' || b.buf[b.off] == '[' {
-			break
-		}
-	}
-	b.buf = b.buf[:b.off]
+	b.parts = b.parts[:len(b.parts)-1]
 }
 
 func (b *PathBuffer) Bytes() []byte {
-	return b.buf[:b.off]
+	return bytes.Join(b.parts, []byte{})
 }
 
-// NewPathBuffer creates a new path buffer with the given underlying byte slice
-// and offset within that slice (for pre-loading with some path data).
-func NewPathBuffer(buf []byte, offset int) *PathBuffer {
-	return &PathBuffer{buf: buf, off: offset}
+// NewPathBuffer creates a new path buffer with the given underlying initial
+// data loaded into it.
+func NewPathBuffer(parts [][]byte) *PathBuffer {
+	return &PathBuffer{parts: parts}
 }
 
 // validFirstRune returns true for runes that are valid
@@ -71,6 +60,8 @@ func identifier(s string) string {
 	if valid {
 		return s
 	}
+
+	s = strings.ReplaceAll(s, `"`, `\"`)
 
 	return fmt.Sprintf(`["%s"]`, s)
 }

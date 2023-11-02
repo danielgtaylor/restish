@@ -71,30 +71,40 @@ func fixAddress(addr string) string {
 	return addr
 }
 
-type requestOption struct {
-	client       *http.Client
-	disableLog   bool
-	ignoreStatus bool
+type requestConfig struct {
+	client          *http.Client
+	disableLog      bool
+	ignoreStatus    bool
+	ignoreCLIParams bool
 }
+
+type requestOption func(*requestConfig)
 
 // WithClient sets the client to use for the request.
 func WithClient(c *http.Client) requestOption {
-	return requestOption{
-		client: c,
+	return func(conf *requestConfig) {
+		conf.client = c
 	}
 }
 
 // WithoutLog disabled debug logging for the given request/response.
 func WithoutLog() requestOption {
-	return requestOption{
-		disableLog: true,
+	return func(conf *requestConfig) {
+		conf.disableLog = true
 	}
 }
 
 // IgnoreStatus ignores the response status code.
 func IgnoreStatus() requestOption {
-	return requestOption{
-		ignoreStatus: true,
+	return func(conf *requestConfig) {
+		conf.ignoreStatus = true
+	}
+}
+
+// IgnoreCLIParams only applies the profile, but ignores commandline and env params
+func IgnoreCLIParams() requestOption {
+	return func(conf *requestConfig) {
+		conf.ignoreCLIParams = true
 	}
 }
 
@@ -103,6 +113,11 @@ func IgnoreStatus() requestOption {
 // before sending it out on the wire. If verbose mode is enabled, it will
 // print out both the request and response.
 func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, error) {
+	requestConf := &requestConfig{}
+	for _, opt := range options {
+		opt(requestConf)
+	}
+
 	name, config := findAPI(req.URL.String())
 
 	if config == nil {
@@ -134,25 +149,27 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		}
 	}
 
-	// Allow env vars and commandline arguments to override config.
-	for _, h := range viper.GetStringSlice("rsh-header") {
-		parts := strings.SplitN(h, ":", 2)
-		value := ""
-		if len(parts) > 1 {
-			value = parts[1]
+	if !requestConf.ignoreCLIParams {
+		// Allow env vars and commandline arguments to override config.
+		for _, h := range viper.GetStringSlice("rsh-header") {
+			parts := strings.SplitN(h, ":", 2)
+			value := ""
+			if len(parts) > 1 {
+				value = parts[1]
+			}
+
+			req.Header.Add(parts[0], value)
 		}
 
-		req.Header.Add(parts[0], value)
-	}
+		for _, q := range viper.GetStringSlice("rsh-query") {
+			parts := strings.SplitN(q, "=", 2)
+			value := ""
+			if len(parts) > 1 {
+				value = parts[1]
+			}
 
-	for _, q := range viper.GetStringSlice("rsh-query") {
-		parts := strings.SplitN(q, "=", 2)
-		value := ""
-		if len(parts) > 1 {
-			value = parts[1]
+			query.Add(parts[0], value)
 		}
-
-		query.Add(parts[0], value)
 	}
 
 	// Save modified query string arguments.
@@ -243,28 +260,16 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 		client = &http.Client{Transport: InvalidateCachedTransport()}
 	}
 
-	log := true
-	setStatus := true
-	for _, option := range options {
-		if option.client != nil {
-			client = option.client
-		}
-
-		if option.disableLog {
-			log = false
-		}
-
-		if option.ignoreStatus {
-			setStatus = false
-		}
+	if requestConf.client != nil {
+		client = requestConf.client
 	}
 
-	resp, err := doRequestWithRetry(log, client, req)
+	resp, err := doRequestWithRetry(!requestConf.disableLog, client, req)
 	if err != nil {
 		return nil, err
 	}
 
-	if setStatus {
+	if !requestConf.ignoreStatus {
 		lastStatus = resp.StatusCode
 	}
 

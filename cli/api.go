@@ -200,16 +200,13 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 		return API{}, err
 	}
 
-	// For fetching specs, we apply a 24-hour cache time if no cache headers
-	// are set. So APIs can opt-in to caching if they want control, otherwise
-	// we try and do the right thing and not hit them too often. Localhost
-	// is never cached to make local development easier.
-	client := MinCachedTransport(24 * time.Hour).Client()
-	if viper.GetBool("rsh-no-cache") || req.URL.Hostname() == "localhost" {
-		client = &http.Client{Transport: InvalidateCachedTransport()}
-	}
-
-	httpResp, err := MakeRequest(req, WithClient(client))
+	// We already cache the parsed API specs, no need to cache the
+	// server response.
+	// We will almost never be in a situation where we don't want to use
+	// the parsed API cache, but do want to use a cached response from
+	// the server.
+	client := &http.Client{Transport: InvalidateCachedTransport()}
+	httpResp, err := MakeRequest(req, WithClient(client), IgnoreCLIParams())
 	if err != nil {
 		return API{}, err
 	}
@@ -249,7 +246,7 @@ func Load(entrypoint string, root *cobra.Command) (API, error) {
 			return API{}, err
 		}
 
-		resp, err := MakeRequest(req, WithClient(client))
+		resp, err := MakeRequest(req, WithClient(client), IgnoreCLIParams())
 		if err != nil {
 			return API{}, err
 		}

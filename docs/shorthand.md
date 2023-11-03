@@ -115,7 +115,7 @@ It seems reasonable to ask, why create a new syntax?
 You can use the included `j` executable to try out the shorthand format examples below. Examples are shown in JSON, but the shorthand parses into structured data that can be marshalled as other formats, like YAML or TOML if you prefer.
 
 ```bash
-go get -u github.com/danielgtaylor/shorthand/cmd/j
+go install github.com/danielgtaylor/shorthand/cmd/j@latest
 ```
 
 Also feel free to use this tool to generate structured data for input to other commands.

@@ -180,7 +180,7 @@ func (h authHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // AuthorizationCodeTokenSource with PKCE as described in:
 // https://www.oauth.com/oauth2-servers/pkce/
 // This works by running a local HTTP server on port 8484 and then having the
-// user log in through a web browser, which redirects to the local server with
+// user log in through a web browser, which redirects to the redirect url with
 // an authorization code. That code is then used to make another HTTP request
 // to fetch an auth token (and refresh token). That token is then in turn
 // used to make requests against the API.
@@ -189,8 +189,17 @@ type AuthorizationCodeTokenSource struct {
 	ClientSecret   string
 	AuthorizeURL   string
 	TokenURL       string
+	RedirectURL    string
 	EndpointParams *url.Values
 	Scopes         []string
+}
+
+func (ac *AuthorizationCodeTokenSource) getRedirectUrl() string {
+	if ac.RedirectURL == "" {
+		return "http://localhost:8484"
+	}
+
+	return ac.RedirectURL
 }
 
 // Token generates a new token using an authorization code.
@@ -219,7 +228,7 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	aq.Set("code_challenge", challenge)
 	aq.Set("code_challenge_method", "S256")
 	aq.Set("client_id", ac.ClientID)
-	aq.Set("redirect_uri", "http://localhost:8484/")
+	aq.Set("redirect_uri", ac.getRedirectUrl())
 	aq.Set("scope", strings.Join(ac.Scopes, " "))
 	if ac.EndpointParams != nil {
 		for k, v := range *ac.EndpointParams {
@@ -234,8 +243,12 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 		c: codeChan,
 	}
 
+	// strip protocol prefix from configured redirect url for local webserver
+	redirectServer := strings.TrimPrefix(ac.getRedirectUrl(), "https://")
+	redirectServer = strings.TrimPrefix(redirectServer, "http://")
+
 	s := &http.Server{
-		Addr:           "localhost:8484",
+		Addr:           redirectServer,
 		Handler:        handler,
 		ReadTimeout:    5 * time.Second,
 		WriteTimeout:   5 * time.Second,
@@ -284,7 +297,7 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	payload.Set("client_id", ac.ClientID)
 	payload.Set("code_verifier", verifier)
 	payload.Set("code", code)
-	payload.Set("redirect_uri", "http://localhost:8484/")
+	payload.Set("redirect_uri", ac.getRedirectUrl())
 	if ac.ClientSecret != "" {
 		payload.Set("client_secret", ac.ClientSecret)
 	}
@@ -304,6 +317,7 @@ func (h *AuthorizationCodeHandler) Parameters() []cli.AuthParam {
 		{Name: "authorize_url", Required: true, Help: "OAuth 2.0 authorization URL, e.g. https://api.example.com/oauth/authorize"},
 		{Name: "token_url", Required: true, Help: "OAuth 2.0 token URL, e.g. https://api.example.com/oauth/token"},
 		{Name: "scopes", Help: "Optional scopes to request in the token"},
+		{Name: "redirect_url", Help: "Optional redirect URL with protocol and port, defaults to 'http://localhost:8484' if not specified. "},
 	}
 }
 
@@ -312,7 +326,7 @@ func (h *AuthorizationCodeHandler) OnRequest(request *http.Request, key string, 
 	if request.Header.Get("Authorization") == "" {
 		endpointParams := url.Values{}
 		for k, v := range params {
-			if k == "client_id" || k == "client_secret" || k == "scopes" || k == "authorize_url" || k == "token_url" {
+			if k == "client_id" || k == "client_secret" || k == "scopes" || k == "authorize_url" || k == "token_url" || k == "redirect_url" {
 				// Not a custom param...
 				continue
 			}
@@ -325,6 +339,7 @@ func (h *AuthorizationCodeHandler) OnRequest(request *http.Request, key string, 
 			ClientSecret:   params["client_secret"],
 			AuthorizeURL:   params["authorize_url"],
 			TokenURL:       params["token_url"],
+			RedirectURL:    params["redirect_url"],
 			EndpointParams: &endpointParams,
 			Scopes:         strings.Split(params["scopes"], ","),
 		}

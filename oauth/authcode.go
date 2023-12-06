@@ -244,8 +244,11 @@ func (ac *AuthorizationCodeTokenSource) Token() (*oauth2.Token, error) {
 	}
 
 	// strip protocol prefix from configured redirect url for local webserver
-	redirectServer := strings.TrimPrefix(ac.getRedirectUrl(), "https://")
-	redirectServer = strings.TrimPrefix(redirectServer, "http://")
+	u, err := url.Parse(ac.getRedirectUrl())
+	if err != nil {
+		panic(err)
+	}
+	redirectServer := fmt.Sprintf("%s:%s", u.Hostname(), u.Port())
 
 	s := &http.Server{
 		Addr:           redirectServer,

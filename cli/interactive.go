@@ -43,7 +43,12 @@ func (a defaultAsker) askInput(message string, def string, required bool, help s
 		message += " (optional)"
 	}
 
-	err := survey.AskOne(&survey.Input{Message: message, Default: def, Help: help}, &resp, options...)
+	var prompt survey.Prompt = &survey.Input{Message: message, Default: def, Help: help}
+	if strings.Contains(message, "password") || strings.Contains(message, "secret") {
+		prompt = &survey.Password{Message: message, Help: help}
+	}
+
+	err := survey.AskOne(prompt, &resp, options...)
 	if err == terminal.InterruptErr {
 		os.Exit(0)
 	}

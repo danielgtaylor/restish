@@ -24,6 +24,43 @@ func TestAPIShow(t *testing.T) {
 	assert.Equal(t, captured, "\x1b[38;5;247m{\x1b[0m\n  \x1b[38;5;74m\"base\"\x1b[0m\x1b[38;5;247m:\x1b[0m \x1b[38;5;150m\"https://api.example.com\"\x1b[0m\n\x1b[38;5;247m}\x1b[0m\n")
 }
 
+func TestAPIClearCache(t *testing.T) {
+	reset(false)
+
+	configs["test"] = &APIConfig{
+		name: "test",
+		Base: "https://api.example.com",
+	}
+	Cache.Set("test:default.token", "abc123")
+
+	runNoReset("api clear-auth-cache test")
+
+	assert.Equal(t, "", Cache.GetString("test:default.token"))
+}
+
+func TestAPIClearCacheProfile(t *testing.T) {
+	reset(false)
+
+	configs["test"] = &APIConfig{
+		name: "test",
+		Base: "https://api.example.com",
+	}
+	Cache.Set("test:default.token", "abc123")
+	Cache.Set("test:other.token", "def456")
+
+	runNoReset("api clear-auth-cache test -p other")
+
+	assert.Equal(t, "abc123", Cache.GetString("test:default.token"))
+	assert.Equal(t, "", Cache.GetString("test:other.token"))
+}
+
+func TestAPIClearCacheMissing(t *testing.T) {
+	reset(false)
+
+	captured := runNoReset("api clear-auth-cache missing-api")
+	assert.Contains(t, captured, "API missing-api not found")
+}
+
 func TestEditAPIsMissingEditor(t *testing.T) {
 	os.Setenv("EDITOR", "")
 	os.Setenv("VISUAL", "")

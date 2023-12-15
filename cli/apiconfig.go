@@ -171,6 +171,27 @@ func initAPIConfig() {
 	})
 
 	apiCommand.AddCommand(&cobra.Command{
+		Use:   "clear-auth-cache short-name",
+		Short: "Clear API auth token cache",
+		Long:  "Clear the API auth token cache for the current profile. This will force a re-authentication the next time you make a request.",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			apiName := args[0]
+			api := configs[apiName]
+			if api == nil {
+				panic("API " + apiName + " not found")
+			}
+
+			// Remove the cache entry.
+			Cache.Set(apiName+":"+viper.GetString("rsh-profile"), "")
+
+			if err := Cache.WriteConfig(); err != nil {
+				panic(fmt.Errorf("Unable to write cache file: %w", err))
+			}
+		},
+	})
+
+	apiCommand.AddCommand(&cobra.Command{
 		Use:   "show short-name",
 		Short: "Show API config",
 		Long:  "Show an API configuration as JSON/YAML.",

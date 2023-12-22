@@ -139,7 +139,13 @@ func (o Operation) command() *cobra.Command {
 
 			req, _ := http.NewRequest(o.Method, uri, body)
 			req.Header = headers
-			MakeRequestAndFormat(req)
+			rateLimiter := Throttle{
+				rate:     viper.GetInt("rsh-load-rate"),
+				requests: viper.GetInt("rsh-requests"),
+			}
+			rateLimiter.RateLimit(func() {
+				MakeRequestAndFormat(req)
+			})
 		},
 	}
 

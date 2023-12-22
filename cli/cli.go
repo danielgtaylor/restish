@@ -54,18 +54,25 @@ var au aurora.Aurora
 var currentConfig *APIConfig
 
 func generic(method string, addr string, args []string) {
-	var body io.Reader
-
-	d, err := GetBody("application/json", args)
-	if err != nil {
-		panic(err)
-	}
-	if len(d) > 0 {
-		body = strings.NewReader(d)
+	rateLimiter := Throttle{
+		rate:     viper.GetInt("rsh-load-rate"),
+		requests: viper.GetInt("rsh-requests"),
 	}
 
-	req, _ := http.NewRequest(method, fixAddress(addr), body)
-	MakeRequestAndFormat(req)
+	rateLimiter.RateLimit(func() {
+		var body io.Reader
+
+		d, err := GetBody("application/json", args)
+		if err != nil {
+			panic(err)
+		}
+		if len(d) > 0 {
+			body = strings.NewReader(d)
+		}
+
+		req, _ := http.NewRequest(method, fixAddress(addr), body)
+		MakeRequestAndFormat(req)
+	})
 }
 
 // templateVarRegex used to find/replace variables `/{foo}/bar/{baz}` in a
@@ -542,6 +549,8 @@ Not after (expires): %s (%s)
 	AddGlobalFlag("rsh-raw", "r", "Output result of query as raw rather than an escaped JSON string or list", false, false)
 	AddGlobalFlag("rsh-server", "s", "Override scheme://server:port for an API", "", false)
 	AddGlobalFlag("rsh-header", "H", "Add custom header", []string{}, true)
+	AddGlobalFlag("rsh-requests", "R", "Do a number of requests", 1, false)
+	AddGlobalFlag("rsh-load-rate", "l", "Set a load rate in requests per second. Overrides the HTTP cache to false", 1, false)
 	AddGlobalFlag("rsh-query", "q", "Add custom query param", []string{}, true)
 	AddGlobalFlag("rsh-no-paginate", "", "Disable auto-pagination", false, false)
 	AddGlobalFlag("rsh-profile", "p", "API auth profile", "default", false)
@@ -769,6 +778,14 @@ func Run() (returnErr error) {
 	}
 	if headers, _ := GlobalFlags.GetStringArray("rsh-header"); len(headers) > 0 {
 		viper.Set("rsh-header", headers)
+	}
+	if requests, _ := GlobalFlags.GetInt("rsh-requests"); requests > 0 {
+		viper.Set("rsh-requests", requests)
+	}
+	if rps, _ := GlobalFlags.GetInt("rsh-load-rate"); rps > 0 {
+		viper.Set("rsh-load-rate", rps)
+		// doesn't make sense to flood with requests and obtain a cached response
+		viper.Set("rsh-no-cache", true)
 	}
 	profile, _ := GlobalFlags.GetString("rsh-profile")
 	viper.Set("rsh-profile", profile)

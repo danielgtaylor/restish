@@ -20,7 +20,7 @@ type Links map[string][]*Link
 
 // LinkParser parses link relationships in a response.
 type LinkParser interface {
-	ParseLinks(resp *Response) error
+	ParseLinks(base *url.URL, resp *Response) error
 }
 
 var linkParsers = []LinkParser{}
@@ -34,7 +34,7 @@ func AddLinkParser(parser LinkParser) {
 // ParseLinks uses all registered LinkParsers to parse links for a response.
 func ParseLinks(base *url.URL, resp *Response) error {
 	for _, parser := range linkParsers {
-		if err := parser.ParseLinks(resp); err != nil {
+		if err := parser.ParseLinks(base, resp); err != nil {
 			return err
 		}
 	}
@@ -58,7 +58,7 @@ func ParseLinks(base *url.URL, resp *Response) error {
 type LinkHeaderParser struct{}
 
 // ParseLinks processes the links in a parsed response.
-func (l LinkHeaderParser) ParseLinks(resp *Response) error {
+func (l LinkHeaderParser) ParseLinks(base *url.URL, resp *Response) error {
 	if resp.Headers["Link"] != "" {
 		links, err := link.Parse(resp.Headers["Link"])
 		if err != nil {
@@ -90,7 +90,7 @@ type halBody struct {
 type HALParser struct{}
 
 // ParseLinks processes the links in a parsed response.
-func (h HALParser) ParseLinks(resp *Response) error {
+func (h HALParser) ParseLinks(base *url.URL, resp *Response) error {
 	entries := []interface{}{}
 	if l, ok := resp.Body.([]interface{}); ok {
 		entries = l
@@ -122,7 +122,7 @@ func (h HALParser) ParseLinks(resp *Response) error {
 type TerrificallySimpleJSONParser struct{}
 
 // ParseLinks processes the links in a parsed response.
-func (t TerrificallySimpleJSONParser) ParseLinks(resp *Response) error {
+func (t TerrificallySimpleJSONParser) ParseLinks(base *url.URL, resp *Response) error {
 	return t.walk(resp, "self", resp.Body)
 }
 
@@ -181,7 +181,7 @@ type sirenBody struct {
 type SirenParser struct{}
 
 // ParseLinks processes the links in a parsed response.
-func (s SirenParser) ParseLinks(resp *Response) error {
+func (s SirenParser) ParseLinks(base *url.URL, resp *Response) error {
 	siren := sirenBody{}
 	if err := mapstructure.Decode(resp.Body, &siren); err == nil {
 		for _, link := range siren.Links {
@@ -230,7 +230,7 @@ func getJSONAPIlinks(links map[string]interface{}, resp *Response, isItem bool) 
 type JSONAPIParser struct{}
 
 // ParseLinks processes the links in a parsed response.
-func (j JSONAPIParser) ParseLinks(resp *Response) error {
+func (j JSONAPIParser) ParseLinks(base *url.URL, resp *Response) error {
 	if b, ok := resp.Body.(map[string]interface{}); ok {
 		// Find top-level links
 		if l, ok := b["links"].(map[string]interface{}); ok {

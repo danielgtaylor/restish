@@ -27,10 +27,18 @@ type APIAuth struct {
 
 // TLSConfig contains the TLS setup for the HTTP client
 type TLSConfig struct {
-	InsecureSkipVerify bool   `json:"insecure,omitempty" yaml:"insecure,omitempty" mapstructure:"insecure"`
-	Cert               string `json:"cert,omitempty" yaml:"cert,omitempty"`
-	Key                string `json:"key,omitempty" yaml:"key,omitempty"`
-	CACert             string `json:"ca_cert,omitempty" yaml:"ca_cert,omitempty" mapstructure:"ca_cert"`
+	InsecureSkipVerify bool          `json:"insecure,omitempty" yaml:"insecure,omitempty" mapstructure:"insecure"`
+	Cert               string        `json:"cert,omitempty" yaml:"cert,omitempty"`
+	Key                string        `json:"key,omitempty" yaml:"key,omitempty"`
+	CACert             string        `json:"ca_cert,omitempty" yaml:"ca_cert,omitempty" mapstructure:"ca_cert"`
+	PKCS11             *PKCS11Config `json:"pkcs11,omitempty" yaml:"pkcs11,omitempty"`
+}
+
+// PKCS11Config contains information about how to get a client certificate
+// from a hardware device via PKCS#11.
+type PKCS11Config struct {
+	Path  string `json:"path,omitempty" yaml:"path,omitempty"`
+	Label string `json:"label" yaml:"label"`
 }
 
 // APIProfile contains account-specific API information

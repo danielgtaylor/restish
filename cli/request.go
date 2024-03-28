@@ -15,6 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
+	"github.com/ThalesIgnite/crypto11"
 	"github.com/danielgtaylor/shorthand/v2"
 	"github.com/spf13/viper"
 )
@@ -207,6 +210,11 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 			LogWarning("Disabling TLS security checks")
 			t.TLSClientConfig.InsecureSkipVerify = config.TLS.InsecureSkipVerify
 		}
+
+		if config.TLS.PKCS11 != nil {
+			t.TLSClientConfig.GetClientCertificate = getCertFromPkcs11(config.TLS.PKCS11)
+		}
+
 		if config.TLS.Cert != "" {
 			cert, err := tls.LoadX509KeyPair(config.TLS.Cert, config.TLS.Key)
 			if err != nil {
@@ -274,6 +282,64 @@ func MakeRequest(req *http.Request, options ...requestOption) (*http.Response, e
 	}
 
 	return resp, nil
+}
+
+func getCertFromPkcs11(config *PKCS11Config) func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+	path := config.Path
+
+	// Try to give a useful default if they don't give a path to the plugin.
+	if path == "" {
+		if _, err := os.Stat("/usr/lib/x86_64-linux-gnu/opensc-pkcs11.so"); !errors.Is(err, os.ErrNotExist) {
+			path = "/usr/lib/x86_64-linux-gnu/opensc-pkcs11.so"
+		}
+		if _, err := os.Stat("/usr/lib/pkcs11/opensc-pkcs11.so"); !errors.Is(err, os.ErrNotExist) {
+			path = "/usr/lib/pkcs11/opensc-pkcs11.so"
+		}
+		// macos
+		if _, err := os.Stat("/opt/homebrew/lib/opensc-pkcs11.so"); !errors.Is(err, os.ErrNotExist) {
+			path = "/opt/homebrew/lib/opensc-pkcs11.so"
+		}
+	}
+
+	pin := os.Getenv("YBPIN")
+	if pin == "" {
+		err := survey.AskOne(&survey.Password{Message: "PIN for your PKCS11 device:"}, &pin)
+		if err == terminal.InterruptErr {
+			os.Exit(0)
+		}
+		if err != nil {
+			return func(*tls.CertificateRequestInfo) (*tls.Certificate, error) { return nil, err }
+		}
+	}
+
+	cfg := &crypto11.Config{
+		Path:       path,
+		TokenLabel: config.Label,
+		Pin:        pin,
+	}
+	context, err := crypto11.Configure(cfg)
+	if err != nil {
+		return func(*tls.CertificateRequestInfo) (*tls.Certificate, error) { return nil, err }
+	}
+
+	certificates, err := context.FindAllPairedCertificates()
+	if err != nil {
+		return func(*tls.CertificateRequestInfo) (*tls.Certificate, error) { return nil, err }
+	}
+
+	if len(certificates) == 0 {
+		return func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return nil, errors.New("no certificate found in your pkcs11 device")
+		}
+	}
+
+	if len(certificates) > 1 {
+		return func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return nil, errors.New("got more than one certificate")
+		}
+	}
+
+	return func(*tls.CertificateRequestInfo) (*tls.Certificate, error) { return &certificates[0], nil }
 }
 
 // isRetryable returns true if a request should be retried.

@@ -216,6 +216,20 @@
                 "ca_cert": {
                   "type": "string",
                   "description": "The local filename of a TLS certificate authority."
+                },
+                "pkcs11": {
+                  "type": "object",
+                  "description": "Settings related to getting a certificate from a hardware device via PKCS#11.",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "description": "Path to the PKCS#11 plugin shared object. (optional)"
+                    },
+                    "label": {
+                      "type": "string",
+                      "description": "The label of the certificate to fetch from the device. (required)"
+                    }    
+                  }
                 }
               }
             }

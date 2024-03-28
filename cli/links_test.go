@@ -10,7 +10,9 @@ import (
 
 type errorLinkParser struct{}
 
-func (p errorLinkParser) ParseLinks(r *Response) error {
+var base *url.URL
+
+func (p errorLinkParser) ParseLinks(base *url.URL, r *Response) error {
 	return fmt.Errorf("error parsing links")
 }
 
@@ -35,7 +37,7 @@ func TestLinkHeaderParser(t *testing.T) {
 	}
 
 	p := LinkHeaderParser{}
-	err := p.ParseLinks(r)
+	err := p.ParseLinks(base, r)
 	assert.NoError(t, err)
 	assert.Equal(t, r.Links["self"][0].URI, "/self")
 	assert.Equal(t, r.Links["item"][0].URI, "/foo")
@@ -43,7 +45,7 @@ func TestLinkHeaderParser(t *testing.T) {
 
 	// Test a bad link header
 	r.Headers["Link"] = "bad value"
-	err = p.ParseLinks(r)
+	err = p.ParseLinks(base, r)
 	assert.Error(t, err)
 }
 
@@ -64,7 +66,7 @@ func TestHALParser(t *testing.T) {
 	}
 
 	p := HALParser{}
-	err := p.ParseLinks(r)
+	err := p.ParseLinks(base, r)
 	assert.NoError(t, err)
 	assert.Equal(t, r.Links["self"][0].URI, "/self")
 	assert.Equal(t, r.Links["item"][0].URI, "/item")
@@ -92,7 +94,7 @@ func TestHALParserArray(t *testing.T) {
 	}
 
 	p := HALParser{}
-	err := p.ParseLinks(r)
+	err := p.ParseLinks(base, r)
 	assert.NoError(t, err)
 	assert.Equal(t, r.Links["self"][0].URI, "/one")
 	assert.Equal(t, r.Links["self"][1].URI, "/two")
@@ -129,7 +131,7 @@ func TestTerrificallySimpleJSONParser(t *testing.T) {
 	}
 
 	p := TerrificallySimpleJSONParser{}
-	err := p.ParseLinks(r)
+	err := p.ParseLinks(base, r)
 	assert.NoError(t, err)
 	assert.Equal(t, r.Links["self"][0].URI, "/self")
 	assert.Equal(t, r.Links["things-item"][0].URI, "/foo")
@@ -152,7 +154,7 @@ func TestSirenParser(t *testing.T) {
 	}
 
 	s := SirenParser{}
-	err := s.ParseLinks(r)
+	err := s.ParseLinks(base, r)
 	assert.NoError(t, err)
 	assert.Equal(t, r.Links["self"][0].URI, "/self")
 	assert.Equal(t, r.Links["one"][0].URI, "/multi")
@@ -179,7 +181,7 @@ func TestJSONAPIParser(t *testing.T) {
 	}
 
 	j := JSONAPIParser{}
-	err := j.ParseLinks(r)
+	err := j.ParseLinks(base, r)
 	assert.NoError(t, err)
 	assert.Equal(t, r.Links["self"][0].URI, "/self")
 	assert.Equal(t, r.Links["item"][0].URI, "/item")

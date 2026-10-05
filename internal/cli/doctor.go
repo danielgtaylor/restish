@@ -341,7 +341,7 @@ func (c *CLI) runDoctorAPI(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(out, "Generated operations: %d %s\n", len(opInfo.Set.Operations), style.ok("available"))
 		}
 		for _, issue := range operationSecurityIssues(opInfo.Set.Operations) {
-			fmt.Fprintf(out, "  %s: %s\n", style.error("Issue"), issue)
+			fmt.Fprintf(out, "  %s: %s\n", style.error("Issue"), strings.ReplaceAll(issue, "\n", "\n    "))
 		}
 		printXCLIExtensionDoctorDetails(out, style, opInfo.Set.XCLIExtensions)
 	} else {

@@ -95,6 +95,8 @@ type operationSecurityIssueKey struct {
 
 func operationSecurityIssues(ops []spec.Operation) []string {
 	counts := map[operationSecurityIssueKey]int{}
+	tagsByIssue := map[operationSecurityIssueKey]map[string]bool{}
+	operationsByIssue := map[operationSecurityIssueKey]map[string]bool{}
 	for _, op := range ops {
 		seen := map[operationSecurityIssueKey]bool{}
 		for _, alternative := range op.CredentialAlternatives {
@@ -109,9 +111,22 @@ func operationSecurityIssues(ops []spec.Operation) []string {
 		}
 		for key := range seen {
 			counts[key]++
+			if operationsByIssue[key] == nil {
+				operationsByIssue[key] = map[string]bool{}
+			}
+			operationsByIssue[key][operationSecurityIssueOperationLabel(op)] = true
+			for _, tag := range op.Tags {
+				if tag == "" {
+					continue
+				}
+				if tagsByIssue[key] == nil {
+					tagsByIssue[key] = map[string]bool{}
+				}
+				tagsByIssue[key][tag] = true
+			}
 		}
 	}
-	return formatOperationSecurityIssues(counts, "operation")
+	return formatOperationSecurityIssues(counts, "operation", tagsByIssue, operationsByIssue)
 }
 
 func operationSecurityIssuesFromAlternatives(alternatives []spec.CredentialAlternative) []string {
@@ -134,7 +149,7 @@ func operationSecurityIssuesFromAlternatives(alternatives []spec.CredentialAlter
 			counts[key]++
 		}
 	}
-	return formatOperationSecurityIssues(counts, "alternative")
+	return formatOperationSecurityIssues(counts, "alternative", nil, nil)
 }
 
 func operationSecurityIssueText(requirement spec.CredentialRequirement) (string, bool) {
@@ -148,7 +163,7 @@ func operationSecurityIssueText(requirement spec.CredentialRequirement) (string,
 	}
 }
 
-func formatOperationSecurityIssues(counts map[operationSecurityIssueKey]int, unit string) []string {
+func formatOperationSecurityIssues(counts map[operationSecurityIssueKey]int, unit string, tagsByIssue, operationsByIssue map[operationSecurityIssueKey]map[string]bool) []string {
 	keys := make([]operationSecurityIssueKey, 0, len(counts))
 	for key := range counts {
 		keys = append(keys, key)
@@ -165,9 +180,48 @@ func formatOperationSecurityIssues(counts map[operationSecurityIssueKey]int, uni
 		if counts[key] == 1 {
 			unitWord = unit
 		}
-		out = append(out, fmt.Sprintf("%s (%d %s); fix the OpenAPI document or use --rsh-auth %s with configured credentials if you know what to send", key.text, counts[key], unitWord, key.id))
+		tagNames := make([]string, 0, len(tagsByIssue[key]))
+		for tag := range tagsByIssue[key] {
+			tagNames = append(tagNames, tag)
+		}
+		sort.Strings(tagNames)
+		operationNames := sortedStringSet(operationsByIssue[key])
+		action := fmt.Sprintf("fix the OpenAPI document or use --rsh-auth %s with configured credentials if you know what to send", key.id)
+		if len(tagNames) == 0 && len(operationNames) == 0 {
+			out = append(out, fmt.Sprintf("%s (%d %s); %s", key.text, counts[key], unitWord, action))
+			continue
+		}
+		var details []string
+		if len(tagNames) > 0 {
+			details = append(details, "  tags: "+strings.Join(tagNames, ", "))
+		}
+		if len(operationNames) > 0 {
+			details = append(details, "  operations:")
+			for _, operationName := range operationNames {
+				details = append(details, "    - "+operationName)
+			}
+		}
+		details = append(details, "  action: "+action)
+		out = append(out, fmt.Sprintf("%s (%d %s)\n%s", key.text, counts[key], unitWord, strings.Join(details, "\n")))
 	}
 	return out
+}
+
+func operationSecurityIssueOperationLabel(op spec.Operation) string {
+	label := strings.ToUpper(op.Method) + " " + op.Path
+	if op.ID != "" {
+		label += " (" + op.ID + ")"
+	}
+	return label
+}
+
+func sortedStringSet(values map[string]bool) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func (c *CLI) operationAuthCoverage(apiName, profileName string, prof *config.ProfileConfig, ops []spec.Operation) operationAuthCoverage {

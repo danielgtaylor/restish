@@ -3649,6 +3649,13 @@ func TestAPISyncWarnsAboutUndeclaredSecurityScheme(t *testing.T) {
     "/audit": {
       "get": {
         "operationId": "getAudit",
+        "tags": ["reports"],
+        "security": [{"BearerAuth": []}],
+        "responses": {"200": {"description": "OK"}}
+      },
+      "post": {
+        "operationId": "createAudit",
+        "tags": ["admin"],
         "security": [{"BearerAuth": []}],
         "responses": {"200": {"description": "OK"}}
       }
@@ -3674,8 +3681,15 @@ func TestAPISyncWarnsAboutUndeclaredSecurityScheme(t *testing.T) {
 	if !strings.Contains(out.String(), "Synced") {
 		t.Errorf("expected Synced in output, got: %q", out.String())
 	}
-	if !strings.Contains(errOut.String(), `warning: OpenAPI security: security scheme "BearerAuth" is referenced`) {
-		t.Fatalf("expected undeclared security warning, got:\n%s", errOut.String())
+	want := `warning: OpenAPI security: security scheme "BearerAuth" is referenced by operations but is not declared in components.securitySchemes (2 operations)
+  tags: admin, reports
+  operations:
+    - GET /audit (getAudit)
+    - POST /audit (createAudit)
+  action: fix the OpenAPI document or use --rsh-auth BearerAuth with configured credentials if you know what to send
+`
+	if errOut.String() != want {
+		t.Fatalf("security warning:\n%s\nwant:\n%s", errOut.String(), want)
 	}
 }
 

@@ -45,6 +45,7 @@ useful for scripting, CI, support tickets, and user recovery.
   first run by loading the configured spec source before commands are needed.
 - Keep a small support surface that uses app vocabulary rather than leaking the
   Restish implementation name.
+- Preserve commands contributed by plugins installed in the active config.
 - Preserve scriptability for auth headers, cache cleanup, config inspection,
   diagnostics, completion, and version output.
 - Keep the public API small enough to maintain permanently.
@@ -58,8 +59,6 @@ useful for scripting, CI, support tickets, and user recovery.
 - Do not add a public embedded OpenAPI bytes helper in the first pass.
 - Do not add an immutable "never update OpenAPI from the network" embedded-spec
   mode in the first pass.
-- Do not add arbitrary per-command-family visibility subsets until a real
-  embedder needs them.
 - Do not bundle out-of-process plugin executables into custom binaries.
 
 ## Current Constraints
@@ -148,7 +147,10 @@ The design intent is:
   root command.
 - The promoted API is the primary API. There is no separate primary/default API
   concept in the first pass.
-- Support commands stay at root by default when an API is promoted.
+- Support commands, including plugin management, stay at root by default when
+  an API is promoted.
+- Commands contributed by command plugins installed in the active config stay
+  at root. Other stock command families remain hidden.
 - `SupportCommandNamespace` moves support commands under that command name, for
   example `acme cli cache clear`.
 - `HideSupportCommands` removes support commands from the custom CLI surface.
@@ -172,7 +174,9 @@ acme cache
 acme config
 acme doctor
 acme completion
+acme plugin
 acme version
+acme <command-plugin-command> [...]
 ```
 
 The default single-API surface hides stock Restish control-plane commands that
@@ -180,7 +184,6 @@ would distract from a branded API CLI:
 
 ```text
 api
-plugin
 get|head|options|post|put|patch|delete
 shell
 links
@@ -318,6 +321,10 @@ on demand, refresh-failed with stale fallback, or unavailable.
 Generated operations, app support commands, and the optional support namespace
 must not silently shadow one another.
 
+Command-plugin commands must not collide with promoted operations, app support
+commands, or the support namespace. Such collisions fail startup with an
+actionable configuration error.
+
 If a promoted operation collides with a root support command such as `auth`,
 `cache`, or `doctor`, startup should fail with an actionable error that suggests
 moving support commands under a namespace or hiding them.
@@ -345,6 +352,9 @@ instead of maintaining a second root builder for custom CLIs:
 - Skip adding the promoted API's normal wrapper/short-name command at root.
 - Move, hide, or retain builtin support commands according to
   `SupportCommandNamespace` and `HideSupportCommands`.
+- Capture installed command-plugin commands from the stock root before
+  transforming it, then re-add those existing command nodes without changing
+  their help, flags, completion, grouping, or execution behavior.
 - Add only the minimal app-shaped auth sugar described above.
 - Reuse cache, config, and doctor behavior where possible, adjusting help text
   and primary-API defaults rather than duplicating implementation.

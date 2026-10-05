@@ -13,6 +13,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/rest-sh/restish/v2/config"
+	"github.com/rest-sh/restish/v2/internal/cli"
 )
 
 type captureWriter struct {
@@ -80,6 +83,83 @@ func TestCommandPluginGreet(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "Hello from plugin") {
 		t.Errorf("expected greeting in stdout, got:\n%s", out.String())
+	}
+}
+
+func TestCommandSurfacePreservesCommandPlugins(t *testing.T) {
+	installCmdPlugin(t)
+
+	c, out, _ := newTestCLI(t)
+	var errOut captureWriter
+	c.Stderr = &errOut
+	c.Hooks().ConfigPath = sharedPluginConfigPath(t)
+	writeCommandSurfaceSpecConfig(t, c, "api", "getPing")
+	c.SetCommandSurface(cli.CommandSurface{
+		PromotedAPI: "api",
+	})
+
+	if err := c.Run([]string{"example", "greet"}); err != nil {
+		t.Fatalf("promoted command plugin: %v", err)
+	}
+	if !strings.Contains(errOut.String(), "Greeting in progress") {
+		t.Errorf("expected progress on stderr, got:\n%s", errOut.String())
+	}
+	if !strings.Contains(out.String(), "Hello from plugin") {
+		t.Errorf("expected greeting in stdout, got:\n%s", out.String())
+	}
+}
+
+func TestCommandSurfaceListsAllCommandPlugins(t *testing.T) {
+	installCmdPlugin(t)
+
+	c, out, _ := newTestCLI(t)
+	c.Hooks().ConfigPath = sharedPluginConfigPath(t)
+	writeCommandSurfaceSpecConfig(t, c, "api", "getPing")
+	c.SetCommandSurface(cli.CommandSurface{
+		PromotedAPI: "api",
+	})
+
+	if err := c.Run([]string{"example", "--help"}); err != nil {
+		t.Fatalf("promoted help: %v", err)
+	}
+	got := out.String()
+	if !strings.Contains(got, "greet") {
+		t.Fatalf("selected command plugin missing from help:\n%s", got)
+	}
+	if !strings.Contains(got, "pipe") {
+		t.Fatalf("command plugin missing from help:\n%s", got)
+	}
+}
+
+func TestCommandSurfaceCommandPluginDoesNotRequirePromotedMetadata(t *testing.T) {
+	installCmdPlugin(t)
+
+	c, out, _ := newTestCLI(t)
+	c.Hooks().ConfigPath = sharedPluginConfigPath(t)
+	c.SetDefaultConfig(&config.Config{APIs: map[string]*config.APIConfig{
+		"api": {BaseURL: "http://127.0.0.1:1"},
+	}})
+	c.SetCommandSurface(cli.CommandSurface{PromotedAPI: "api"})
+
+	if err := c.Run([]string{"example", "greet", "--help"}); err != nil {
+		t.Fatalf("command plugin help without promoted metadata: %v", err)
+	}
+	if got := out.String(); !strings.Contains(got, "greet") {
+		t.Fatalf("command plugin help missing command:\n%s", got)
+	}
+}
+
+func TestCommandSurfaceCommandPluginOperationCollisionErrors(t *testing.T) {
+	installCmdPlugin(t)
+
+	c, _, _ := newTestCLI(t)
+	c.Hooks().ConfigPath = sharedPluginConfigPath(t)
+	writeCommandSurfaceSpecConfig(t, c, "api", "greet")
+	c.SetCommandSurface(cli.CommandSurface{PromotedAPI: "api"})
+
+	err := c.Run([]string{"example", "--help"})
+	if err == nil || !strings.Contains(err.Error(), "command plugin") {
+		t.Fatalf("collision error = %v, want command plugin collision", err)
 	}
 }
 

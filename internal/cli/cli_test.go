@@ -382,6 +382,20 @@ func TestCommandSurfaceSupportCommandsUnderNamespace(t *testing.T) {
 	if got := out.String(); !strings.Contains(got, "clear") {
 		t.Fatalf("namespaced cache help missing subcommand:\n%s", got)
 	}
+
+	c, out, _ = newTestCLI(t)
+	writeCommandSurfaceSpecConfig(t, c, "api", "getPing")
+	c.SetCommandName("example")
+	c.SetCommandSurface(cli.CommandSurface{
+		PromotedAPI:             "api",
+		SupportCommandNamespace: "cli",
+	})
+	if err := c.Run([]string{"example", "cli", "plugin", "--help"}); err != nil {
+		t.Fatalf("namespaced plugin help: %v", err)
+	}
+	if got := out.String(); !strings.Contains(got, "Manage example plugins") {
+		t.Fatalf("namespaced plugin help missing branded description:\n%s", got)
+	}
 }
 
 func TestCommandSurfaceHideSupportCommands(t *testing.T) {

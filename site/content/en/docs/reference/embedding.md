@@ -190,6 +190,25 @@ Global Restish flags (`--rsh-profile`, `--rsh-output-format`, ...) remain
 available. The promoted API must be configured and its spec loadable when
 generated commands are needed. For a reliable first run, configure `SpecURL`.
 
+### Plugins in promoted CLIs
+
+The `plugin` command is a support command. By default, this command stays at
+the command root. `SupportCommandNamespace` moves this command into the
+specified namespace. `HideSupportCommands` removes this command.
+
+```text
+mycli support plugin install ./restish-example
+```
+
+Restish keeps commands from installed command plugins at the command root.
+Users can run these commands with generated API commands. Generic HTTP commands
+and API-management commands stay hidden.
+
+Restish reports a configuration error when a plugin command has the same name
+as a promoted operation, a support command, or the support namespace. Use a
+separate configuration file for a custom CLI. The separate file isolates its
+plugins from the stock `restish` CLI.
+
 ## Related Pages
 
 - [API Setup and Discovery](/docs/guides/api-setup-and-discovery/)

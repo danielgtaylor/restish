@@ -101,12 +101,20 @@ func (c *CLI) promotedAPICommandMetadataNeeded(scan cliArgScan) bool {
 		return true
 	}
 	if scan.FirstCommand == "help" {
-		return scan.SecondCommand == "" || !c.isSupportCommandToken(scan.SecondCommand)
+		return scan.SecondCommand == "" || !c.isSurfaceCommandToken(scan.SecondCommand)
 	}
 	if scan.FirstCommand == "__complete" || scan.FirstCommand == "__completeNoDesc" {
-		return true
+		return scan.SecondCommand == "" || !c.isCommandPluginToken(scan.SecondCommand)
 	}
-	return !c.isSupportCommandToken(scan.FirstCommand)
+	return !c.isSurfaceCommandToken(scan.FirstCommand)
+}
+
+func (c *CLI) isSurfaceCommandToken(token string) bool {
+	return c.isSupportCommandToken(token) || c.isCommandPluginToken(token)
+}
+
+func (c *CLI) isCommandPluginToken(token string) bool {
+	return token != "" && c.pluginCommandNames[token] != ""
 }
 
 func (c *CLI) isSupportCommandToken(token string) bool {
@@ -126,6 +134,7 @@ func promotedSupportCommandNames() map[string]bool {
 		"completion": true,
 		"config":     true,
 		"doctor":     true,
+		"plugin":     true,
 		"version":    true,
 	}
 }
@@ -140,6 +149,7 @@ func (c *CLI) applyCommandSurface(root, promotedAPICmd *cobra.Command, scan cliA
 	}
 
 	support := c.promotedSupportCommands(root, apiName)
+	commandPlugins := c.promotedCommandPluginCommands(root)
 	for _, cmd := range root.Commands() {
 		root.RemoveCommand(cmd)
 	}
@@ -158,13 +168,29 @@ func (c *CLI) applyCommandSurface(root, promotedAPICmd *cobra.Command, scan cliA
 	if err := c.checkPromotedCommandCollisions(promoted, support); err != nil {
 		return err
 	}
+	if err := c.checkCommandPluginCollisions(promoted, commandPlugins, support); err != nil {
+		return err
+	}
 
 	c.addSupportCommandsForSurface(root, support)
 	for _, cmd := range promoted {
 		root.AddCommand(cmd)
 	}
+	for _, cmd := range commandPlugins {
+		root.AddCommand(cmd)
+	}
 	c.installPromotedRootFallback(root, cfg, originalArgs)
 	return nil
+}
+
+func (c *CLI) promotedCommandPluginCommands(root *cobra.Command) []*cobra.Command {
+	var commands []*cobra.Command
+	for _, cmd := range root.Commands() {
+		if c.isCommandPluginToken(cmd.Name()) {
+			commands = append(commands, cmd)
+		}
+	}
+	return commands
 }
 
 func (c *CLI) promotedSupportCommands(root *cobra.Command, apiName string) map[string]*cobra.Command {
@@ -194,6 +220,10 @@ func (c *CLI) brandPromotedSupportCommands(support map[string]*cobra.Command) {
 	if cmd := support["doctor"]; cmd != nil {
 		cmd.Short = fmt.Sprintf("Diagnose %s configuration and runtime paths", name)
 	}
+	if cmd := support["plugin"]; cmd != nil {
+		cmd.Short = fmt.Sprintf("Manage %s plugins", name)
+		cmd.Long = strings.Replace(cmd.Long, "Manage Restish plugins.", fmt.Sprintf("Manage %s plugins.", name), 1)
+	}
 	if cmd := support["version"]; cmd != nil {
 		cmd.Short = fmt.Sprintf("Print the %s version", name)
 	}
@@ -211,6 +241,30 @@ func (c *CLI) checkPromotedCommandCollisions(promoted []*cobra.Command, support 
 		}
 		if ns == "" && !c.commandSurface.HideSupportCommands && support[name] != nil {
 			return fmt.Errorf("command surface: promoted operation %q collides with support command %q; set SupportCommandNamespace or HideSupportCommands", name, name)
+		}
+	}
+	return nil
+}
+
+func (c *CLI) checkCommandPluginCollisions(promoted, plugins []*cobra.Command, support map[string]*cobra.Command) error {
+	promotedNames := map[string]bool{}
+	for _, cmd := range promoted {
+		promotedNames[cmd.Name()] = true
+	}
+	ns := c.commandSurface.SupportCommandNamespace
+	for _, cmd := range plugins {
+		name := cmd.Name()
+		if name == "" {
+			continue
+		}
+		if promotedNames[name] {
+			return fmt.Errorf("command surface: command plugin %q collides with promoted operation %q; rename the plugin command or operation", name, name)
+		}
+		if ns != "" && name == ns {
+			return fmt.Errorf("command surface: command plugin %q collides with support command namespace %q; choose another SupportCommandNamespace", name, ns)
+		}
+		if ns == "" && !c.commandSurface.HideSupportCommands && support[name] != nil {
+			return fmt.Errorf("command surface: command plugin %q collides with support command %q; set SupportCommandNamespace or rename the plugin command", name, name)
 		}
 	}
 	return nil

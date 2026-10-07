@@ -840,12 +840,8 @@ func (c *CLI) cachedOperationSetStatusForAPI(apiName string, apiCfg *config.APIC
 	if apiCfg == nil {
 		return spec.OperationSet{}, spec.OperationCacheStatus{}, false
 	}
-	opts := spec.OperationOptions{
-		BaseURL:         effectiveProfileBaseURL(apiCfg, profileName),
-		OperationBase:   effectiveOperationBase(apiCfg, profileName),
-		ServerVariables: effectiveServerVariables(apiCfg, profileName),
-		Warnf:           c.warnf,
-	}
+	opts := c.openAPIOperationOptions(apiCfg, profileName)
+	opts.Warnf = c.warnf
 	stateName := c.apiStateName(apiName)
 	if set, status, ok := spec.LoadOperationSetFromCacheStatus(c.specCacheDir(), stateName, Version, apiCfg.SpecFiles, opts, true); ok {
 		return set, status, true
@@ -859,12 +855,8 @@ func (c *CLI) operationSetForAPI(ctx context.Context, apiName string, apiCfg *co
 	if apiCfg == nil {
 		return spec.OperationSet{}, false, nil
 	}
-	opts := spec.OperationOptions{
-		BaseURL:         effectiveProfileBaseURL(apiCfg, profileName),
-		OperationBase:   effectiveOperationBase(apiCfg, profileName),
-		ServerVariables: effectiveServerVariables(apiCfg, profileName),
-		Warnf:           c.warnf,
-	}
+	opts := c.openAPIOperationOptions(apiCfg, profileName)
+	opts.Warnf = c.warnf
 	if !forceRefresh {
 		if set, _, ok := spec.LoadOperationSetFromCacheStatus(c.specCacheDir(), c.apiStateName(apiName), Version, apiCfg.SpecFiles, opts, true); ok {
 			c.warnOperationSetWarnings(set)

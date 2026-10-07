@@ -137,12 +137,25 @@ Supported CLI-shaping extensions are:
 - `x-cli-description`
 - `x-cli-ignore`
 - `x-cli-hidden`
+- `x-cli-position`
 
 These extensions apply to operations. `x-cli-ignore` and `x-cli-hidden` also
 apply at path scope where supported. Parameter-level `x-cli-name`,
 `x-cli-description`, `x-cli-ignore`, and `x-cli-hidden` shape the corresponding
 argument or flag without changing the wire name unless the extension explicitly
 defines wire behavior in a future design.
+
+`x-cli-position` applies to required parameters and assigns a one-based CLI
+argument slot. Unpositioned required parameters fill unused slots in the normal
+path-first, merged-spec order. Non-integer, duplicate, or out-of-range positions
+and positions on optional or authentication-supplied parameters fail generation
+for the affected operation. Positioning does not change the parameter's wire
+location or name.
+
+The `openapi_extension_aliases` config maps a recognized extension semantic to
+an alternate extension name in an OpenAPI document. It may be set globally or
+per API, with the API value taking precedence. This is an input-name mapping,
+not a generic OpenAPI metadata override.
 
 In tag layout, operations with a first tag are nested under that tag command;
 untagged operations remain directly under the API command. Flat layout remains

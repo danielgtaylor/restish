@@ -102,6 +102,7 @@ Top-level config is JSONC with strict decoded fields:
 | Path | Type | Meaning |
 | --- | --- | --- |
 | `apis` | map | API registrations keyed by short name. |
+| `openapi_extension_aliases` | map | Recognized OpenAPI extension semantics mapped to alternate extension names. |
 | `auth_profiles` | map | Shared auth configs referenced by profile or credential `auth_ref`. |
 | `cache.max_size` | string | Disk cache size such as `100MB`. |
 | `theme` | map | Auto-output and terminal transcript style entries. |
@@ -121,6 +122,7 @@ API fields:
 | `allow_cross_origin_spec` | bool | Permit safe cross-origin Link spec discovery. |
 | `operation_base` | string | Absolute path prefix resolved against `base_url` for generated operations. |
 | `command_layout` | string | `flat` or `tags`; empty means `flat`. |
+| `openapi_extension_aliases` | map | API-specific OpenAPI extension aliases overriding global aliases. |
 | `server_variables` | map | Explicit OpenAPI server URL variable values used for generated operation paths. |
 | `retry_max_wait` | string duration | API-local cap for `Retry-After`/`X-Retry-In` when no flag/env override is set. |
 | `preserve_header_case` | bool | Opt-in HTTP/1.x compatibility mode for broken servers that treat request header names as case-sensitive. |

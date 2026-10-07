@@ -177,6 +177,18 @@ Required query, header, and cookie parameters are also positional arguments,
 after path parameters, in merged spec order. This keeps command-line flags and
 options optional.
 
+Parameter-level `x-cli-position` may assign a one-based slot to a required
+argument. Unpositioned required arguments fill the remaining slots in the
+default order. Non-integer, duplicate, or out-of-range positions and positions
+on optional or authentication-supplied parameters fail generation for that
+operation. Positioning changes only the command interface, not the parameter's
+OpenAPI location or wire name.
+
+Global and per-API `openapi_extension_aliases` config may map the recognized
+`x-cli-position` semantic to an alternate OpenAPI extension name. Per-API
+aliases override global aliases. The mapping changes which extension Restish
+reads and does not inject or rewrite OpenAPI parameter metadata.
+
 ### Flags
 
 Optional query, header, and cookie parameters become flags.

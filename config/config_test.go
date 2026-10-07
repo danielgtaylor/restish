@@ -230,6 +230,30 @@ func TestValidate_CredentialSatisfiesRejectsEmptyValues(t *testing.T) {
 	}
 }
 
+func TestValidateOpenAPIExtensionAliases(t *testing.T) {
+	tests := []struct {
+		name    string
+		aliases map[string]string
+		wantErr string
+	}{
+		{name: "canonical", aliases: map[string]string{config.XCLIPositionExtension: "x-cli-position"}},
+		{name: "custom", aliases: map[string]string{config.XCLIPositionExtension: "x-vendor-position"}},
+		{name: "unsupported semantic", aliases: map[string]string{"x-cli-unknown": "x-vendor-unknown"}, wantErr: "unsupported Restish extension"},
+		{name: "not an extension", aliases: map[string]string{config.XCLIPositionExtension: "position"}, wantErr: "starting with \"x-\""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := config.ValidateOpenAPIExtensionAliases(tc.aliases)
+			if tc.wantErr == "" && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if tc.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErr)) {
+				t.Fatalf("error = %v, want containing %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestLoad_JSONC_Comments(t *testing.T) {
 	path := writeConfig(t, `{
 		// This is a comment

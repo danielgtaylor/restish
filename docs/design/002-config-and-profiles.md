@@ -157,6 +157,7 @@ hatch unless real user demand appears before or after v2.
 The primary top-level keys are:
 
 - `apis`
+- `openapi_extension_aliases`
 - `auth_profiles`
 - `cache`
 - `theme`
@@ -181,6 +182,7 @@ registration for that API:
 - `allow_cross_origin_spec`
 - `operation_base`
 - `command_layout`
+- `openapi_extension_aliases`
 - `server_variables`
 - `retry_max_wait`
 - pagination configuration

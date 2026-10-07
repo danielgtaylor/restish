@@ -183,11 +183,12 @@ The design requirements are:
 
 OpenAPI `x-cli-*` extensions are remote command-surface hints. They must not
 execute local code, but they can still rename, hide, or remove generated
-commands and parameters, and `x-cli-config` can pre-populate local API profile
-defaults during `api connect`. Restish therefore treats them as visible remote
-metadata rather than a separate trust prompt: `api connect` and `api sync`
-summarize behavior-changing `x-cli-*` extension classes, while `doctor api`
-reports the affected paths, operations, and parameters in more detail.
+commands and parameters, reorder required arguments, and `x-cli-config` can
+pre-populate local API profile defaults during `api connect`. Restish therefore
+treats them as visible remote metadata rather than a separate trust prompt:
+`api connect` and `api sync` summarize behavior-changing `x-cli-*` extension
+classes, while `doctor api` reports the affected paths, operations, and
+parameters in more detail.
 
 These rules apply both to `Link`-header discovery and well-known-path probes.
 

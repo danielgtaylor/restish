@@ -20,10 +20,16 @@ import (
 	"github.com/tidwall/jsonc"
 )
 
+// XCLIPositionExtension is the canonical Restish parameter-position extension.
+const XCLIPositionExtension = "x-cli-position"
+
 // Config is the top-level configuration for Restish, loaded from restish.json.
 type Config struct {
 	// APIs is a map of short API name to per-API configuration.
 	APIs map[string]*APIConfig `json:"apis,omitempty"`
+	// OpenAPIExtensionAliases maps canonical Restish x-cli extension names to
+	// alternate names used by OpenAPI documents. API-level aliases override it.
+	OpenAPIExtensionAliases map[string]string `json:"openapi_extension_aliases,omitempty"`
 
 	// AuthProfiles holds named auth configurations that API profiles can
 	// reference with auth_ref.
@@ -89,6 +95,8 @@ type APIConfig struct {
 	// API command. Empty or "flat" keeps one flat command namespace; "tags"
 	// groups operations under first-tag subcommands.
 	CommandLayout string `json:"command_layout,omitempty"`
+	// OpenAPIExtensionAliases overrides global extension aliases for this API.
+	OpenAPIExtensionAliases map[string]string `json:"openapi_extension_aliases,omitempty"`
 	// ServerVariables supplies explicit values for OpenAPI server URL variables.
 	// Values are used for generated operation path resolution; enum values from
 	// remote specs are never expanded eagerly.
@@ -363,6 +371,9 @@ func Validate(cfg *Config) error {
 	if cfg == nil {
 		return nil
 	}
+	if err := ValidateOpenAPIExtensionAliases(cfg.OpenAPIExtensionAliases); err != nil {
+		return fmt.Errorf("openapi_extension_aliases: %w", err)
+	}
 	for name, api := range cfg.APIs {
 		if err := ValidateAPIName(name); err != nil {
 			return fmt.Errorf("apis.%s: invalid API name: %w", name, err)
@@ -375,6 +386,9 @@ func Validate(cfg *Config) error {
 		}
 		if err := ValidateCommandLayout(api.CommandLayout); err != nil {
 			return fmt.Errorf("apis.%s.command_layout: %w", name, err)
+		}
+		if err := ValidateOpenAPIExtensionAliases(api.OpenAPIExtensionAliases); err != nil {
+			return fmt.Errorf("apis.%s.openapi_extension_aliases: %w", name, err)
 		}
 		if err := ValidateRetryMaxWait(api.RetryMaxWait); err != nil {
 			return fmt.Errorf("apis.%s.retry_max_wait: %w", name, err)
@@ -446,6 +460,26 @@ func Validate(cfg *Config) error {
 					}
 				}
 			}
+		}
+	}
+	return nil
+}
+
+// ValidateOpenAPIExtensionAliases validates configurable names for supported
+// Restish OpenAPI extension semantics.
+func ValidateOpenAPIExtensionAliases(aliases map[string]string) error {
+	keys := make([]string, 0, len(aliases))
+	for canonical := range aliases {
+		keys = append(keys, canonical)
+	}
+	sort.Strings(keys)
+	for _, canonical := range keys {
+		if canonical != XCLIPositionExtension {
+			return fmt.Errorf("unsupported Restish extension %q", canonical)
+		}
+		alias := aliases[canonical]
+		if len(alias) <= 2 || !strings.HasPrefix(alias, "x-") {
+			return fmt.Errorf("%s alias must be an OpenAPI extension name starting with \"x-\"", canonical)
 		}
 	}
 	return nil

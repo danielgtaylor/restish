@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"fmt"
 	"reflect"
 
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -87,6 +88,26 @@ func ParamExtBool(p *v3.Parameter, key string) bool {
 		return false
 	}
 	return extValue[bool](p.Extensions.GetOrZero(key))
+}
+
+// ParamExtInt reads an integer OpenAPI extension from a parameter.
+func ParamExtInt(p *v3.Parameter, key string) (*int, error) {
+	if p == nil || p.Extensions == nil {
+		return nil, nil
+	}
+	node := p.Extensions.GetOrZero(key)
+	if node == nil {
+		return nil, nil
+	}
+	valueOf := reflect.ValueOf(node)
+	if valueOf.Kind() == reflect.Pointer && valueOf.IsNil() {
+		return nil, nil
+	}
+	var value int
+	if err := node.Decode(&value); err != nil {
+		return nil, fmt.Errorf("%s must be an integer", key)
+	}
+	return &value, nil
 }
 
 type decodableNode interface {

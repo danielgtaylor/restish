@@ -51,18 +51,19 @@ type cachedRaw struct {
 }
 
 type opsBlob struct {
-	Schema             int                 `cbor:"schema"`
-	BaseURL            string              `cbor:"base_url"`
-	OperationBase      string              `cbor:"operation_base,omitempty"`
-	ServerVariablesKey string              `cbor:"server_variables,omitempty"`
-	RawSHA256          string              `cbor:"raw_sha256"`
-	Info               APIInfo             `cbor:"info,omitempty"`
-	Operations         []Operation         `cbor:"operations"`
-	XCLIExtensions     XCLIExtensionReport `cbor:"x_cli_extensions,omitempty"`
+	Schema              int                 `cbor:"schema"`
+	BaseURL             string              `cbor:"base_url"`
+	OperationBase       string              `cbor:"operation_base,omitempty"`
+	ServerVariablesKey  string              `cbor:"server_variables,omitempty"`
+	ExtensionAliasesKey string              `cbor:"extension_aliases,omitempty"`
+	RawSHA256           string              `cbor:"raw_sha256"`
+	Info                APIInfo             `cbor:"info,omitempty"`
+	Operations          []Operation         `cbor:"operations"`
+	XCLIExtensions      XCLIExtensionReport `cbor:"x_cli_extensions,omitempty"`
 }
 
 const currentCacheSchema = 2
-const currentOperationCacheSchema = 12
+const currentOperationCacheSchema = 13
 
 // OperationCacheStatus describes the freshness of cached operation metadata.
 type OperationCacheStatus struct {
@@ -257,6 +258,7 @@ func LoadOperationSetFromCacheStatus(cacheDir, apiName, version string, specFile
 		if blob.BaseURL == cacheOpts.BaseURL &&
 			blob.OperationBase == cacheOpts.OperationBase &&
 			blob.ServerVariablesKey == ServerVariablesCacheKey(cacheOpts.ServerVariables) &&
+			blob.ExtensionAliasesKey == ExtensionAliasesCacheKey(cacheOpts.ExtensionAliases) &&
 			blob.RawSHA256 == rawHash {
 			set := OperationSet{
 				Info:           blob.Info,
@@ -371,7 +373,7 @@ func sanitizeOpsBlobs(blobs []opsBlob) []opsBlob {
 	for _, blob := range blobs {
 		blob.BaseURL = cleanSourceURL(blob.BaseURL)
 		blob.OperationBase = cleanSourceURL(blob.OperationBase)
-		key := fmt.Sprintf("%d\x00%s\x00%s\x00%s\x00%s", blob.Schema, blob.BaseURL, blob.OperationBase, blob.ServerVariablesKey, blob.RawSHA256)
+		key := fmt.Sprintf("%d\x00%s\x00%s\x00%s\x00%s\x00%s", blob.Schema, blob.BaseURL, blob.OperationBase, blob.ServerVariablesKey, blob.ExtensionAliasesKey, blob.RawSHA256)
 		if i, ok := index[key]; ok {
 			out[i] = blob
 			continue
@@ -385,19 +387,21 @@ func sanitizeOpsBlobs(blobs []opsBlob) []opsBlob {
 func (e *cacheEntry) upsertOperationSet(opts OperationOptions, set OperationSet) {
 	rawHash := cacheRawHash(e.raw())
 	blob := opsBlob{
-		Schema:             currentOperationCacheSchema,
-		BaseURL:            opts.BaseURL,
-		OperationBase:      opts.OperationBase,
-		ServerVariablesKey: ServerVariablesCacheKey(opts.ServerVariables),
-		RawSHA256:          rawHash,
-		Info:               set.Info,
-		Operations:         append([]Operation(nil), set.Operations...),
-		XCLIExtensions:     set.XCLIExtensions,
+		Schema:              currentOperationCacheSchema,
+		BaseURL:             opts.BaseURL,
+		OperationBase:       opts.OperationBase,
+		ServerVariablesKey:  ServerVariablesCacheKey(opts.ServerVariables),
+		ExtensionAliasesKey: ExtensionAliasesCacheKey(opts.ExtensionAliases),
+		RawSHA256:           rawHash,
+		Info:                set.Info,
+		Operations:          append([]Operation(nil), set.Operations...),
+		XCLIExtensions:      set.XCLIExtensions,
 	}
 	for i := range e.Operations {
 		if e.Operations[i].BaseURL == opts.BaseURL &&
 			e.Operations[i].OperationBase == opts.OperationBase &&
-			e.Operations[i].ServerVariablesKey == blob.ServerVariablesKey {
+			e.Operations[i].ServerVariablesKey == blob.ServerVariablesKey &&
+			e.Operations[i].ExtensionAliasesKey == blob.ExtensionAliasesKey {
 			e.Operations[i] = blob
 			return
 		}

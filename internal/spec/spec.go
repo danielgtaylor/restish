@@ -80,6 +80,7 @@ type APIInfo struct {
 type opsKey struct {
 	baseURL, operationBase string
 	serverVariables        string
+	extensionAliases       string
 }
 type opsEntry struct {
 	ops      []Operation
@@ -89,24 +90,36 @@ type opsEntry struct {
 
 // OperationOptions controls config-sensitive OpenAPI operation extraction.
 type OperationOptions struct {
-	BaseURL         string
-	OperationBase   string
-	ServerVariables map[string]string
-	Warnf           func(format string, args ...any)
+	BaseURL          string
+	OperationBase    string
+	ServerVariables  map[string]string
+	ExtensionAliases map[string]string
+	Warnf            func(format string, args ...any)
 }
 
 func operationOptionsKey(opts OperationOptions) opsKey {
 	return opsKey{
-		baseURL:         opts.BaseURL,
-		operationBase:   opts.OperationBase,
-		serverVariables: ServerVariablesCacheKey(opts.ServerVariables),
+		baseURL:          opts.BaseURL,
+		operationBase:    opts.OperationBase,
+		serverVariables:  ServerVariablesCacheKey(opts.ServerVariables),
+		extensionAliases: ExtensionAliasesCacheKey(opts.ExtensionAliases),
 	}
+}
+
+// ExtensionAliasesCacheKey returns a deterministic operation-cache identity
+// for configured OpenAPI extension aliases.
+func ExtensionAliasesCacheKey(values map[string]string) string {
+	return stringMapCacheKey(values)
 }
 
 // ServerVariablesCacheKey returns a deterministic string for operation-cache
 // identity. It is exported so on-disk cache metadata can use the same shape as
 // the in-memory APISpec cache.
 func ServerVariablesCacheKey(values map[string]string) string {
+	return stringMapCacheKey(values)
+}
+
+func stringMapCacheKey(values map[string]string) string {
 	if len(values) == 0 {
 		return ""
 	}

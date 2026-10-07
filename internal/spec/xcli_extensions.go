@@ -3,9 +3,11 @@ package spec
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/rest-sh/restish/v2/config"
 )
 
 // XCLIExtensionReport describes behavior-changing x-cli-* OpenAPI extensions
@@ -57,6 +59,10 @@ func (r XCLIExtensionReport) Summary() []string {
 // XCLIExtensionReport extracts behavior-changing x-cli-* extension uses from
 // the parsed OpenAPI document before generated command filtering is applied.
 func (s *APISpec) XCLIExtensionReport() (XCLIExtensionReport, error) {
+	return s.xCLIExtensionReport(nil)
+}
+
+func (s *APISpec) xCLIExtensionReport(extensionAliases map[string]string) (XCLIExtensionReport, error) {
 	var report xcliExtensionReportBuilder
 	if xcli, err := ReadXCLIConfig(s); err == nil && xcli != nil {
 		report.add("config", "x-cli-config", "document", "", "", "pre-populates API config profiles")
@@ -80,7 +86,7 @@ func (s *APISpec) XCLIExtensionReport() (XCLIExtensionReport, error) {
 			if methodOp.Op == nil {
 				continue
 			}
-			report.addOperationDetails(methodOp.Method, rawPath, pathItem.Parameters, methodOp.Op)
+			report.addOperationDetails(methodOp.Method, rawPath, pathItem.Parameters, methodOp.Op, extensionAliases)
 		}
 	}
 	return XCLIExtensionReport{Details: report.details()}, nil
@@ -101,7 +107,7 @@ func (b *xcliExtensionReportBuilder) add(kind, extension, location, name, value,
 	})
 }
 
-func (b *xcliExtensionReportBuilder) addOperationDetails(method, rawPath string, pathParams []*v3.Parameter, op *v3.Operation) {
+func (b *xcliExtensionReportBuilder) addOperationDetails(method, rawPath string, pathParams []*v3.Parameter, op *v3.Operation, extensionAliases map[string]string) {
 	location := method + " " + rawPath
 	name := op.OperationId
 	if OpExtBool(op, "x-cli-ignore") {
@@ -132,6 +138,13 @@ func (b *xcliExtensionReportBuilder) addOperationDetails(method, rawPath string,
 		}
 		if value := ParamExtString(param, "x-cli-name"); value != "" {
 			b.add("parameter_renamed", "x-cli-name", paramLocation, paramName, value, "renames the generated argument or flag")
+		}
+		positionExtension := extensionName(extensionAliases, config.XCLIPositionExtension)
+		value, err := ParamExtInt(param, positionExtension)
+		if err != nil {
+			b.add("parameter_positioned", positionExtension, paramLocation, paramName, "invalid", err.Error())
+		} else if value != nil {
+			b.add("parameter_positioned", positionExtension, paramLocation, paramName, strconv.Itoa(*value), fmt.Sprintf("places the generated required argument at position %d", *value))
 		}
 	}
 }
@@ -171,6 +184,7 @@ var xcliExtensionSummaryOrder = []xcliExtensionSummaryItem{
 	{kind: "parameter_ignored", singular: "ignored parameter", plural: "ignored parameters"},
 	{kind: "parameter_hidden", singular: "hidden parameter", plural: "hidden parameters"},
 	{kind: "parameter_renamed", singular: "renamed parameter", plural: "renamed parameters"},
+	{kind: "parameter_positioned", singular: "positioned parameter", plural: "positioned parameters"},
 }
 
 func pluralize(count int, singular, plural string) string {

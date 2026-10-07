@@ -464,6 +464,39 @@ paths:
 	}})
 }
 
+func TestOperationsReadsCLIPosition(t *testing.T) {
+	raw := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0.0"
+paths:
+  /items:
+    get:
+      operationId: listItems
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          x-cli-position: 1
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK`
+	loaded, err := load("application/yaml", []byte(raw), DefaultLoaders())
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	ops, err := loaded.Operations(OperationOptions{})
+	if err != nil {
+		t.Fatalf("operations: %v", err)
+	}
+	position := ops[0].Parameters[0].XCLI.Position
+	if position == nil || *position != 1 {
+		t.Fatalf("position = %v, want 1", position)
+	}
+}
+
 func TestOperationsUsesConfiguredServerVariables(t *testing.T) {
 	raw := `openapi: "3.1.0"
 info:

@@ -476,6 +476,14 @@ func mergeDefaultConfigForEmbedding(defaults, loaded *config.Config) *config.Con
 			merged.APIs[name] = api
 		}
 	}
+	if len(loaded.OpenAPIExtensionAliases) > 0 {
+		if merged.OpenAPIExtensionAliases == nil {
+			merged.OpenAPIExtensionAliases = map[string]string{}
+		}
+		for canonical, alias := range loaded.OpenAPIExtensionAliases {
+			merged.OpenAPIExtensionAliases[canonical] = alias
+		}
+	}
 	if len(loaded.AuthProfiles) > 0 {
 		if merged.AuthProfiles == nil {
 			merged.AuthProfiles = map[string]*config.AuthConfig{}
@@ -682,11 +690,7 @@ func (c *CLI) Run(args []string) error {
 	var promotedAPICmd *cobra.Command
 	for _, apiName := range c.generatedAPINamesForScan(argScan, cfg) {
 		apiCfg := cfg.APIs[apiName]
-		opOpts := spec.OperationOptions{
-			BaseURL:         effectiveProfileBaseURL(apiCfg, startupProfile),
-			OperationBase:   effectiveOperationBase(apiCfg, startupProfile),
-			ServerVariables: effectiveServerVariables(apiCfg, startupProfile),
-		}
+		opOpts := c.openAPIOperationOptions(apiCfg, startupProfile)
 		stateName := c.apiStateName(apiName)
 		if set, _, ok := spec.LoadOperationSetFromCacheStatus(c.specCacheDir(), stateName, Version, apiCfg.SpecFiles, opOpts, true); ok {
 			if apiCmd := c.buildAPICommandFromOperationSet(apiName, apiCfg, set, opOpts.OperationBase); apiCmd != nil {
@@ -959,11 +963,7 @@ func (c *CLI) refreshStaleGeneratedMetadataForCommand(ctx context.Context, scan 
 	if apiCfg == nil {
 		return
 	}
-	opts := spec.OperationOptions{
-		BaseURL:         effectiveProfileBaseURL(apiCfg, scan.ProfileName),
-		OperationBase:   effectiveOperationBase(apiCfg, scan.ProfileName),
-		ServerVariables: effectiveServerVariables(apiCfg, scan.ProfileName),
-	}
+	opts := c.openAPIOperationOptions(apiCfg, scan.ProfileName)
 	stateName := c.apiStateName(scan.FirstCommand)
 	_, status, ok := spec.LoadOperationSetFromCacheStatus(c.specCacheDir(), stateName, Version, apiCfg.SpecFiles, opts, true)
 	if !ok {
@@ -1042,6 +1042,36 @@ func effectiveServerVariables(apiCfg *config.APIConfig, profileName string) map[
 		}
 	}
 	return out
+}
+
+func (c *CLI) openAPIOperationOptions(apiCfg *config.APIConfig, profileName string) spec.OperationOptions {
+	return spec.OperationOptions{
+		BaseURL:          effectiveProfileBaseURL(apiCfg, profileName),
+		OperationBase:    effectiveOperationBase(apiCfg, profileName),
+		ServerVariables:  effectiveServerVariables(apiCfg, profileName),
+		ExtensionAliases: c.effectiveOpenAPIExtensionAliases(apiCfg),
+	}
+}
+
+func (c *CLI) effectiveOpenAPIExtensionAliases(apiCfg *config.APIConfig) map[string]string {
+	var aliases map[string]string
+	if c != nil && c.cfg != nil {
+		for canonical, alias := range c.cfg.OpenAPIExtensionAliases {
+			if aliases == nil {
+				aliases = map[string]string{}
+			}
+			aliases[canonical] = alias
+		}
+	}
+	if apiCfg != nil {
+		for canonical, alias := range apiCfg.OpenAPIExtensionAliases {
+			if aliases == nil {
+				aliases = map[string]string{}
+			}
+			aliases[canonical] = alias
+		}
+	}
+	return aliases
 }
 
 func effectiveURLOverrides(apiCfg *config.APIConfig, profileName string) map[string]string {

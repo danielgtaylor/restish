@@ -391,6 +391,91 @@ func TestExtensionXCLIParamHiddenHidesFlagButAllowsUse(t *testing.T) {
 	}
 }
 
+func TestExtensionAliasPositionsRequiredParameter(t *testing.T) {
+	var gotPath, gotScope string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/items/", func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotScope = r.URL.Query().Get("scope")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"ok":true}`)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
+	env := setupEnvWithSpec(t, mux, func(baseURL string) string {
+		return fmt.Sprintf(`{
+  "openapi": "3.1.0",
+  "info": {"title": "Ext API", "version": "1.0"},
+  "servers": [{"url": %q}],
+  "paths": {
+    "/items/{id}": {
+      "get": {
+        "operationId": "getItem",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "scope", "in": "query", "required": true, "schema": {"type": "string"}, "x-vendor-position": 1}
+        ],
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/invalid/{id}": {
+      "get": {
+        "operationId": "invalidItem",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}},
+          {"name": "scope", "in": "query", "required": true, "schema": {"type": "string"}, "x-vendor-position": "first"}
+        ],
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}`, baseURL)
+	})
+
+	cfg, err := config.Load(env.cfgFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.OpenAPIExtensionAliases = map[string]string{
+		config.XCLIPositionExtension: "x-vendor-position",
+	}
+	if err := config.Save(env.cfgFile, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	c, out := env.newCaptureCLI()
+	if err := c.Run([]string{"restish", "tapi", "get-item", "--help"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "get-item <scope> <id>") {
+		t.Fatalf("help does not show aliased position:\n%s", out.String())
+	}
+	c, out = env.newCaptureCLI()
+	if err := c.Run([]string{"restish", "tapi", "--help"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out.String(), "invalid-item") {
+		t.Fatalf("help includes operation with malformed position:\n%s", out.String())
+	}
+
+	c = env.newCLI()
+	if err := c.Run([]string{"restish", "tapi", "get-item", "public", "42"}); err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/items/42" || gotScope != "public" {
+		t.Fatalf("request = %s?scope=%s, want /items/42?scope=public", gotPath, gotScope)
+	}
+
+	c, out = env.newCaptureCLI()
+	if err := c.Run([]string{"restish", "doctor", "api", "tapi"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"2 positioned parameters", "x-vendor-position: GET /items/{id} parameter query scope", "x-vendor-position must be an integer (invalid)"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("doctor output missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
 func TestDoctorAPIReportsXCLIExtensionDetails(t *testing.T) {
 	env := setupExtEnv(t)
 

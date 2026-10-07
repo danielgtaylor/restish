@@ -91,6 +91,55 @@ the original OpenAPI parameter name is preserved on the wire.
 removes that parameter from the generated CLI; `x-cli-hidden` keeps it callable
 but omits it from ordinary help.
 
+Parameter-level `x-cli-position` assigns a one-based position to a required
+argument:
+
+```yaml
+parameters:
+  - name: scope
+    in: query
+    required: true
+    schema:
+      type: string
+    x-cli-position: 1
+  - name: id
+    in: path
+    required: true
+    schema:
+      type: string
+```
+
+This produces `SCOPE ID` while preserving `scope` as a query parameter and `id`
+as a path parameter. Unpositioned required parameters fill the remaining slots
+in the usual path-first, spec order. Optional parameters remain flags.
+
+If an API uses another extension name for the same integer value, configure an
+alias globally or on that API:
+
+```jsonc
+{
+  "openapi_extension_aliases": {
+    "x-cli-position": "x-vendor-position"
+  },
+  "apis": {
+    "myapi": {
+      "base_url": "https://api.example.com",
+      "openapi_extension_aliases": {
+        "x-cli-position": "x-myapi-position"
+      }
+    }
+  }
+}
+```
+
+An API-specific alias overrides the global alias. Alias keys must name a
+recognized Restish extension and values must start with `x-`. Restish currently
+supports aliases for `x-cli-position` only. Map `x-cli-position` to itself on an
+API to use the canonical name instead of an inherited global alias. Duplicate
+positions, non-integer positions, positions outside the required-argument
+range, and positions on optional or authentication-supplied parameters make the
+affected operation unavailable and produce a generation warning.
+
 ## Hide Or Ignore Operations
 
 ```yaml
@@ -108,7 +157,8 @@ excludes an operation from MCP tool exposure.
 
 When `api connect` or `api sync` sees behavior-changing `x-cli-*` extensions,
 Restish prints a compact summary such as renamed operations, aliases,
-hidden/ignored operations, hidden/ignored parameters, and `x-cli-config`.
+hidden/ignored operations, hidden/ignored parameters, positioned parameters,
+and `x-cli-config`.
 This is informational only; Restish does not block connection or prompt for
 extension approval.
 

@@ -345,17 +345,13 @@ func (c *CLI) syncOneAPI(cmd *cobra.Command, apiName string, sharedTransport htt
 			apiCfg = syncedCfg
 		}
 		c.emitGeneratedCommandWarnings(apiName, apiCfg, apiSpec, profileName)
-		opOpts := spec.OperationOptions{
-			BaseURL:         effectiveProfileBaseURL(apiCfg, profileName),
-			OperationBase:   effectiveOperationBase(apiCfg, profileName),
-			ServerVariables: effectiveServerVariables(apiCfg, profileName),
-		}
+		opOpts := c.openAPIOperationOptions(apiCfg, profileName)
 		if err := spec.StoreSpecInCache(c.specCacheDir(), c.apiStateName(apiName), Version, apiSpec, apiCfg.SpecFiles, opOpts, 0); err != nil {
 			c.warnf("could not cache generated commands for API %q: %v; run 'restish api sync %s' before using generated help", apiName, err, apiName)
 		}
 		style := humanTextStyleFor(c.Stdout)
-		if report, err := apiSpec.XCLIExtensionReport(); err == nil {
-			c.printXCLIExtensionSummary(report)
+		if set, err := apiSpec.OperationSet(opOpts); err == nil {
+			c.printXCLIExtensionSummary(set.XCLIExtensions)
 		}
 		fmt.Fprintf(c.Stdout, "%s spec for %q.\n", style.ok("Synced"), apiName)
 	} else {
@@ -510,11 +506,7 @@ func (c *CLI) runAPIConnect(cmd *cobra.Command, args []string) error {
 	}
 	if apiSpec != nil {
 		c.emitGeneratedCommandWarnings(apiName, apiCfg, apiSpec, "default")
-		opOpts := spec.OperationOptions{
-			BaseURL:         effectiveProfileBaseURL(apiCfg, "default"),
-			OperationBase:   effectiveOperationBase(apiCfg, "default"),
-			ServerVariables: effectiveServerVariables(apiCfg, "default"),
-		}
+		opOpts := c.openAPIOperationOptions(apiCfg, "default")
 		if err := spec.StoreSpecInCache(c.specCacheDir(), c.apiStateName(apiName), Version, apiSpec, apiCfg.SpecFiles, opOpts, 0); err != nil {
 			c.warnf("could not cache generated commands for API %q: %v; run 'restish api sync %s' before using generated help", apiName, err, apiName)
 		}
@@ -522,8 +514,8 @@ func (c *CLI) runAPIConnect(cmd *cobra.Command, args []string) error {
 	c.printConfigWrittenPath()
 	style := humanTextStyleFor(c.Stdout)
 	if apiSpec != nil {
-		if report, err := apiSpec.XCLIExtensionReport(); err == nil {
-			c.printXCLIExtensionSummary(report)
+		if set, err := apiSpec.OperationSet(c.openAPIOperationOptions(apiCfg, "default")); err == nil {
+			c.printXCLIExtensionSummary(set.XCLIExtensions)
 		}
 	}
 	if len(preservedProfiles) > 0 {
@@ -677,11 +669,7 @@ func (c *CLI) emitGeneratedCommandWarnings(apiName string, apiCfg *config.APICon
 	if apiCfg == nil || apiSpec == nil {
 		return
 	}
-	opOpts := spec.OperationOptions{
-		BaseURL:         effectiveProfileBaseURL(apiCfg, profileName),
-		OperationBase:   effectiveOperationBase(apiCfg, profileName),
-		ServerVariables: effectiveServerVariables(apiCfg, profileName),
-	}
+	opOpts := c.openAPIOperationOptions(apiCfg, profileName)
 	set, err := apiSpec.OperationSet(opOpts)
 	if err == nil {
 		for _, issue := range operationSecurityIssues(set.Operations) {

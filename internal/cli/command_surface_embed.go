@@ -63,11 +63,7 @@ func (c *CLI) ensurePromotedAPICommandMetadata(ctx context.Context, scan cliArgS
 }
 
 func (c *CLI) ensurePromotedAPIMetadata(ctx context.Context, apiName, profileName string, apiCfg *config.APIConfig) error {
-	opts := spec.OperationOptions{
-		BaseURL:         effectiveProfileBaseURL(apiCfg, profileName),
-		OperationBase:   effectiveOperationBase(apiCfg, profileName),
-		ServerVariables: effectiveServerVariables(apiCfg, profileName),
-	}
+	opts := c.openAPIOperationOptions(apiCfg, profileName)
 	stateName := c.apiStateName(apiName)
 	if _, status, ok := spec.LoadOperationSetFromCacheStatus(c.specCacheDir(), stateName, Version, apiCfg.SpecFiles, opts, false); ok && !status.Stale {
 		return nil

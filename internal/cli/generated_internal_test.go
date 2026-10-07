@@ -21,6 +21,123 @@ type failingDocument struct {
 	err error
 }
 
+func TestEffectiveOpenAPIExtensionAliases(t *testing.T) {
+	c := New()
+	c.cfg = &config.Config{OpenAPIExtensionAliases: map[string]string{
+		config.XCLIPositionExtension: "x-global-position",
+	}}
+	global := c.effectiveOpenAPIExtensionAliases(nil)
+	if global[config.XCLIPositionExtension] != "x-global-position" {
+		t.Fatalf("global alias = %q", global[config.XCLIPositionExtension])
+	}
+	apiCfg := &config.APIConfig{OpenAPIExtensionAliases: map[string]string{
+		config.XCLIPositionExtension: "x-api-position",
+	}}
+	got := c.effectiveOpenAPIExtensionAliases(apiCfg)
+	if got[config.XCLIPositionExtension] != "x-api-position" {
+		t.Fatalf("alias = %q, want per-API override", got[config.XCLIPositionExtension])
+	}
+	apiCfg.OpenAPIExtensionAliases[config.XCLIPositionExtension] = config.XCLIPositionExtension
+	got = c.effectiveOpenAPIExtensionAliases(apiCfg)
+	if got[config.XCLIPositionExtension] != config.XCLIPositionExtension {
+		t.Fatalf("alias = %q, want canonical API override", got[config.XCLIPositionExtension])
+	}
+	merged := mergeDefaultConfigForEmbedding(c.cfg, &config.Config{OpenAPIExtensionAliases: apiCfg.OpenAPIExtensionAliases})
+	if merged.OpenAPIExtensionAliases[config.XCLIPositionExtension] != config.XCLIPositionExtension {
+		t.Fatalf("merged alias = %q, want user config override", merged.OpenAPIExtensionAliases[config.XCLIPositionExtension])
+	}
+}
+
+func TestPositionGeneratedRequiredParams(t *testing.T) {
+	first, second, third := 1, 2, 3
+	tests := []struct {
+		name    string
+		params  []*paramInfo
+		want    []string
+		wantErr string
+	}{
+		{
+			name: "fills unpositioned slots in default order",
+			params: []*paramInfo{
+				{name: "id"},
+				{name: "account"},
+				{name: "scope", position: &first},
+			},
+			want: []string{"scope", "id", "account"},
+		},
+		{
+			name: "duplicate",
+			params: []*paramInfo{
+				{name: "id", position: &second},
+				{name: "scope", position: &second},
+			},
+			wantErr: "both use x-cli-position 2",
+		},
+		{
+			name:    "out of range",
+			params:  []*paramInfo{{name: "scope", position: &third}},
+			wantErr: "expected a value from 1 to 1",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := positionGeneratedRequiredParams(tc.params)
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("error = %v, want containing %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			names := make([]string, len(got))
+			for i, param := range got {
+				names[i] = param.name
+			}
+			if !reflect.DeepEqual(names, tc.want) {
+				t.Fatalf("order = %#v, want %#v", names, tc.want)
+			}
+		})
+	}
+}
+
+func TestBuildOperationCommandRejectsUnusablePositions(t *testing.T) {
+	position := 1
+	tests := []struct {
+		name    string
+		param   spec.Param
+		creds   []spec.CredentialAlternative
+		wantErr string
+	}{
+		{
+			name:    "optional parameter",
+			param:   spec.Param{Name: "scope", In: "query", XCLI: spec.ParamXCLI{Position: &position}},
+			wantErr: "is not required",
+		},
+		{
+			name:    "authentication parameter",
+			param:   spec.Param{Name: "api_key", In: "query", Required: true, XCLI: spec.ParamXCLI{Position: &position}},
+			creds:   []spec.CredentialAlternative{{{Kind: "api-key", In: "query", Name: "api_key"}}},
+			wantErr: "supplied by authentication",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := New().buildOperationCommand("api", "restish api", spec.Operation{
+				ID:                     "getItem",
+				Method:                 "GET",
+				Path:                   "/items",
+				Parameters:             []spec.Param{tc.param},
+				CredentialAlternatives: tc.creds,
+			}, "")
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error = %v, want containing %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func (d failingDocument) GetVersion() string                                 { return "3.1.0" }
 func (d failingDocument) GetRolodex() *index.Rolodex                         { return nil }
 func (d failingDocument) GetSpecInfo() *datamodel.SpecInfo                   { return nil }

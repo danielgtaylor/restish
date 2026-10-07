@@ -492,6 +492,47 @@ func TestCommandClientHelpersRouteConcurrentRepliesByRequestID(t *testing.T) {
 	}
 }
 
+func TestCommandClientSelect(t *testing.T) {
+	hostToPluginR, hostToPluginW := io.Pipe()
+	pluginToHostR, pluginToHostW := io.Pipe()
+	defer hostToPluginR.Close()
+	defer hostToPluginW.Close()
+	defer pluginToHostR.Close()
+	defer pluginToHostW.Close()
+
+	client := NewCommandClient(hostToPluginR, pluginToHostW)
+	result := make(chan *SelectResponseMsg, 1)
+	errs := make(chan error, 1)
+	options := []SelectOption{{Label: "Mochi", Value: "42"}, {Label: "Pixel", Value: "7"}}
+	go func() {
+		reply, err := client.SelectContext(context.Background(), "Choose a pet", options)
+		if err != nil {
+			errs <- err
+			return
+		}
+		result <- reply
+	}()
+
+	var request SelectMsg
+	if err := NewDecoder(pluginToHostR).ReadMessage(&request); err != nil {
+		t.Fatal(err)
+	}
+	if request.Type != MsgTypeSelect || request.RequestID == "" || request.Message != "Choose a pet" || len(request.Options) != 2 || request.Options[1] != options[1] {
+		t.Fatalf("select request = %#v", request)
+	}
+	if err := WriteMessage(hostToPluginW, SelectResponseMsg{Type: MsgTypeSelectResponse, RequestID: request.RequestID, Value: "7"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-errs:
+		t.Fatal(err)
+	case reply := <-result:
+		if reply.Value != "7" {
+			t.Fatalf("select response = %#v", reply)
+		}
+	}
+}
+
 func TestCommandClientHelpersWriteExpectedMessages(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -537,6 +578,16 @@ func TestCommandClientHelpersWriteExpectedMessages(t *testing.T) {
 				return err
 			},
 			wantType: MsgTypeConfirm,
+		},
+		{
+			name: "select",
+			call: func(c *CommandClient) error {
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+				_, err := c.SelectContext(ctx, "choose", []SelectOption{{Label: "One", Value: "1"}})
+				return err
+			},
+			wantType: MsgTypeSelect,
 		},
 	}
 	for _, tt := range tests {

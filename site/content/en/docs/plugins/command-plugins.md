@@ -16,7 +16,7 @@ Use a command plugin when a feature needs:
 - a top-level command
 - multiple HTTP requests
 - progress messages
-- prompts or confirmations
+- prompts, confirmations, or interactive selection
 - access to registered APIs and profiles
 
 Use a hook plugin for one request/response/auth/formatting task.
@@ -54,8 +54,30 @@ profiles, err := c.ListProfiles("example")
 cfg, err := c.ConfigRead("example", "default", "my-plugin")
 answer, err := c.Prompt("Label", false)
 ok, err := c.Confirm("Continue?")
+choice, err := c.Select("Choose an environment", []plugin.SelectOption{
+  {Label: "Development", Value: "dev"},
+  {Label: "Production", Value: "prod"},
+})
 err = c.Response(200, nil, map[string]any{"ok": ok, "apis": apis.APIs})
 ```
+
+`Select` renders a host-owned picker on stderr. Up and Down move through the
+options, Enter returns the selected value, and Ctrl-C cancels the picker.
+Labels are for display; values remain opaque to the host. Multiple options
+require an interactive terminal and cannot be used by commands with
+`passthrough_stdio`.
+
+Plugins that call `Select` must declare the additive feature in their manifest:
+
+```go
+RequiredFeatures: []string{plugin.FeatureCommandSelect},
+```
+
+This makes older Restish hosts reject the plugin during discovery instead of
+hanging on an unknown request.
+
+Wait for each host interaction before starting another, and avoid writing
+terminal output while a picker is active.
 
 Non-Go plugins can send the same message families directly:
 
@@ -79,7 +101,7 @@ Non-Go plugins can send the same message families directly:
 
 1. The plugin declares commands during startup discovery.
 2. Restish starts the plugin when the user runs the contributed command.
-3. The plugin sends requests such as `http-request`, `api-spec`, `prompt`, or `response`.
+3. The plugin sends requests such as `http-request`, `api-spec`, `select`, or `response`.
 4. The plugin sends `done` with an exit code.
 
 ## Real Examples

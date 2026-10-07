@@ -720,7 +720,7 @@ func renderMessageSchemaRegion(root string) (string, error) {
 		out.WriteString(fmt.Sprintf("| `%s` | `%s` |\n", c.Name, c.Value))
 	}
 	for _, group := range [][]string{
-		{"InitMsg", "HTTPRequestMsg", "HTTPResponseMsg", "APISpecMsg", "APISpecResponseMsg", "APIOperation", "APIParam", "ListAPIsMsg", "ListAPIsResponseMsg", "ListProfilesMsg", "ListProfilesResponseMsg", "ConfigReadMsg", "ConfigReadResponseMsg", "PromptMsg", "PromptResponseMsg", "ConfirmMsg", "ConfirmResponseMsg", "ResponseMsg", "DoneMsg", "StdoutDataMsg", "StderrDataMsg", "WarnMsg", "ProgressMsg", "SpinnerMsg", "LogMsg", "StdinDataMsg", "StdinCloseMsg"},
+		{"InitMsg", "HTTPRequestMsg", "HTTPResponseMsg", "APISpecMsg", "APISpecResponseMsg", "APIOperation", "APIParam", "ListAPIsMsg", "ListAPIsResponseMsg", "ListProfilesMsg", "ListProfilesResponseMsg", "ConfigReadMsg", "ConfigReadResponseMsg", "PromptMsg", "PromptResponseMsg", "ConfirmMsg", "ConfirmResponseMsg", "SelectOption", "SelectMsg", "SelectResponseMsg", "ResponseMsg", "DoneMsg", "StdoutDataMsg", "StderrDataMsg", "WarnMsg", "ProgressMsg", "SpinnerMsg", "LogMsg", "StdinDataMsg", "StdinCloseMsg"},
 		{"FormatterResponse", "FormatterRequest", "LoaderRequest", "LoaderResponse"},
 		{"HookRequest", "HookRequestHeaderUpdate", "AuthHookInput", "AuthHookOutput", "RequestMiddlewareInput", "RequestMiddlewareOutput", "HookResponse", "ResponseMiddlewareInput", "FollowRequest", "HookResponseUpdate", "ResponseMiddlewareOutput"},
 		{"TLSSignerInitMsg", "TLSSignerReadyMsg", "TLSSignerSignMsg", "TLSSignerSignedMsg", "TLSSignerShutdownMsg"},

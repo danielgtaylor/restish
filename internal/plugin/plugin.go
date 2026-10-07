@@ -48,6 +48,7 @@ var supportedRequiredFeatures = map[string]bool{
 	pluginwire.FeatureManifestRequiredFeatures: true,
 	pluginwire.FeatureLoaderSourceMetadata:     true,
 	pluginwire.FeatureRequestFinalBody:         true,
+	pluginwire.FeatureCommandSelect:            true,
 }
 
 var renameManifestCacheFile = os.Rename
@@ -85,15 +86,21 @@ func Discover(pluginDir string, errFn func(path string, err error), manifestCach
 			mtime := info.ModTime().UnixNano()
 			size := info.Size()
 			if entry, ok := cache[path]; ok && entry.Mtime == mtime && entry.Size == size {
-				m := entry.Manifest
-				return &m, nil
+				if len(entry.Manifest.RequiredFeatures) == 0 {
+					m := entry.Manifest
+					return &m, nil
+				}
+				delete(cache, path)
+				cacheUpdated = true
 			}
 			m, err := loadManifest(path, stderr)
 			if err != nil {
 				return nil, err
 			}
-			cache[path] = manifestCacheEntry{Mtime: mtime, Size: size, Manifest: *m}
-			cacheUpdated = true
+			if len(m.RequiredFeatures) == 0 {
+				cache[path] = manifestCacheEntry{Mtime: mtime, Size: size, Manifest: *m}
+				cacheUpdated = true
+			}
 			return m, nil
 		}
 		return loadManifest(path, stderr)

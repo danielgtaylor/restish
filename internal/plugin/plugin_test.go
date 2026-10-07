@@ -284,6 +284,10 @@ func TestLoadManifest_CompatibilityMatrix(t *testing.T) {
 			name: "supported required feature",
 			json: `{"name":"supported","restish_api_version":2,"hooks":["loader"],"loader_content_types":["application/x-test"],"required_features":["loader.source_metadata"]}`,
 		},
+		{
+			name: "select required feature",
+			json: `{"name":"select","restish_api_version":2,"hooks":["command"],"required_features":["command.select"]}`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -555,6 +559,40 @@ echo '%s'
 	}
 	if string(bytes.TrimSpace(count)) != "1" {
 		t.Fatalf("cached discover counter = %q, want 1", bytes.TrimSpace(count))
+	}
+}
+
+func TestDiscover_DoesNotCacheRequiredFeatures(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script tests not supported on Windows")
+	}
+	dir := t.TempDir()
+	cacheFile := filepath.Join(t.TempDir(), "plugin-manifest-cache.cbor")
+	counterFile := filepath.Join(dir, "manifest-count")
+	m := Manifest{
+		Name: "select", RestishAPIVersion: CurrentPluginAPIVersion,
+		Hooks: []string{"command"}, RequiredFeatures: []string{pluginwire.FeatureCommandSelect},
+	}
+	script := fmt.Sprintf(`#!/bin/sh
+count=0
+if [ -f %q ]; then count=$(cat %q); fi
+count=$((count + 1))
+echo "$count" > %q
+echo '%s'
+`, counterFile, counterFile, counterFile, jsonManifest(m))
+	writeScript(t, dir, "restish-select", script)
+
+	for range 2 {
+		if plugins := Discover(dir, nil, cacheFile, nil); len(plugins) != 1 {
+			t.Fatalf("discover: got %d plugins, want 1", len(plugins))
+		}
+	}
+	count, err := os.ReadFile(counterFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(bytes.TrimSpace(count)) != "2" {
+		t.Fatalf("manifest executions = %q, want 2", bytes.TrimSpace(count))
 	}
 }
 

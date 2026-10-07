@@ -35,6 +35,9 @@ const (
 	// FeatureRequestFinalBody means auth and request-middleware hooks may
 	// receive the final request body bytes when Restish has them.
 	FeatureRequestFinalBody = "request.final_body"
+	// FeatureCommandSelect means command plugins may request an interactive
+	// single-choice picker from the host.
+	FeatureCommandSelect = "command.select"
 )
 
 // Manifest is the metadata a plugin reports when called with

@@ -229,6 +229,23 @@ func (c *CommandClient) ConfirmContext(ctx context.Context, message string) (*Co
 	return &reply, nil
 }
 
+// Select asks the host to display a single-choice picker.
+func (c *CommandClient) Select(message string, options []SelectOption) (*SelectResponseMsg, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return c.SelectContext(ctx, message, options)
+}
+
+// SelectContext asks the host to display a single-choice picker, returning
+// when ctx is canceled if the host does not reply.
+func (c *CommandClient) SelectContext(ctx context.Context, message string, options []SelectOption) (*SelectResponseMsg, error) {
+	var reply SelectResponseMsg
+	if err := c.roundTrip(ctx, MsgTypeSelectResponse, &SelectMsg{Type: MsgTypeSelect, Message: message, Options: options}, &reply); err != nil {
+		return nil, err
+	}
+	return &reply, nil
+}
+
 // Response asks the host to format and display response data using the same
 // output machinery as regular Restish responses.
 func (c *CommandClient) Response(status int, headers map[string][]string, body any) error {
@@ -293,6 +310,8 @@ func (c *CommandClient) readLoop() {
 			c.deliverResponseByRequestID(MsgTypePromptResponse, raw)
 		case MsgTypeConfirmResponse:
 			c.deliverResponseByRequestID(MsgTypeConfirmResponse, raw)
+		case MsgTypeSelectResponse:
+			c.deliverResponseByRequestID(MsgTypeSelectResponse, raw)
 		case MsgTypeStdinData:
 			if c.StdinDataHandler != nil {
 				var msg StdinDataMsg
@@ -483,6 +502,8 @@ func setRequestID(msg any, requestID string) {
 	case *PromptMsg:
 		m.RequestID = requestID
 	case *ConfirmMsg:
+		m.RequestID = requestID
+	case *SelectMsg:
 		m.RequestID = requestID
 	case *APISpecMsg:
 		m.RequestID = requestID

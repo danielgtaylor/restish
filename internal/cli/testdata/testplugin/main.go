@@ -49,6 +49,8 @@ func runManifestOnlyPlugin() {
 var commandPluginCommands = []plugin.CommandDecl{
 	{Name: "greet", Short: "Greet the user"},
 	{Name: "fetch", Short: "Fetch a URL via Restish"},
+	{Name: "choose", Short: "Choose a pet via Restish"},
+	{Name: "abandon", Short: "Abandon a selection"},
 	{Name: "pipe", Short: "Echo stdin via passthrough stdio", PassthroughStdio: true},
 	{Name: "fail", Short: "Exit with code 1"},
 	{Name: "die", Short: "Crash unexpectedly"},
@@ -62,6 +64,7 @@ func runCommandPlugin() {
 		Description:       "Test command plugin",
 		RestishAPIVersion: 2,
 		Hooks:             []string{"command"},
+		RequiredFeatures:  []string{plugin.FeatureCommandSelect},
 	}, commandPluginCommands) {
 		return
 	}
@@ -84,6 +87,14 @@ func runCommandPlugin() {
 		_ = plugin.WriteMessage(os.Stdout, plugin.DoneMsg{Type: plugin.MsgTypeDone})
 	case "fetch":
 		runCommandPluginFetch(dec, initMsg.Args)
+	case "choose":
+		runCommandPluginSelect(dec)
+	case "abandon":
+		_ = plugin.WriteMessage(os.Stdout, plugin.SelectMsg{
+			Type: plugin.MsgTypeSelect, RequestID: "abandoned", Message: "Choose",
+			Options: []plugin.SelectOption{{Label: "One", Value: "1"}, {Label: "Two", Value: "2"}},
+		})
+		_ = plugin.WriteMessage(os.Stdout, plugin.DoneMsg{Type: plugin.MsgTypeDone})
 	case "fail":
 		_ = plugin.WriteMessage(os.Stdout, plugin.DoneMsg{Type: plugin.MsgTypeDone, ExitCode: 1})
 	case "pipe":
@@ -97,6 +108,22 @@ func runCommandPlugin() {
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n", initMsg.Command)
 		_ = plugin.WriteMessage(os.Stdout, plugin.DoneMsg{Type: plugin.MsgTypeDone, ExitCode: 1})
 	}
+}
+
+func runCommandPluginSelect(dec *plugin.Decoder) {
+	_ = plugin.WriteMessage(os.Stdout, plugin.SelectMsg{
+		Type: plugin.MsgTypeSelect, RequestID: "select-1", Message: "Choose a pet",
+		Options: []plugin.SelectOption{{Label: "Mochi", Value: "42"}, {Label: "Pixel", Value: "7"}},
+	})
+	var reply plugin.SelectResponseMsg
+	if err := dec.ReadMessage(&reply); err != nil || reply.Error != "" {
+		_ = plugin.WriteMessage(os.Stdout, plugin.DoneMsg{Type: plugin.MsgTypeDone, ExitCode: 1})
+		return
+	}
+	_ = plugin.WriteMessage(os.Stdout, plugin.ResponseMsg{
+		Type: plugin.MsgTypeResponse, Status: 200, Body: map[string]any{"selected": reply.Value},
+	})
+	_ = plugin.WriteMessage(os.Stdout, plugin.DoneMsg{Type: plugin.MsgTypeDone})
 }
 
 func runCommandPluginFetch(dec *plugin.Decoder, args []string) {

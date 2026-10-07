@@ -191,6 +191,7 @@ func (c *CLI) runCommandPlugin(cmd *cobra.Command, pluginPath string, decl plugi
 	var loopErr error
 	doneReceived := false
 	var requestWG sync.WaitGroup
+	var interactionMu sync.Mutex
 	requestCtx, cancelRequests := context.WithCancel(cmd.Context())
 	defer cancelRequests()
 	dec := pluginwire.NewDecoder(stdoutPipe)
@@ -211,7 +212,7 @@ func (c *CLI) runCommandPlugin(cmd *cobra.Command, pluginPath string, decl plugi
 			break
 		}
 
-		done, err := c.handleCommandPluginMessage(cmd, requestCtx, writer, &requestWG, pluginwire.MessageType(raw), raw)
+		done, err := c.handleCommandPluginMessage(cmd, requestCtx, writer, &requestWG, &interactionMu, decl.PassthroughStdio, pluginwire.MessageType(raw), raw)
 		if err != nil {
 			loopErr = err
 			break

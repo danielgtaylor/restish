@@ -42,6 +42,8 @@ Generated from `plugin/messages.go`.
 | `MsgTypePrompt` | `prompt` |
 | `MsgTypePromptResponse` | `prompt-response` |
 | `MsgTypeResponse` | `response` |
+| `MsgTypeSelect` | `select` |
+| `MsgTypeSelectResponse` | `select-response` |
 | `MsgTypeSpinner` | `spinner` |
 | `MsgTypeStderrData` | `stderr-data` |
 | `MsgTypeStdinClose` | `stdin-close` |
@@ -549,6 +551,61 @@ CBOR: `request_id`; type: `string`; required: no
 **`Value`**
 
 CBOR: `value`; type: `bool`; required: yes
+
+**`Error`**
+
+CBOR: `error`; type: `string`; required: no
+
+
+### `SelectOption`
+
+SelectOption pairs a user-visible label with an opaque plugin-owned value.
+
+**`Label`**
+
+CBOR: `label`; type: `string`; required: yes
+
+**`Value`**
+
+CBOR: `value`; type: `string`; required: yes
+
+
+### `SelectMsg`
+
+SelectMsg asks the host to display an interactive single-choice picker.
+
+**`Type`**
+
+CBOR: `type`; type: `string`; required: yes
+
+**`RequestID`**
+
+CBOR: `request_id`; type: `string`; required: no
+
+**`Message`**
+
+CBOR: `message`; type: `string`; required: yes
+
+**`Options`**
+
+CBOR: `options`; type: `[]SelectOption`; required: yes
+
+
+### `SelectResponseMsg`
+
+SelectResponseMsg is the host reply to a SelectMsg.
+
+**`Type`**
+
+CBOR: `type`; type: `string`; required: yes
+
+**`RequestID`**
+
+CBOR: `request_id`; type: `string`; required: no
+
+**`Value`**
+
+CBOR: `value`; type: `string`; required: no
 
 **`Error`**
 
@@ -1078,6 +1135,7 @@ generate and route those IDs.
 | `config-read` | optional `api`, `profile`, `plugin` | `config-read-response` with `base_url`, `headers`, `query`, `plugin_config`; auth secrets are excluded |
 | `prompt` | `message`, optional `hidden` | `prompt-response` with `value` or `error` |
 | `confirm` | `message` | `confirm-response` with boolean `value` or `error` |
+| `select` | `message`, `options` containing `label` and `value` | `select-response` with the selected opaque `value` or `error` |
 | `response` | `status`, `headers`, `body` | none; host formats it like a normal API response |
 | `stdout-data` / `stderr-data` | `data` bytes | none |
 | `progress` / `spinner` / `log` / `warn` | `text` | none |
@@ -1099,11 +1157,17 @@ list. Each operation includes fields such as `id`, `method`, `path`, `summary`,
 - `config-read-response`
 - `prompt-response`
 - `confirm-response`
+- `select-response`
 - `stdin-data`
 - `stdin-close`
 
 `stdin-data` and `stdin-close` are used only for command plugins that opt into
 passthrough stdio.
+
+Interactive selection is available only to plugins that declare the
+`command.select` required feature. Multiple options require a terminal and are
+not available with `passthrough_stdio`. Restish renders labels on stderr and
+returns values unchanged to the plugin.
 
 ## Hook Plugins
 

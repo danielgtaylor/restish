@@ -176,12 +176,21 @@ profiles, err := c.ListProfiles("myapi")
 cfg, err := c.ConfigRead("myapi", "default", "hello-cmd")
 answer, err := c.Prompt("Label", false)
 ok, err := c.Confirm("Continue?")
+choice, err := c.Select("Choose an environment", []plugin.SelectOption{
+	{Label: "Development", Value: "dev"},
+	{Label: "Production", Value: "prod"},
+})
 err = c.Response(200, nil, map[string]any{"configured": cfg.PluginConfig != nil})
 ```
 
+Plugins that call `Select` must include `plugin.FeatureCommandSelect` in the
+manifest's `RequiredFeatures`. Restish keeps the picker on stderr and returns
+the selected option's opaque value. Selection requires an interactive terminal
+unless only one option is available.
+
 The context-aware variants (`ListAPIsContext`, `ConfigReadContext`,
-`PromptContext`, and friends) let plugins bound waits when the host is busy or
-the user does not answer.
+`PromptContext`, `SelectContext`, and friends) let plugins bound waits when the
+host is busy or the user does not answer.
 
 ## Local Development Loop
 

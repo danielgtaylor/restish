@@ -16,6 +16,7 @@ require (
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/itchyny/gojq v0.12.19
 	github.com/mattn/go-isatty v0.0.20
+	github.com/mattn/go-runewidth v0.0.20
 	github.com/miekg/pkcs11 v1.0.3-0.20190429190417-a667d056470f
 	github.com/pb33f/libopenapi v0.35.0
 	github.com/sandrolain/httpcache v1.4.0
@@ -50,7 +51,6 @@ require (
 	github.com/itchyny/timefmt-go v0.1.8 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
-	github.com/mattn/go-runewidth v0.0.20 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect

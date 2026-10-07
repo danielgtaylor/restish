@@ -45,7 +45,7 @@
 //   - APISpecMsg / APISpecResponseMsg for fetching registered API specs
 //   - ListAPIsMsg / ListProfilesMsg for config discovery
 //   - ConfigReadMsg for effective API/profile/plugin config
-//   - PromptMsg / ConfirmMsg for user interaction
+//   - PromptMsg / ConfirmMsg / SelectMsg for user interaction
 //   - ResponseMsg, StdoutDataMsg, StderrDataMsg, WarnMsg, and DoneMsg for output
 //
 // For simple command plugins, plugin.Run and CommandClient are usually enough.

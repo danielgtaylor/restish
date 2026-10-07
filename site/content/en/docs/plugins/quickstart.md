@@ -36,7 +36,8 @@ change one capability at a time.
 
 Choose a hook when the plugin should do one focused job inside a request. Choose
 a command plugin when the plugin owns a multi-step workflow and needs host
-messages such as delegated HTTP, prompts, config reads, or formatted responses.
+messages such as delegated HTTP, prompts, selections, config reads, or formatted
+responses.
 
 ## Build And Install
 
@@ -95,8 +96,8 @@ flags.
 - Redact secrets.
 - Delegate HTTP to Restish from command plugins.
 - Keep operator documentation separate from protocol details.
-- Prefer host-provided request, response, config, prompt, and output helpers to
-  custom HTTP clients or custom terminal rendering.
+- Prefer host-provided request, response, config, prompt, selection, and output
+  helpers to custom HTTP clients or custom terminal rendering.
 - Keep hooks deterministic and bounded; Restish applies hook timeouts from the
   manifest or defaults.
 

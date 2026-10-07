@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func (c *CLI) handleCommandPluginMessage(cmd *cobra.Command, requestCtx context.Context, writer *commandPluginWriter, requestWG *sync.WaitGroup, msgType string, raw []byte) (bool, error) {
+func (c *CLI) handleCommandPluginMessage(cmd *cobra.Command, requestCtx context.Context, writer *commandPluginWriter, requestWG *sync.WaitGroup, interactionMu *sync.Mutex, passthroughStdio bool, msgType string, raw []byte) (bool, error) {
 	if len(raw) > maxCommandPluginInboundMessageBytes {
 		return false, fmt.Errorf("command plugin: message %s exceeded %d bytes", msgType, maxCommandPluginInboundMessageBytes)
 	}
@@ -80,13 +80,55 @@ func (c *CLI) handleCommandPluginMessage(cmd *cobra.Command, requestCtx context.
 		if err := decodeCommandPluginMessage(msgType, raw, &msg); err != nil {
 			return false, err
 		}
+		if interactionMu != nil && !interactionMu.TryLock() {
+			return false, writer.WriteMessage(pluginwire.PromptResponseMsg{
+				Type: pluginwire.MsgTypePromptResponse, RequestID: msg.RequestID,
+				Error: "another host interaction is active",
+			})
+		}
+		if interactionMu != nil {
+			defer interactionMu.Unlock()
+		}
 		return false, c.handlePluginPrompt(cmd.Context(), writer, msg)
 	case pluginwire.MsgTypeConfirm:
 		var msg pluginwire.ConfirmMsg
 		if err := decodeCommandPluginMessage(msgType, raw, &msg); err != nil {
 			return false, err
 		}
+		if interactionMu != nil && !interactionMu.TryLock() {
+			return false, writer.WriteMessage(pluginwire.ConfirmResponseMsg{
+				Type: pluginwire.MsgTypeConfirmResponse, RequestID: msg.RequestID,
+				Error: "another host interaction is active",
+			})
+		}
+		if interactionMu != nil {
+			defer interactionMu.Unlock()
+		}
 		return false, c.handlePluginConfirm(cmd.Context(), writer, msg)
+	case pluginwire.MsgTypeSelect:
+		var msg pluginwire.SelectMsg
+		if err := decodeCommandPluginMessage(msgType, raw, &msg); err != nil {
+			return false, err
+		}
+		if passthroughStdio && len(msg.Options) > 1 {
+			return false, writer.WriteMessage(pluginwire.SelectResponseMsg{
+				Type: pluginwire.MsgTypeSelectResponse, RequestID: msg.RequestID,
+				Error: "select is unavailable for passthrough_stdio commands",
+			})
+		}
+		if !interactionMu.TryLock() {
+			return false, writer.WriteMessage(pluginwire.SelectResponseMsg{
+				Type: pluginwire.MsgTypeSelectResponse, RequestID: msg.RequestID,
+				Error: "another host interaction is active",
+			})
+		}
+		requestWG.Add(1)
+		go func() {
+			defer requestWG.Done()
+			defer interactionMu.Unlock()
+			_ = c.handlePluginSelect(requestCtx, writer, msg)
+		}()
+		return false, nil
 	case pluginwire.MsgTypeResponse:
 		var msg pluginwire.ResponseMsg
 		if err := decodeCommandPluginMessage(msgType, raw, &msg); err != nil {
@@ -460,6 +502,15 @@ func (c *CLI) handlePluginConfirm(ctx context.Context, writer *commandPluginWrit
 		RequestID: msg.RequestID,
 		Value:     confirmed,
 	})
+}
+
+func (c *CLI) handlePluginSelect(ctx context.Context, writer *commandPluginWriter, msg pluginwire.SelectMsg) error {
+	value, err := c.selectOne(ctx, msg.Message, msg.Options)
+	reply := pluginwire.SelectResponseMsg{Type: pluginwire.MsgTypeSelectResponse, RequestID: msg.RequestID, Value: value}
+	if err != nil {
+		reply.Error, reply.Value = err.Error(), ""
+	}
+	return writer.WriteMessage(reply)
 }
 
 func (c *CLI) handlePluginConfigRead(writer *commandPluginWriter, msg pluginwire.ConfigReadMsg) error {

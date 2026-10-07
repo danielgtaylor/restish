@@ -83,6 +83,48 @@ func TestCommandPluginGreet(t *testing.T) {
 	}
 }
 
+func TestCommandPluginSelect(t *testing.T) {
+	installCmdPlugin(t)
+
+	c, out, _ := newTestCLI(t)
+	var errOut captureWriter
+	c.Stderr = &errOut
+	c.Hooks().PassReader = strings.NewReader("\x1b[B\r")
+	c.Hooks().ConfigPath = sharedPluginConfigPath(t)
+	if err := c.Run([]string{"restish", "choose"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), `"selected":"7"`) {
+		t.Fatalf("selector stdout = %q", out.String())
+	}
+	if output := errOut.String(); !strings.Contains(output, "Mochi") || !strings.Contains(output, "Pixel") {
+		t.Fatalf("selector stderr = %q", output)
+	}
+}
+
+func TestCommandPluginAbandonedSelectDoesNotBlock(t *testing.T) {
+	installCmdPlugin(t)
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = reader.Close()
+		_ = writer.Close()
+	})
+	c, _, _ := newTestCLI(t)
+	c.Hooks().PassReader = reader
+	c.Hooks().ConfigPath = sharedPluginConfigPath(t)
+	start := time.Now()
+	if err := c.Run([]string{"restish", "abandon"}); err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("abandoned selector blocked for %v", elapsed)
+	}
+}
+
 func TestCommandPluginFetch(t *testing.T) {
 	installCmdPlugin(t)
 

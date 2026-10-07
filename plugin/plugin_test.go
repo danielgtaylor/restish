@@ -127,6 +127,34 @@ func TestTypedMessageRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSelectMessageWireShape(t *testing.T) {
+	var buf bytes.Buffer
+	err := plugin.WriteMessage(&buf, plugin.SelectMsg{
+		Type:      plugin.MsgTypeSelect,
+		RequestID: "req-1",
+		Message:   "Choose a pet",
+		Options:   []plugin.SelectOption{{Label: "Mochi", Value: "42"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded map[string]any
+	if err := plugin.ReadMessage(&buf, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded["type"] != "select" || decoded["request_id"] != "req-1" || decoded["message"] != "Choose a pet" {
+		t.Fatalf("select message = %#v", decoded)
+	}
+	options, ok := decoded["options"].([]any)
+	if !ok || len(options) != 1 {
+		t.Fatalf("select options = %#v", decoded["options"])
+	}
+	option, ok := options[0].(map[string]any)
+	if !ok || option["label"] != "Mochi" || option["value"] != "42" {
+		t.Fatalf("select option = %#v", options[0])
+	}
+}
+
 func TestCommandClientDoConcurrentRoutesByRequestID(t *testing.T) {
 	hostToPluginR, hostToPluginW := io.Pipe()
 	pluginToHostR, pluginToHostW := io.Pipe()

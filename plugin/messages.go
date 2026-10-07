@@ -13,6 +13,7 @@ const (
 	MsgTypeConfigRead   = "config-read"
 	MsgTypePrompt       = "prompt"
 	MsgTypeConfirm      = "confirm"
+	MsgTypeSelect       = "select"
 	MsgTypeResponse     = "response"
 	MsgTypeDone         = "done"
 	MsgTypeStdoutData   = "stdout-data"
@@ -30,6 +31,7 @@ const (
 	MsgTypeConfigReadResponse   = "config-read-response"
 	MsgTypePromptResponse       = "prompt-response"
 	MsgTypeConfirmResponse      = "confirm-response"
+	MsgTypeSelectResponse       = "select-response"
 
 	// Host → plugin passthrough-stdio data.
 	MsgTypeStdinData  = "stdin-data"
@@ -228,6 +230,28 @@ type ConfirmResponseMsg struct {
 	Type      string `cbor:"type"`
 	RequestID string `cbor:"request_id,omitempty"`
 	Value     bool   `cbor:"value"`
+	Error     string `cbor:"error,omitempty"`
+}
+
+// SelectOption pairs a user-visible label with an opaque plugin-owned value.
+type SelectOption struct {
+	Label string `cbor:"label"`
+	Value string `cbor:"value"`
+}
+
+// SelectMsg asks the host to display an interactive single-choice picker.
+type SelectMsg struct {
+	Type      string         `cbor:"type"`
+	RequestID string         `cbor:"request_id,omitempty"`
+	Message   string         `cbor:"message"`
+	Options   []SelectOption `cbor:"options"`
+}
+
+// SelectResponseMsg is the host reply to a SelectMsg.
+type SelectResponseMsg struct {
+	Type      string `cbor:"type"`
+	RequestID string `cbor:"request_id,omitempty"`
+	Value     string `cbor:"value,omitempty"`
 	Error     string `cbor:"error,omitempty"`
 }
 

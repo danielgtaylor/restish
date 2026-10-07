@@ -87,14 +87,12 @@ The current implementation handles these message types:
 
 - `http-request` to ask Restish to perform an HTTP call
 - `api-spec` to ask Restish to resolve a registered API spec
+- `prompt`, `confirm`, and `select` for host-owned user interaction
 - `response` to ask Restish to format and print a normalized response
 - `stdout-data` and `stderr-data` to write raw bytes directly
 - `progress`, `spinner`, and `log` to print status text on stderr
 - `warn` to print a warning-prefixed message
 - `done` to terminate with an exit code
-
-Prompt/confirm style interactions are also valid protocol concepts when a
-plugin needs host-owned prompting behavior.
 
 ### Messages From Restish To Plugin
 
@@ -103,6 +101,7 @@ Restish currently sends:
 - `init` when the command starts
 - `http-response` after handling an `http-request`
 - `api-spec-response` after handling an `api-spec`
+- `prompt-response`, `confirm-response`, and `select-response` after user interaction
 - `stdin-data` and `stdin-close` when `passthrough_stdio` is enabled
 
 Long-lived request/response pairs use `request_id` correlation identifiers so
@@ -111,6 +110,23 @@ continues reading plugin messages while HTTP work runs, and replies include the
 same `request_id` as the original request. The public `CommandClient.Do` helper
 assigns request IDs when needed and routes replies back to the goroutine that
 sent the request.
+
+`select` carries options with user-visible `label` and opaque plugin-owned
+`value` fields. Restish renders up to ten choices at a time on stderr. Up and
+Down move the selection, Enter returns the selected value, and Ctrl-C cancels
+the picker. A single option returns immediately. Multiple options
+require an interactive terminal and are unavailable to commands using
+`passthrough_stdio` because the host and plugin would otherwise compete for
+stdin.
+
+Plugins that require selection declare `command.select` in
+`required_features`. Older hosts then reject the plugin during discovery rather
+than waiting indefinitely for an unknown message type.
+
+Only one host-owned prompt, confirmation, or selection may be active per
+command session. Concurrent interaction requests receive an error. Plugins
+should also avoid writing terminal output while waiting for a selection because
+it can disrupt the picker display.
 
 For `passthrough_stdio`, the public client dispatches `stdin-data` and
 `stdin-close` through a bounded asynchronous queue. Slow stdin consumers must

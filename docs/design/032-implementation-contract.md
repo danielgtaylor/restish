@@ -198,12 +198,13 @@ All plugin messages use CBOR. The stable message families are:
 | Manifest/startup flags | host -> plugin process | Discover hooks, loaders, formatters, and commands. |
 | Hook messages | host <-> short-lived plugin | Auth, request middleware, response middleware, loader, formatter hooks. |
 | Command messages | host <-> long-lived plugin | Init, stdin, HTTP delegation, formatting delegation, stderr, done. |
-| Config messages | plugin -> host | Read/list config and prompt/confirm where allowed. |
+| Config messages | plugin -> host | Read/list config and prompt/confirm/select where allowed. |
 | Formatter messages | host <-> formatter plugin | Normalize host response and stream or document formatting. |
 | TLS signer messages | host <-> signer plugin | Certificate discovery and signing for mTLS. |
 
 Protocol changes that alter message meaning require a plugin API version bump or
-explicit compatibility handling.
+explicit compatibility handling. Additive command interactions use manifest
+`required_features`; interactive selection is negotiated as `command.select`.
 
 ## Output Ownership
 

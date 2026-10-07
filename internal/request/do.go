@@ -162,6 +162,8 @@ type Options struct {
 	// OnUnauthorized, when non-nil, is used by callers that want to retry once
 	// after a 401 with freshly acquired credentials.
 	OnUnauthorized func(*http.Request) error
+	// CheckRedirect overrides the default credential-stripping redirect policy.
+	CheckRedirect func(req *http.Request, via []*http.Request) error
 	// CacheDir, if non-empty, enables RFC 7234 response caching in that
 	// directory.  NoCache overrides this and skips the cache entirely.
 	CacheDir string
@@ -295,10 +297,11 @@ func Do(ctx context.Context, method, rawURL string, body io.Reader, opts Options
 		transport = BuildTransport(opts)
 		builtTransport = true
 	}
-	client := &http.Client{
-		Transport:     transport,
-		CheckRedirect: credentialStrippingRedirectPolicy,
+	checkRedirect := opts.CheckRedirect
+	if checkRedirect == nil {
+		checkRedirect = credentialStrippingRedirectPolicy
 	}
+	client := &http.Client{Transport: transport, CheckRedirect: checkRedirect}
 
 	resp, err := doWithResponseTimeout(client, req, opts.Timeout, opts.HeaderTimeoutOnly, cancelRequest)
 	if err != nil {

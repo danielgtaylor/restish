@@ -51,20 +51,25 @@ func (c *CLI) prepareRequest(
 		requestOptionQueryContainsCredentials(opts.Query) ||
 		rawURLQueryContainsCredentials(rawURL)
 
-	rawURL, apiName, opts, err := c.applyAPIProfile(rawURL, profileName, opts, authOpts)
-	if err != nil {
-		return nil, err
-	}
-	if apiName == "" && explicitAPIName != "" {
+	var apiName string
+	var err error
+	if explicitAPIName != "" {
 		if c.cfg == nil || c.cfg.APIs == nil || c.cfg.APIs[explicitAPIName] == nil {
 			return nil, fmt.Errorf("API %q is not configured", explicitAPIName)
 		}
-		apiName = explicitAPIName
-		if c.cfg.APIs[explicitAPIName].PreserveHeaderCase {
-			opts.PreserveHeaderCase = true
+		if shortName, _ := splitAPIShortNameSuffix(rawURL); shortName == explicitAPIName {
+			rawURL, _, opts, err = c.applyAPIProfile(rawURL, profileName, opts, authOpts)
+		} else {
+			_, _, opts, err = c.applyAPIProfile(explicitAPIName, profileName, opts, authOpts)
 		}
-		if opts.CacheNamespace == "" {
-			opts.CacheNamespace = c.apiCacheNamespace(apiName, profileName)
+		if err != nil {
+			return nil, err
+		}
+		apiName = explicitAPIName
+	} else {
+		rawURL, apiName, opts, err = c.applyAPIProfile(rawURL, profileName, opts, authOpts)
+		if err != nil {
+			return nil, err
 		}
 	}
 	if !noAuth && operationAuth == nil && apiName != "" && !explicitCredentialContext {
@@ -103,6 +108,9 @@ func (c *CLI) prepareRequest(
 			return nil, fmt.Errorf("url_overrides: %w", err)
 		}
 		rawURL = rewritten
+	}
+	if authOpts.NonInteractive && (opts.TLSSignerName != "" || opts.TLSSignerPath != "") {
+		return nil, fmt.Errorf("TLS signer plugins are not started during shell completion")
 	}
 	opts, err = c.resolveTLSSigner(opts)
 	if err != nil {
@@ -163,7 +171,7 @@ func (c *CLI) prepareRequest(
 	}
 
 	// Chain request-middleware plugins after auth.
-	if !noAuth {
+	if !noAuth && !authOpts.NonInteractive {
 		origOnReq := opts.OnRequest
 		opts.OnRequest = func(req *http.Request) error {
 			if origOnReq != nil {

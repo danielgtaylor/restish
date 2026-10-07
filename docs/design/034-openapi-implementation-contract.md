@@ -137,12 +137,23 @@ Supported CLI-shaping extensions are:
 - `x-cli-description`
 - `x-cli-ignore`
 - `x-cli-hidden`
+- `x-cli-completion`
 
-These extensions apply to operations. `x-cli-ignore` and `x-cli-hidden` also
-apply at path scope where supported. Parameter-level `x-cli-name`,
+The naming, alias, description, ignore, and hidden extensions apply to
+operations. `x-cli-ignore` and `x-cli-hidden` also apply at path scope where
+supported. Parameter-level `x-cli-name`,
 `x-cli-description`, `x-cli-ignore`, and `x-cli-hidden` shape the corresponding
-argument or flag without changing the wire name unless the extension explicitly
-defines wire behavior in a future design.
+argument or flag without changing the wire name. Parameter-level
+`x-cli-completion` references a read-only operation from the same operation set
+and response selectors for API-backed shell completion.
+
+Completion providers are resolved by exact OpenAPI `operationId`. The provider
+must be unique, use `GET` or `HEAD`, and have no request body. Bindings use
+original `(in, name)` parameter identities and must cover every required
+provider parameter. Invalid providers are omitted with a deterministic warning;
+they do not remove the generated operation. Typed provider metadata is stored in
+the operation cache so command registration after `api sync` does not reparse
+the OpenAPI document.
 
 In tag layout, operations with a first tag are nested under that tag command;
 untagged operations remain directly under the API command. Flat layout remains

@@ -54,6 +54,9 @@ paths:
           schema:
             type: string
           x-cli-hidden: true
+          x-cli-completion:
+            operation_id: listAdmin
+            value_path: body.items.id
         - name: internal
           in: query
           schema:
@@ -82,6 +85,7 @@ paths:
 		"1 ignored parameter",
 		"1 hidden parameter",
 		"1 renamed parameter",
+		"1 API-backed parameter completion",
 	} {
 		if !strings.Contains(gotSummary, want) {
 			t.Fatalf("summary %q missing %q", gotSummary, want)
@@ -91,15 +95,16 @@ paths:
 		t.Fatalf("x-cli-description should not be summarized: %q", gotSummary)
 	}
 	wantKinds := map[string]bool{
-		"config":            false,
-		"path_hidden":       false,
-		"operation_ignored": false,
-		"operation_hidden":  false,
-		"operation_renamed": false,
-		"operation_aliases": false,
-		"parameter_ignored": false,
-		"parameter_hidden":  false,
-		"parameter_renamed": false,
+		"config":               false,
+		"path_hidden":          false,
+		"operation_ignored":    false,
+		"operation_hidden":     false,
+		"operation_renamed":    false,
+		"operation_aliases":    false,
+		"parameter_ignored":    false,
+		"parameter_hidden":     false,
+		"parameter_renamed":    false,
+		"parameter_completion": false,
 	}
 	for _, detail := range report.Details {
 		if _, ok := wantKinds[detail.Kind]; ok {

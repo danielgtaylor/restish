@@ -91,6 +91,69 @@ the original OpenAPI parameter name is preserved on the wire.
 removes that parameter from the generated CLI; `x-cli-hidden` keeps it callable
 but omits it from ordinary help.
 
+## API-Backed Parameter Completion
+
+Static OpenAPI `enum` values are completed locally. For values managed by the
+API, a parameter can opt into a read-only completion provider:
+
+```yaml
+paths:
+  /projects:
+    get:
+      operationId: listProjects
+      parameters:
+        - name: account
+          in: query
+          required: true
+          schema: {type: string}
+      responses:
+        "200": {description: OK}
+
+  /accounts/{account}/servers:
+    get:
+      operationId: listServers
+      parameters:
+        - name: account
+          in: path
+          required: true
+          schema: {type: string}
+        - name: project
+          in: query
+          schema: {type: string}
+          x-cli-completion:
+            operation_id: listProjects
+            bindings:
+              query.account: path.account
+            value_path: body.items.id
+            description_path: body.items.name
+      responses:
+        "200": {description: OK}
+```
+
+`operation_id` names an existing operation in the same synced operation set. It
+must be a
+`GET` or `HEAD` operation without a request body. Bindings map a provider
+parameter to an already supplied parameter on the current command. Parameter
+references use `<location>.<original-name>`, where location is `path`, `query`,
+`header`, or `cookie`.
+
+`value_path` and optional `description_path` are bounded, dot-separated field
+paths against the normalized response roots `body`, `headers`, `headers_all`,
+`status`, and `proto`. Field projection across response arrays is automatic.
+Values must resolve to a scalar or list of scalars. Descriptions, when present,
+must resolve to the same number of items.
+
+Pressing `Tab` may make one authenticated provider request. Restish applies the
+active profile, TLS settings, URL overrides, operation-origin policy, parameter
+serialization, and built-in non-interactive authentication. It does not retry,
+paginate, prompt, start local auth or TLS plugins, or run command-based secret
+sources. Only built-in response codecs run. The request has a two-second
+deadline and a 1 MiB response limit.
+Candidates are sanitized and capped at 100. Unauthenticated candidate sets are
+cached for 30 seconds in the private response-cache directory; authenticated
+sets are not persisted. `--rsh-no-cache` bypasses this cache. Any failure returns
+no candidates. A static `enum` always takes precedence and stays offline.
+
 ## Hide Or Ignore Operations
 
 ```yaml

@@ -189,6 +189,16 @@ metadata rather than a separate trust prompt: `api connect` and `api sync`
 summarize behavior-changing `x-cli-*` extension classes, while `doctor api`
 reports the affected paths, operations, and parameters in more detail.
 
+`x-cli-completion` is network-capable remote metadata. It can only reference a
+declared `GET` or `HEAD` operation in the same operation set, and the existing
+operation-origin policy remains authoritative. Completion requests have fixed
+deadlines and response limits, never retry or paginate, and suppress errors.
+They may use built-in non-interactive credentials, but do not prompt, run auth
+hooks, start local auth or TLS plugins, or resolve command-based secret sources.
+Only built-in response codecs and bounded field selectors run. Returned values
+and descriptions are bounded and stripped of terminal control characters before
+Cobra receives them.
+
 These rules apply both to `Link`-header discovery and well-known-path probes.
 
 ## Sensitive Data Handling

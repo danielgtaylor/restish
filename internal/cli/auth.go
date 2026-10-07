@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -26,8 +27,9 @@ import (
 )
 
 type authHandlerOptions struct {
-	NoBrowser bool
-	Verbose   bool
+	NoBrowser      bool
+	Verbose        bool
+	NonInteractive bool
 }
 
 type authCallbacks struct {
@@ -67,8 +69,15 @@ func (c *CLI) authHandlerOptionsFromCmd(cmd *cobra.Command) (authHandlerOptions,
 func (c *CLI) authHandlerFor(ac *config.AuthConfig, opts authHandlerOptions) (auth.Handler, error) {
 	if c.customAuthHandlers != nil {
 		if h, ok := c.customAuthHandlers[ac.Type]; ok {
+			if opts.NonInteractive {
+				return nil, fmt.Errorf("custom auth handlers are not run during shell completion")
+			}
 			return h, nil
 		}
+	}
+	stderr := c.Stderr
+	if opts.NonInteractive {
+		stderr = io.Discard
 	}
 	switch ac.Type {
 	case "api-key":
@@ -86,9 +95,9 @@ func (c *CLI) authHandlerFor(ac *config.AuthConfig, opts authHandlerOptions) (au
 		return &authpkg.AuthorizationCode{
 			Cache:                auth.NewTokenCache(c.tokenCachePath()),
 			HTTPClient:           &http.Client{Transport: c.baseHTTPTransport()},
-			Stderr:               c.Stderr,
-			CanPrompt:            c.canPromptCode(),
-			NoBrowser:            opts.NoBrowser,
+			Stderr:               stderr,
+			CanPrompt:            !opts.NonInteractive && c.canPromptCode(),
+			NoBrowser:            opts.NoBrowser || opts.NonInteractive,
 			Verbose:              opts.Verbose,
 			CallbackSuccessColor: output.ThemeTokenColor("status_2xx"),
 			CallbackFailureColor: output.ThemeTokenColor("status_error"),
@@ -97,10 +106,13 @@ func (c *CLI) authHandlerFor(ac *config.AuthConfig, opts authHandlerOptions) (au
 		return &authpkg.DeviceCode{
 			Cache:      auth.NewTokenCache(c.tokenCachePath()),
 			HTTPClient: &http.Client{Transport: c.baseHTTPTransport()},
-			Stderr:     c.Stderr,
+			Stderr:     stderr,
 		}, nil
 	case "external-tool":
-		return &authpkg.ExternalTool{Stderr: c.Stderr}, nil
+		if opts.NonInteractive {
+			return nil, fmt.Errorf("external-tool auth is not run during shell completion")
+		}
+		return &authpkg.ExternalTool{Stderr: stderr}, nil
 	default:
 		return nil, fmt.Errorf("unknown auth type %q; supported: api-key, bearer, http-basic, oauth-client-credentials, oauth-authorization-code, oauth-device-code, external-tool", ac.Type)
 	}
@@ -130,8 +142,17 @@ func (c *CLI) authOnRequest(apiName, profileName string, prof *config.ProfileCon
 			}
 		}
 		callbacks.OnRequest = func(req *http.Request) error {
+			if handled, err := c.applyNonInteractiveOAuth(req, resolvedAuth.Config.Type, resolvedAuth.CacheKey, apiName, profileName, opts.NonInteractive); handled {
+				return err
+			}
 			if c.applyCachedOAuthClientCredentials(req, resolvedAuth.Config.Type, resolvedAuth.CacheKey, apiName, profileName, false) {
+				if opts.NonInteractive {
+					return nil
+				}
 				return c.runAuthHookPlugins(apiName, profileName, rawParams, secretKeys, req)
+			}
+			if err := rejectNonInteractiveCommandParams(rawParams, opts.NonInteractive); err != nil {
+				return err
 			}
 			params, err := c.buildAuthParams(rawParams)
 			if err != nil {
@@ -146,16 +167,19 @@ func (c *CLI) authOnRequest(apiName, profileName string, prof *config.ProfileCon
 				return err
 			}
 			preserveInsertedHeader := c.apiPreservesHeaderCase(apiName) && !authHeaderPresent(req.Header, resolvedAuth.Config.Type, params)
-			if err := handler.Authenticate(req.Context(), req, c.authContext(req.Context(), apiName, profileName, params, resolvedAuth.CacheKey, false)); err != nil {
+			if err := handler.Authenticate(req.Context(), req, c.authContext(req.Context(), apiName, profileName, params, resolvedAuth.CacheKey, false, opts.NonInteractive)); err != nil {
 				return err
 			}
 			if preserveInsertedHeader {
 				preserveAuthHeaderCase(req, resolvedAuth.Config.Type, params)
 			}
 			markAuthCredentialTargets(req, resolvedAuth.Config.Type, params)
+			if opts.NonInteractive {
+				return nil
+			}
 			return c.runAuthHookPlugins(apiName, profileName, rawParams, secretKeys, req)
 		}
-		if _, ok := handler.(auth.ForceCapable); ok {
+		if _, ok := handler.(auth.ForceCapable); ok && !opts.NonInteractive {
 			callbacks.OnUnauthorized = func(req *http.Request) error {
 				if c.applyCachedOAuthClientCredentials(req, resolvedAuth.Config.Type, resolvedAuth.CacheKey, apiName, profileName, true) {
 					return c.runAuthHookPlugins(apiName, profileName, rawParams, secretKeys, req)
@@ -173,7 +197,7 @@ func (c *CLI) authOnRequest(apiName, profileName string, prof *config.ProfileCon
 					return err
 				}
 				preserveInsertedHeader := c.apiPreservesHeaderCase(apiName) && !authHeaderPresent(req.Header, resolvedAuth.Config.Type, params)
-				if err := handler.Authenticate(req.Context(), req, c.authContext(req.Context(), apiName, profileName, params, resolvedAuth.CacheKey, true)); err != nil {
+				if err := handler.Authenticate(req.Context(), req, c.authContext(req.Context(), apiName, profileName, params, resolvedAuth.CacheKey, true, opts.NonInteractive)); err != nil {
 					return err
 				}
 				if preserveInsertedHeader {
@@ -187,6 +211,9 @@ func (c *CLI) authOnRequest(apiName, profileName string, prof *config.ProfileCon
 
 	// Auth hook plugins run even when no built-in auth is configured.
 	hookPlugins := c.pluginsByHook["auth"]
+	if opts.NonInteractive {
+		return callbacks
+	}
 	if callbacks.OnRequest == nil && len(hookPlugins) == 0 {
 		return callbacks
 	}
@@ -198,6 +225,32 @@ func (c *CLI) authOnRequest(apiName, profileName string, prof *config.ProfileCon
 		return c.runAuthHookPlugins(apiName, profileName, nil, nil, req)
 	}
 	return callbacks
+}
+
+func (c *CLI) applyNonInteractiveOAuth(req *http.Request, authType, cacheKey, apiName, profileName string, nonInteractive bool) (bool, error) {
+	if !nonInteractive || authType != "oauth-authorization-code" && authType != "oauth-device-code" {
+		return false, nil
+	}
+	token := c.cachedOAuthToken(authType, cacheKey, apiName, profileName)
+	if token == "" {
+		return true, fmt.Errorf("%s requires a cached unexpired access token during shell completion", authType)
+	}
+	if req.Header.Get("Authorization") == "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	return true, nil
+}
+
+func rejectNonInteractiveCommandParams(params map[string]string, nonInteractive bool) error {
+	if !nonInteractive {
+		return nil
+	}
+	for _, value := range params {
+		if strings.HasPrefix(value, "command:") {
+			return fmt.Errorf("command secret sources are not run during shell completion")
+		}
+	}
+	return nil
 }
 
 func (c *CLI) apiPreservesHeaderCase(apiName string) bool {
@@ -477,20 +530,26 @@ func (c *CLI) runSecretCommand(commandLine string) (string, error) {
 	return strings.TrimRight(string(out), "\r\n"), nil
 }
 
-func (c *CLI) authContext(ctx context.Context, apiName, profileName string, params map[string]string, cacheKey string, force bool) auth.AuthContext {
-	return auth.AuthContext{
+func (c *CLI) authContext(ctx context.Context, apiName, profileName string, params map[string]string, cacheKey string, force, nonInteractive bool) auth.AuthContext {
+	authContext := auth.AuthContext{
 		APIName:     apiName,
 		ProfileName: profileName,
 		BaseURL:     c.authBaseURL(apiName, profileName),
 		CacheKey:    cacheKey,
 		Params:      params,
 		TokenStore:  auth.NewTokenCache(c.tokenCachePath()),
-		Prompter:    cliPrompter{cli: c, ctx: ctx},
-		Stderr:      c.Stderr,
 		HTTPClient:  c.authHTTPClient(ctx),
-		Logger:      log.New(c.Stderr, "", 0),
 		Force:       force,
 	}
+	if nonInteractive {
+		authContext.Stderr = io.Discard
+		authContext.Logger = log.New(io.Discard, "", 0)
+	} else {
+		authContext.Prompter = cliPrompter{cli: c, ctx: ctx}
+		authContext.Stderr = c.Stderr
+		authContext.Logger = log.New(c.Stderr, "", 0)
+	}
+	return authContext
 }
 
 func (c *CLI) authBaseURL(apiName, profileName string) string {

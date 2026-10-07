@@ -676,7 +676,7 @@ func (c *CLI) applyOperationAuthInspectionStep(req *http.Request, s operationAut
 			return err
 		}
 	}
-	return s.handler.Authenticate(req.Context(), req, c.authContext(req.Context(), s.apiName, s.profileName, params, s.cacheKey, false))
+	return s.handler.Authenticate(req.Context(), req, c.authContext(req.Context(), s.apiName, s.profileName, params, s.cacheKey, false, false))
 }
 
 func (c *CLI) authInspectionRequest(cmd *cobra.Command, apiName, profileName string, resolved resolvedAuthConfig) (*http.Request, error) {
@@ -693,7 +693,7 @@ func (c *CLI) authInspectionRequest(cmd *cobra.Command, apiName, profileName str
 		return nil, err
 	}
 	req, _ := http.NewRequestWithContext(requestContext(cmd), "GET", "http://example.com", nil)
-	if err := handler.Authenticate(requestContext(cmd), req, c.authContext(requestContext(cmd), apiName, profileName, params, resolved.CacheKey, false)); err != nil {
+	if err := handler.Authenticate(requestContext(cmd), req, c.authContext(requestContext(cmd), apiName, profileName, params, resolved.CacheKey, false, false)); err != nil {
 		return nil, fmt.Errorf("building auth inspection: %w", err)
 	}
 	return req, nil

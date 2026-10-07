@@ -133,6 +133,9 @@ func (b *xcliExtensionReportBuilder) addOperationDetails(method, rawPath string,
 		if value := ParamExtString(param, "x-cli-name"); value != "" {
 			b.add("parameter_renamed", "x-cli-name", paramLocation, paramName, value, "renames the generated argument or flag")
 		}
+		if ParamHasExtension(param, "x-cli-completion") {
+			b.add("parameter_completion", "x-cli-completion", paramLocation, paramName, "", "may call a declared GET or HEAD operation during shell completion")
+		}
 	}
 }
 
@@ -171,6 +174,7 @@ var xcliExtensionSummaryOrder = []xcliExtensionSummaryItem{
 	{kind: "parameter_ignored", singular: "ignored parameter", plural: "ignored parameters"},
 	{kind: "parameter_hidden", singular: "hidden parameter", plural: "hidden parameters"},
 	{kind: "parameter_renamed", singular: "renamed parameter", plural: "renamed parameters"},
+	{kind: "parameter_completion", singular: "API-backed parameter completion", plural: "API-backed parameter completions"},
 }
 
 func pluralize(count int, singular, plural string) string {

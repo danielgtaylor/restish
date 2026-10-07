@@ -70,6 +70,12 @@ func (c *CLI) buildAPICommandFromOperationSet(apiName string, apiCfg *config.API
 	for _, warning := range set.Warnings {
 		c.generatedWarnf("API %q: %s", apiName, warning)
 	}
+	operationsByID := map[string]spec.Operation{}
+	for _, op := range ops {
+		if op.ID != "" {
+			operationsByID[op.ID] = op
+		}
+	}
 
 	long := strings.TrimSpace(set.Info.Description)
 	if long == "" {
@@ -129,7 +135,7 @@ func (c *CLI) buildAPICommandFromOperationSet(apiName string, apiCfg *config.API
 				examplePrefix = apiName + " " + tagCommandName
 			}
 		}
-		cmd, err := c.buildOperationCommand(apiName, examplePrefix, op, operationBase)
+		cmd, err := c.buildOperationCommandWithProviders(apiName, examplePrefix, op, operationBase, operationsByID)
 		if err != nil {
 			c.generatedWarnf("skipping %s %s for API %q: %v", op.Method, op.Path, apiName, err)
 			continue
@@ -328,6 +334,7 @@ type paramInfo struct {
 	allowReserved    bool
 	contentMediaType string
 	enum             []string // allowed values from OpenAPI schema enum, if present
+	completion       *spec.ParamCompletion
 	objectProperties []spec.ParamObjectProperty
 	parent           *paramInfo
 	objectKey        string
@@ -338,6 +345,10 @@ type paramInfo struct {
 // operationBase, when non-empty, is removed from fallback command names derived
 // from paths. It does not affect explicit operationId or x-cli-name values.
 func (c *CLI) buildOperationCommand(apiName, examplePrefix string, op spec.Operation, operationBase string) (*cobra.Command, error) {
+	return c.buildOperationCommandWithProviders(apiName, examplePrefix, op, operationBase, nil)
+}
+
+func (c *CLI) buildOperationCommandWithProviders(apiName, examplePrefix string, op spec.Operation, operationBase string, operationsByID map[string]spec.Operation) (*cobra.Command, error) {
 	cmdName := operationCommandName(op, operationBase)
 
 	// Build param lists, honouring per-parameter x-cli-name / x-cli-description.
@@ -389,6 +400,7 @@ func (c *CLI) buildOperationCommand(apiName, examplePrefix string, op spec.Opera
 			allowReserved:    p.AllowReserved,
 			contentMediaType: p.ContentMediaType,
 			enum:             p.Enum,
+			completion:       p.XCLI.Completion,
 			objectProperties: p.ObjectProperties,
 		}
 	}
@@ -542,6 +554,11 @@ func (c *CLI) buildOperationCommand(apiName, examplePrefix string, op spec.Opera
 			_ = cmd.RegisterFlagCompletionFunc(p.flagName, func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 				return vals, cobra.ShellCompDirectiveNoFileComp
 			})
+		} else if p.completion != nil {
+			param := p
+			_ = cmd.RegisterFlagCompletionFunc(p.flagName, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+				return c.completeGeneratedParam(cmd, args, toComplete, apiName, param, required, optional, operationsByID)
+			})
 		}
 	}
 
@@ -549,10 +566,13 @@ func (c *CLI) buildOperationCommand(apiName, examplePrefix string, op spec.Opera
 	// Cobra uses ValidArgsFunction for the first positional arg completion.
 	if len(required) > 0 {
 		reqWithEnum := required // capture
-		cmd.ValidArgsFunction = func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+		cmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			idx := len(args)
 			if idx < len(reqWithEnum) && len(reqWithEnum[idx].enum) > 0 {
 				return reqWithEnum[idx].enum, cobra.ShellCompDirectiveNoFileComp
+			}
+			if idx < len(reqWithEnum) && reqWithEnum[idx].completion != nil {
+				return c.completeGeneratedParam(cmd, args, toComplete, apiName, reqWithEnum[idx], required, optional, operationsByID)
 			}
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
@@ -1449,35 +1469,9 @@ func (c *CLI) runGeneratedOp(
 		}
 	}
 
-	// Build the raw URL. When operation_base is set, resolve its absolute path
-	// against base_url using v1 semantics so generated operations can escape a
-	// base URL sub-path.
-	var rawURL string
-	baseURL, operationBase := c.generatedOperationBase(cmd, apiName)
-	if operationServer != "" {
-		apiCfg, err := c.requireAPI(apiName)
-		if err != nil {
-			return err
-		}
-		rawURL = strings.TrimRight(operationServer, "/") + path
-		_, rewritten, err := config.ApplyURLOverrides(rawURL, effectiveURLOverrides(apiCfg, c.profileFromCmd(cmd)))
-		if err != nil {
-			return fmt.Errorf("url_overrides: %w", err)
-		}
-		if !rewritten && !config.OperationOriginAllowed(operationServer, apiCfg.AllowedOperationOrigins) {
-			return fmt.Errorf("operation server %s is outside API base_url and is not allowed; add allowed_operation_origins[]: %s", operationServerOrigin(operationServer), suggestedOperationOrigin(operationServer))
-		}
-	} else if operationBase != "" {
-		resolvedBase, err := config.ResolveOperationBaseURL(baseURL, operationBase)
-		if err != nil {
-			return fmt.Errorf("operation_base: %w", err)
-		}
-		rawURL = strings.TrimRight(resolvedBase, "/") + path
-	} else {
-		rawURL = apiName + path
-	}
-	if qs := encodeGeneratedQuery(query); qs != "" {
-		rawURL += "?" + qs
+	rawURL, err := c.generatedOperationURL(apiName, c.profileFromCmd(cmd), path, operationServer, query)
+	if err != nil {
+		return err
 	}
 
 	bodyArgs := args[bodyArgStart:]
@@ -1633,23 +1627,36 @@ func generatedScalarTypeLabel(typ string) string {
 	}
 }
 
-func (c *CLI) generatedOperationBase(cmd *cobra.Command, apiName string) (string, string) {
-	if c == nil || c.cfg == nil || c.cfg.APIs == nil || c.cfg.APIs[apiName] == nil {
-		return "", ""
+func (c *CLI) generatedOperationURL(apiName, profileName, path, operationServer string, query []generatedQueryParam) (string, error) {
+	apiCfg, err := c.requireAPI(apiName)
+	if err != nil {
+		return "", err
 	}
-	apiCfg := c.cfg.APIs[apiName]
-	baseURL := apiCfg.BaseURL
-	operationBase := apiCfg.OperationBase
-	profileName := c.profileFromCmd(cmd)
-	if prof := profileForName(apiCfg, profileName); prof != nil {
-		if prof.BaseURL != "" {
-			baseURL = prof.BaseURL
+	var rawURL string
+	baseURL := effectiveProfileBaseURL(apiCfg, profileName)
+	operationBase := effectiveOperationBase(apiCfg, profileName)
+	if operationServer != "" {
+		rawURL = strings.TrimRight(operationServer, "/") + path
+		_, rewritten, err := config.ApplyURLOverrides(rawURL, effectiveURLOverrides(apiCfg, profileName))
+		if err != nil {
+			return "", fmt.Errorf("url_overrides: %w", err)
 		}
-		if prof.OperationBase != "" {
-			operationBase = prof.OperationBase
+		if !rewritten && !config.OperationOriginAllowed(operationServer, apiCfg.AllowedOperationOrigins) {
+			return "", fmt.Errorf("operation server %s is outside API base_url and is not allowed; add allowed_operation_origins[]: %s", operationServerOrigin(operationServer), suggestedOperationOrigin(operationServer))
 		}
+	} else if operationBase != "" {
+		resolvedBase, err := config.ResolveOperationBaseURL(baseURL, operationBase)
+		if err != nil {
+			return "", fmt.Errorf("operation_base: %w", err)
+		}
+		rawURL = strings.TrimRight(resolvedBase, "/") + path
+	} else {
+		rawURL = apiName + path
 	}
-	return baseURL, operationBase
+	if qs := encodeGeneratedQuery(query); qs != "" {
+		rawURL += "?" + qs
+	}
+	return rawURL, nil
 }
 
 func operationServerOrigin(raw string) string {

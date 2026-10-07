@@ -30,6 +30,18 @@ type ParamXCLI struct {
 	Name string
 	// Description overrides the OpenAPI parameter description.
 	Description string
+	// Completion describes an opt-in API-backed shell completion provider.
+	Completion *ParamCompletion
+
+	completionError string
+}
+
+// ParamCompletion describes a read-only operation used to complete a parameter.
+type ParamCompletion struct {
+	OperationID     string            `json:"operation_id" cbor:"operation_id" yaml:"operation_id"`
+	ValuePath       string            `json:"value_path" cbor:"value_path" yaml:"value_path"`
+	DescriptionPath string            `json:"description_path,omitempty" cbor:"description_path,omitempty" yaml:"description_path,omitempty"`
+	Bindings        map[string]string `json:"bindings,omitempty" cbor:"bindings,omitempty" yaml:"bindings,omitempty"`
 }
 
 // Param is a single request parameter (path, query, header, or cookie).
@@ -289,6 +301,7 @@ func (s *APISpec) buildOperations(opts OperationOptions) ([]Operation, []string,
 			ops = append(ops, op)
 		}
 	}
+	warnings = append(warnings, validateParamCompletions(ops)...)
 	return ops, warnings, nil
 }
 
@@ -354,6 +367,17 @@ func extractOperation(method, path string, pathParams []*v3.Parameter, op *v3.Op
 		} else if schema := preferredParameterContentSchema(p); schema != nil {
 			schemaHelp, paramType, itemType, defaultValue, defaultValues, hasDefault, enum, objectProperties, jsonSchema, jsonSchemaDialect = parameterSchemaDetails(schema, schemaDialect)
 		}
+		completion, completionErr := ParamCompletionExt(p)
+		xcli := ParamXCLI{
+			Ignore:      ParamExtBool(p, "x-cli-ignore"),
+			Hidden:      ParamExtBool(p, "x-cli-hidden"),
+			Name:        ParamExtString(p, "x-cli-name"),
+			Description: ParamExtString(p, "x-cli-description"),
+			Completion:  completion,
+		}
+		if completionErr != nil {
+			xcli.completionError = completionErr.Error()
+		}
 		o.Parameters = append(o.Parameters, Param{
 			Name:              p.Name,
 			In:                p.In,
@@ -373,15 +397,125 @@ func extractOperation(method, path string, pathParams []*v3.Parameter, op *v3.Op
 			ContentMediaType:  preferredParameterContentMediaType(p),
 			Enum:              enum,
 			ObjectProperties:  objectProperties,
-			XCLI: ParamXCLI{
-				Ignore:      ParamExtBool(p, "x-cli-ignore"),
-				Hidden:      ParamExtBool(p, "x-cli-hidden"),
-				Name:        ParamExtString(p, "x-cli-name"),
-				Description: ParamExtString(p, "x-cli-description"),
-			},
+			XCLI:              xcli,
 		})
 	}
 	return o
+}
+
+func validateParamCompletions(ops []Operation) []string {
+	byID := map[string][]*Operation{}
+	for i := range ops {
+		if ops[i].ID != "" {
+			byID[ops[i].ID] = append(byID[ops[i].ID], &ops[i])
+		}
+	}
+	var warnings []string
+	for i := range ops {
+		for j := range ops[i].Parameters {
+			param := &ops[i].Parameters[j]
+			if param.XCLI.completionError != "" {
+				warnings = append(warnings, completionWarning(ops[i], *param, param.XCLI.completionError))
+				param.XCLI.Completion = nil
+				continue
+			}
+			completion := param.XCLI.Completion
+			if completion == nil {
+				continue
+			}
+			providers := byID[completion.OperationID]
+			if len(providers) != 1 {
+				reason := "provider operation_id is not unique"
+				if len(providers) == 0 {
+					reason = "provider operation_id was not found"
+				}
+				warnings = append(warnings, completionWarning(ops[i], *param, reason))
+				param.XCLI.Completion = nil
+				continue
+			}
+			if err := validateParamCompletion(ops[i], *providers[0], *completion); err != nil {
+				warnings = append(warnings, completionWarning(ops[i], *param, err.Error()))
+				param.XCLI.Completion = nil
+			}
+		}
+	}
+	return warnings
+}
+
+func validateParamCompletion(current, provider Operation, completion ParamCompletion) error {
+	if provider.Method != "GET" && provider.Method != "HEAD" {
+		return fmt.Errorf("provider operation must use GET or HEAD")
+	}
+	if provider.HasBody {
+		return fmt.Errorf("provider operation must not have a request body")
+	}
+	if provider.Method == "HEAD" && (completionPathRoot(completion.ValuePath) == "body" || completionPathRoot(completion.DescriptionPath) == "body") {
+		return fmt.Errorf("HEAD provider selectors cannot read body")
+	}
+	bound := map[string]bool{}
+	targets := make([]string, 0, len(completion.Bindings))
+	for target := range completion.Bindings {
+		targets = append(targets, target)
+	}
+	sort.Strings(targets)
+	for _, target := range targets {
+		source := completion.Bindings[target]
+		targetIn, targetName, err := parseCompletionParamRef(target)
+		if err != nil {
+			return fmt.Errorf("binding target %q: %w", target, err)
+		}
+		if targetIn == "header" && strings.EqualFold(targetName, "Host") {
+			return fmt.Errorf("binding target %q cannot override HTTP authority", target)
+		}
+		sourceIn, sourceName, err := parseCompletionParamRef(source)
+		if err != nil {
+			return fmt.Errorf("binding source %q: %w", source, err)
+		}
+		if !completionParamExists(provider, targetIn, targetName) {
+			return fmt.Errorf("binding target %q is not an exposed provider parameter", target)
+		}
+		if !completionParamExists(current, sourceIn, sourceName) {
+			return fmt.Errorf("binding source %q is not an exposed current parameter", source)
+		}
+		bound[target] = true
+	}
+	for _, parameter := range provider.Parameters {
+		if parameter.Required && !parameter.XCLI.Ignore && !bound[parameter.In+"."+parameter.Name] {
+			return fmt.Errorf("required provider parameter %q has no binding", parameter.In+"."+parameter.Name)
+		}
+	}
+	return nil
+}
+
+func completionPathRoot(path string) string {
+	root, _, _ := strings.Cut(path, ".")
+	return root
+}
+
+func parseCompletionParamRef(value string) (string, string, error) {
+	location, name, ok := strings.Cut(value, ".")
+	if !ok || name == "" {
+		return "", "", fmt.Errorf("expected <location>.<name>")
+	}
+	switch location {
+	case "path", "query", "header", "cookie":
+		return location, name, nil
+	default:
+		return "", "", fmt.Errorf("unsupported location %q", location)
+	}
+}
+
+func completionParamExists(operation Operation, location, name string) bool {
+	for _, parameter := range operation.Parameters {
+		if parameter.In == location && parameter.Name == name && !parameter.XCLI.Ignore {
+			return true
+		}
+	}
+	return false
+}
+
+func completionWarning(operation Operation, parameter Param, reason string) string {
+	return fmt.Sprintf("operation %q parameter %s.%s ignores x-cli-completion: %s", operation.ID, parameter.In, parameter.Name, reason)
 }
 
 func securitySchemes(components *v3.Components) map[string]*v3.SecurityScheme {

@@ -334,6 +334,9 @@ func (c *CLI) operationAuthCallbacks(apiName, profileName string, selected []sel
 					return err
 				}
 			}
+			if opts.NonInteractive {
+				return nil
+			}
 			return c.runOperationAuthHookPlugins(req, steps)
 		},
 	}
@@ -344,6 +347,9 @@ func (c *CLI) operationAuthCallbacks(apiName, profileName string, selected []sel
 					if err := c.applyOperationAuthStep(req, step, step.forceCapable); err != nil {
 						return err
 					}
+				}
+				if opts.NonInteractive {
+					return nil
 				}
 				return c.runOperationAuthHookPlugins(req, steps)
 			}
@@ -369,14 +375,15 @@ func operationAuthHookContext(steps []operationAuthStep) (map[string]string, map
 }
 
 type operationAuthStep struct {
-	handler      auth.Handler
-	rawParams    map[string]string
-	cacheKey     string
-	forceCapable bool
-	secretKeys   map[string]bool
-	apiName      string
-	profileName  string
-	authType     string
+	handler        auth.Handler
+	rawParams      map[string]string
+	cacheKey       string
+	forceCapable   bool
+	secretKeys     map[string]bool
+	apiName        string
+	profileName    string
+	authType       string
+	nonInteractive bool
 }
 
 func (c *CLI) operationAuthStep(apiName, profileName string, selected selectedOperationAuth, opts authHandlerOptions) (operationAuthStep, error) {
@@ -392,20 +399,27 @@ func (c *CLI) operationAuthStep(apiName, profileName string, selected selectedOp
 	}
 	_, forceCapable := handler.(auth.ForceCapable)
 	return operationAuthStep{
-		handler:      handler,
-		rawParams:    selected.resolved.Config.Params,
-		cacheKey:     selected.resolved.CacheKey,
-		forceCapable: forceCapable,
-		secretKeys:   secretKeys,
-		apiName:      apiName,
-		profileName:  profileName,
-		authType:     selected.resolved.Config.Type,
+		handler:        handler,
+		rawParams:      selected.resolved.Config.Params,
+		cacheKey:       selected.resolved.CacheKey,
+		forceCapable:   forceCapable,
+		secretKeys:     secretKeys,
+		apiName:        apiName,
+		profileName:    profileName,
+		authType:       selected.resolved.Config.Type,
+		nonInteractive: opts.NonInteractive,
 	}, nil
 }
 
 func (c *CLI) applyOperationAuthStep(req *http.Request, s operationAuthStep, force bool) error {
+	if handled, err := c.applyNonInteractiveOAuth(req, s.authType, s.cacheKey, s.apiName, s.profileName, s.nonInteractive); handled {
+		return err
+	}
 	if c.applyCachedOAuthClientCredentials(req, s.authType, s.cacheKey, s.apiName, s.profileName, force) {
 		return nil
+	}
+	if err := rejectNonInteractiveCommandParams(s.rawParams, s.nonInteractive); err != nil {
+		return err
 	}
 	params, err := c.buildAuthParams(s.rawParams)
 	if err != nil {
@@ -420,7 +434,7 @@ func (c *CLI) applyOperationAuthStep(req *http.Request, s operationAuthStep, for
 		return err
 	}
 	preserveInsertedHeader := c.apiPreservesHeaderCase(s.apiName) && !authHeaderPresent(req.Header, s.authType, params)
-	if err := s.handler.Authenticate(req.Context(), req, c.authContext(req.Context(), s.apiName, s.profileName, params, s.cacheKey, force)); err != nil {
+	if err := s.handler.Authenticate(req.Context(), req, c.authContext(req.Context(), s.apiName, s.profileName, params, s.cacheKey, force, s.nonInteractive)); err != nil {
 		return err
 	}
 	if preserveInsertedHeader {

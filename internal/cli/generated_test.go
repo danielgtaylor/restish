@@ -5438,6 +5438,9 @@ func TestGeneratedCommandCrossOriginOperationServerPreservesHeaderCase(t *testin
 			BaseURL:                 control.URL,
 			AllowedOperationOrigins: []string{operationServer.URL},
 			PreserveHeaderCase:      true,
+			Profiles: map[string]*config.ProfileConfig{
+				"default": {Headers: []string{"X-Profile: active"}},
+			},
 		},
 	}})
 	if err := os.WriteFile(cfgFile, cfgData, 0o600); err != nil {
@@ -5470,6 +5473,9 @@ func TestGeneratedCommandCrossOriginOperationServerPreservesHeaderCase(t *testin
 	}
 	if got := gotHeader["X-Sourcesystem"]; len(got) != 0 {
 		t.Fatalf("operation server header param was canonicalized: %#v", gotHeader)
+	}
+	if gotHeader.Get("X-Profile") != "active" {
+		t.Fatalf("profile headers missing from operation server request: %#v", gotHeader)
 	}
 }
 

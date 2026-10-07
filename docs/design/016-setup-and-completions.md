@@ -82,6 +82,21 @@ Where Restish has enough metadata, completion should also surface:
 - profile names and similar finite sets
 - API-aware URL paths from generated operation metadata
 
+Parameter-level `x-cli-completion` is the explicit opt-in exception to offline
+completion. It may call a declared `GET` or `HEAD` operation from the same
+synced operation set to obtain values for a generated argument or flag. Static
+enum metadata takes precedence.
+
+The completion provider uses the normal profile, TLS, parameter serialization,
+origin, and built-in authentication paths, but completion remains
+non-interactive. It never retries, paginates, starts local plugins, runs command
+secret sources, or prompts. Requests and decoded results have fixed time, body,
+candidate-count, and candidate-length limits. Errors produce no candidates or
+human diagnostics. A short, bounded cache avoids a request on repeated `Tab`
+invocations for unauthenticated providers with the same API, profile, provider,
+bindings, selectors, and typed prefix. Authenticated candidates are not
+persisted.
+
 For zsh, `shell setup zsh` writes the generated script under Restish's effective
 config directory, not the cache directory, then adds a managed source block to
 `~/.zshrc`. The script is generated state, but shell startup depends on it

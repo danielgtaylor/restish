@@ -2134,8 +2134,11 @@ func (c *CLI) warnRetryUnsafe(method string, opts request.Options) {
 // httpOptsFromFlags reads the global HTTP flags from cmd and builds an Options.
 func (c *CLI) httpOptsFromFlags(cmd *cobra.Command) (request.Options, error) {
 	gf := globalFlagsFromContext(requestContext(cmd))
+	return c.httpOptsFromGlobalFlags(gf, false)
+}
 
-	if gf.Insecure {
+func (c *CLI) httpOptsFromGlobalFlags(gf GlobalFlags, quiet bool) (request.Options, error) {
+	if gf.Insecure && !quiet {
 		c.warnf("TLS certificate verification is disabled (--rsh-insecure); connections are not secure")
 	}
 
@@ -2182,7 +2185,7 @@ func (c *CLI) httpOptsFromFlags(cmd *cobra.Command) (request.Options, error) {
 		return request.Options{}, err
 	}
 	var logger io.Writer = diagnosticPrefixWriter(c.Stderr)
-	if gf.Silent {
+	if gf.Silent || quiet {
 		logger = nil
 	}
 

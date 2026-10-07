@@ -622,6 +622,34 @@ func TestLoadOperationsFromCachePreservesCredentialMetadata(t *testing.T) {
 	}
 }
 
+func TestLoadOperationsFromCachePreservesParameterCompletion(t *testing.T) {
+	dir := t.TempDir()
+	raw := []byte(`{"openapi":"3.1.0","info":{"title":"Test","version":"1"},"paths":{}}`)
+	completion := &ParamCompletion{
+		OperationID: "listProjects", ValuePath: "body.items.id",
+		DescriptionPath: "body.items.name", Bindings: map[string]string{"query.account": "path.account"},
+	}
+	entry := &cacheEntry{
+		Version: "v2", FetchedAt: time.Now(), ExpiresAt: time.Now().Add(time.Hour),
+		Spec: cachedRaw{ContentType: "application/json", Raw: raw},
+	}
+	opts := OperationOptions{BaseURL: "https://api.example.com"}
+	entry.upsertOperationSet(opts, OperationSet{Operations: []Operation{{
+		ID: "listServers", Parameters: []Param{{Name: "project", In: "query", XCLI: ParamXCLI{Completion: completion}}},
+	}}})
+	if err := writeCache(dir, "testapi", entry); err != nil {
+		t.Fatal(err)
+	}
+	set, ok := LoadOperationSetFromCache(dir, "testapi", "v2", nil, opts)
+	if !ok {
+		t.Fatal("expected operation cache hit")
+	}
+	got := set.Operations[0].Parameters[0].XCLI.Completion
+	if !reflect.DeepEqual(got, completion) {
+		t.Fatalf("completion = %#v, want %#v", got, completion)
+	}
+}
+
 func TestLoadOperationSetFromCacheIncludesInfo(t *testing.T) {
 	dir := t.TempDir()
 	raw := []byte(`{"openapi":"3.1.0","info":{"title":"Test","version":"1.0.0","description":"API **docs**"},"paths":{"/items":{"get":{"operationId":"listItems","responses":{"200":{"description":"OK"}}}}}}`)

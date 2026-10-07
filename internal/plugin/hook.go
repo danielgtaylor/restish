@@ -80,6 +80,7 @@ type FormatterStream struct {
 	path   string
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
+	output *pluginwire.Decoder
 	stderr limitedBuffer
 }
 
@@ -87,6 +88,16 @@ type FormatterStream struct {
 // to w, sends the initial request, and returns a handle that can send
 // additional stream messages before Close waits for plugin exit.
 func StartFormatterStream(ctx context.Context, path string, w io.Writer, in any) (*FormatterStream, error) {
+	return startFormatterStream(ctx, path, w, in, false)
+}
+
+// StartFormatterOutputStream starts a formatter whose stdout is a stream of
+// FormatterOutput messages rather than raw bytes.
+func StartFormatterOutputStream(ctx context.Context, path string) (*FormatterStream, error) {
+	return startFormatterStream(ctx, path, nil, nil, true)
+}
+
+func startFormatterStream(ctx context.Context, path string, w io.Writer, in any, framed bool) (*FormatterStream, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -105,7 +116,16 @@ func StartFormatterStream(ctx context.Context, path string, w io.Writer, in any)
 			limit: maxHookStderrBytes,
 		},
 	}
-	cmd.Stdout = w
+	if framed {
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			_ = stdin.Close()
+			return nil, fmt.Errorf("hook %s: stdout: %w", filepath.Base(path), err)
+		}
+		stream.output = pluginwire.NewDecoder(stdout)
+	} else {
+		cmd.Stdout = w
+	}
 	cmd.Stderr = &stream.stderr
 
 	if err := cmd.Start(); err != nil {
@@ -113,10 +133,12 @@ func StartFormatterStream(ctx context.Context, path string, w io.Writer, in any)
 		return nil, fmt.Errorf("hook %s: start: %w", filepath.Base(path), err)
 	}
 
-	if err := pluginwire.WriteMessage(stdin, in); err != nil {
-		_ = stdin.Close()
-		_ = cmd.Wait()
-		return nil, fmt.Errorf("hook %s: encode: %w", filepath.Base(path), err)
+	if in != nil {
+		if err := pluginwire.WriteMessage(stdin, in); err != nil {
+			_ = stdin.Close()
+			_ = cmd.Wait()
+			return nil, fmt.Errorf("hook %s: encode: %w", filepath.Base(path), err)
+		}
 	}
 
 	return stream, nil
@@ -126,6 +148,40 @@ func StartFormatterStream(ctx context.Context, path string, w io.Writer, in any)
 func (s *FormatterStream) Send(in any) error {
 	if err := pluginwire.WriteMessage(s.stdin, in); err != nil {
 		return fmt.Errorf("hook %s: encode: %w", filepath.Base(s.path), err)
+	}
+	return nil
+}
+
+// SendWithTimeout writes a formatter request and kills the plugin if it stops
+// reading stdin.
+func (s *FormatterStream) SendWithTimeout(in any, timeout time.Duration) error {
+	done := make(chan error, 1)
+	go func() { done <- s.Send(in) }()
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case err := <-done:
+		return err
+	case <-timer.C:
+		_ = s.Abort()
+		<-done
+		return fmt.Errorf("hook %s: formatter did not accept request within %s", filepath.Base(s.path), timeout)
+	}
+}
+
+// Abort kills a formatter process so blocked I/O can unwind before Close reaps
+// it.
+func (s *FormatterStream) Abort() error {
+	return s.cmd.Process.Kill()
+}
+
+// Receive reads one FormatterOutput message from a framed formatter stream.
+func (s *FormatterStream) Receive(out *pluginwire.FormatterOutput) error {
+	if s.output == nil {
+		return fmt.Errorf("hook %s: formatter stdout is not framed", filepath.Base(s.path))
+	}
+	if err := s.output.ReadMessage(out); err != nil {
+		return fmt.Errorf("hook %s: decode formatter output: %w", filepath.Base(s.path), err)
 	}
 	return nil
 }

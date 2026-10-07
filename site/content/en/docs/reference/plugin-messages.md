@@ -30,6 +30,7 @@ Generated from `plugin/messages.go`.
 | `MsgTypeConfirm` | `confirm` |
 | `MsgTypeConfirmResponse` | `confirm-response` |
 | `MsgTypeDone` | `done` |
+| `MsgTypeFormatterOutput` | `formatter-output` |
 | `MsgTypeHTTPRequest` | `http-request` |
 | `MsgTypeHTTPResponse` | `http-response` |
 | `MsgTypeInit` | `init` |
@@ -722,6 +723,10 @@ FormatterRequest is sent to formatter plugins. Type is always "formatter" and Ev
 
 CBOR: `type`; JSON: `type`; type: `string`; required: yes
 
+**`RequestID`**
+
+CBOR: `request_id`; JSON: `request_id`; type: `uint64`; required: no
+
 **`Format`**
 
 CBOR: `format`; JSON: `format`; type: `string`; required: yes
@@ -737,6 +742,31 @@ CBOR: `event`; JSON: `event`; type: `string`; required: yes
 **`Response`**
 
 CBOR: `response`; JSON: `response`; type: `FormatterResponse`; required: yes
+
+
+### `FormatterOutput`
+
+FormatterOutput carries framed output from a formatter plugin that requires FeatureFormatterHostFallback. Data may be sent asynchronously. Complete must be set exactly once per request, with the matching RequestID. Fallback asks the host to render that request's response body with its auto formatter.
+
+**`Type`**
+
+CBOR: `type`; JSON: `type`; type: `string`; required: yes
+
+**`RequestID`**
+
+CBOR: `request_id`; JSON: `request_id`; type: `uint64`; required: no
+
+**`Data`**
+
+CBOR: `data`; JSON: `data`; type: `[]byte`; required: no
+
+**`Fallback`**
+
+CBOR: `fallback`; JSON: `fallback`; type: `bool`; required: no
+
+**`Complete`**
+
+CBOR: `complete`; JSON: `complete`; type: `bool`; required: no
 
 
 ### `LoaderRequest`

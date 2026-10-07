@@ -5,22 +5,23 @@ package plugin
 // causes the host or plugin to silently ignore the message.
 const (
 	// Plugin → host requests.
-	MsgTypeInit         = "init"
-	MsgTypeHTTPRequest  = "http-request"
-	MsgTypeAPISpec      = "api-spec"
-	MsgTypeListAPIs     = "list-apis"
-	MsgTypeListProfiles = "list-profiles"
-	MsgTypeConfigRead   = "config-read"
-	MsgTypePrompt       = "prompt"
-	MsgTypeConfirm      = "confirm"
-	MsgTypeResponse     = "response"
-	MsgTypeDone         = "done"
-	MsgTypeStdoutData   = "stdout-data"
-	MsgTypeStderrData   = "stderr-data"
-	MsgTypeWarn         = "warn"
-	MsgTypeProgress     = "progress"
-	MsgTypeSpinner      = "spinner"
-	MsgTypeLog          = "log"
+	MsgTypeInit            = "init"
+	MsgTypeHTTPRequest     = "http-request"
+	MsgTypeAPISpec         = "api-spec"
+	MsgTypeListAPIs        = "list-apis"
+	MsgTypeListProfiles    = "list-profiles"
+	MsgTypeConfigRead      = "config-read"
+	MsgTypePrompt          = "prompt"
+	MsgTypeConfirm         = "confirm"
+	MsgTypeResponse        = "response"
+	MsgTypeDone            = "done"
+	MsgTypeStdoutData      = "stdout-data"
+	MsgTypeStderrData      = "stderr-data"
+	MsgTypeWarn            = "warn"
+	MsgTypeProgress        = "progress"
+	MsgTypeSpinner         = "spinner"
+	MsgTypeLog             = "log"
+	MsgTypeFormatterOutput = "formatter-output"
 
 	// Host → plugin responses.
 	MsgTypeHTTPResponse         = "http-response"
@@ -246,11 +247,24 @@ type FormatterResponse struct {
 // FormatterRequest is sent to formatter plugins. Type is always "formatter"
 // and Event is one of "start", "item", or "end".
 type FormatterRequest struct {
-	Type     string            `cbor:"type" json:"type"`
-	Format   string            `cbor:"format" json:"format"`
-	Color    bool              `cbor:"color,omitempty" json:"color,omitempty"`
-	Event    string            `cbor:"event" json:"event"`
-	Response FormatterResponse `cbor:"response" json:"response"`
+	Type      string            `cbor:"type" json:"type"`
+	RequestID uint64            `cbor:"request_id,omitempty" json:"request_id,omitempty"`
+	Format    string            `cbor:"format" json:"format"`
+	Color     bool              `cbor:"color,omitempty" json:"color,omitempty"`
+	Event     string            `cbor:"event" json:"event"`
+	Response  FormatterResponse `cbor:"response" json:"response"`
+}
+
+// FormatterOutput carries framed output from a formatter plugin that requires
+// FeatureFormatterHostFallback. Data may be sent asynchronously. Complete must
+// be set exactly once per request, with the matching RequestID. Fallback asks
+// the host to render that request's response body with its auto formatter.
+type FormatterOutput struct {
+	Type      string `cbor:"type" json:"type"`
+	RequestID uint64 `cbor:"request_id,omitempty" json:"request_id,omitempty"`
+	Data      []byte `cbor:"data,omitempty" json:"data,omitempty"`
+	Fallback  bool   `cbor:"fallback,omitempty" json:"fallback,omitempty"`
+	Complete  bool   `cbor:"complete,omitempty" json:"complete,omitempty"`
 }
 
 // LoaderRequest is sent to plugins registered for the "loader" hook. Body

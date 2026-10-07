@@ -46,7 +46,7 @@
 //   - ListAPIsMsg / ListProfilesMsg for config discovery
 //   - ConfigReadMsg for effective API/profile/plugin config
 //   - PromptMsg / ConfirmMsg for user interaction
-//   - ResponseMsg, StdoutDataMsg, StderrDataMsg, WarnMsg, and DoneMsg for output
+//   - ResponseMsg, StdoutDataMsg, StderrDataMsg, WarnMsg, ProgressMsg, and DoneMsg for output
 //
 // For simple command plugins, plugin.Run and CommandClient are usually enough.
 //

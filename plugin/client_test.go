@@ -33,6 +33,49 @@ func TestCommandClientProgressWritesProgressMessage(t *testing.T) {
 	}
 }
 
+func TestCommandClientProgressUpdateWritesStructuredProgress(t *testing.T) {
+	var out bytes.Buffer
+	client := NewCommandClient(bytes.NewReader(nil), &out)
+	current, total := int64(2), int64(4)
+	if err := client.ProgressUpdate(ProgressMsg{
+		Text:    "Running step 2 of 4",
+		ID:      "workflow",
+		Label:   "Run workflow",
+		State:   "running",
+		Current: &current,
+		Total:   &total,
+		Unit:    "steps",
+		Message: "fetch owner",
+	}); err != nil {
+		t.Fatalf("ProgressUpdate: %v", err)
+	}
+
+	var msg ProgressMsg
+	if err := NewDecoder(bytes.NewReader(out.Bytes())).ReadMessage(&msg); err != nil {
+		t.Fatalf("ReadMessage: %v", err)
+	}
+	if msg.Type != MsgTypeProgress || msg.Text != "Running step 2 of 4" || msg.ID != "workflow" || msg.Label != "Run workflow" || msg.State != "running" || msg.Current == nil || *msg.Current != 2 || msg.Total == nil || *msg.Total != 4 || msg.Unit != "steps" || msg.Message != "fetch owner" {
+		t.Fatalf("message = %#v", msg)
+	}
+}
+
+func TestStructuredProgressRetainsLegacyTextFallback(t *testing.T) {
+	var out bytes.Buffer
+	if err := WriteMessage(&out, ProgressMsg{Type: MsgTypeProgress, Text: "working", ID: "workflow"}); err != nil {
+		t.Fatalf("WriteMessage: %v", err)
+	}
+	var legacy struct {
+		Type string `cbor:"type"`
+		Text string `cbor:"text"`
+	}
+	if err := NewDecoder(bytes.NewReader(out.Bytes())).ReadMessage(&legacy); err != nil {
+		t.Fatalf("ReadMessage: %v", err)
+	}
+	if legacy.Type != MsgTypeProgress || legacy.Text != "working" {
+		t.Fatalf("legacy message = %#v", legacy)
+	}
+}
+
 func TestCommandClientWriteStdoutWritesStdoutDataMessage(t *testing.T) {
 	var out bytes.Buffer
 	client := NewCommandClient(bytes.NewReader(nil), &out)

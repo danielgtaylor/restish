@@ -75,6 +75,35 @@ Non-Go plugins can send the same message families directly:
 }
 ```
 
+## Structured Progress
+
+Use `Progress` for a plain status line. Use `ProgressUpdate` when a command can
+report a stable identity, state, and optional step count:
+
+```go
+current, total := int64(2), int64(4)
+err := c.ProgressUpdate(plugin.ProgressMsg{
+  Text:    "Running step 2 of 4: fetch owner",
+  ID:      "workflow",
+  Label:   "Run workflow",
+  State:   "running",
+  Current: &current,
+  Total:   &total,
+  Message: "fetch owner",
+})
+```
+
+`Text` is always the fallback. Restish prints it on stderr when no streaming
+formatter named `progress` is installed. When that formatter is available,
+Restish keeps one formatter session open and sends it the structured records.
+Older Restish versions ignore the additional fields and continue printing
+`Text`.
+
+`current` and `total` are optional, but must be supplied together. Use the same
+`id` for updates to one task, and send a terminal `state` such as `success` or
+`failed` on its final update. Set `unit` when the count is not steps. Progress
+remains on stderr and never changes the command's primary stdout result.
+
 ## Lifecycle
 
 1. The plugin declares commands during startup discovery.

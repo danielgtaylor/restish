@@ -194,6 +194,7 @@ func (c *CLI) runCommandPlugin(cmd *cobra.Command, pluginPath string, decl plugi
 	requestCtx, cancelRequests := context.WithCancel(cmd.Context())
 	defer cancelRequests()
 	dec := pluginwire.NewDecoder(stdoutPipe)
+	progress := c.newCommandProgressRenderer(cmd)
 	for {
 		raw, err := dec.ReadRaw()
 		if err != nil {
@@ -211,7 +212,7 @@ func (c *CLI) runCommandPlugin(cmd *cobra.Command, pluginPath string, decl plugi
 			break
 		}
 
-		done, err := c.handleCommandPluginMessage(cmd, requestCtx, writer, &requestWG, pluginwire.MessageType(raw), raw)
+		done, err := c.handleCommandPluginMessage(cmd, requestCtx, writer, &requestWG, progress, pluginwire.MessageType(raw), raw)
 		if err != nil {
 			loopErr = err
 			break
@@ -225,6 +226,11 @@ func (c *CLI) runCommandPlugin(cmd *cobra.Command, pluginPath string, decl plugi
 	close(cancelWatchDone)
 	close(stopCh)
 	cancelRequests()
+	if progress != nil {
+		if err := progress.Close(); err != nil {
+			writeDiagnostic(cmd.ErrOrStderr(), diagnosticWarn, "warning", "progress formatter cleanup failed: %v", err)
+		}
+	}
 	stderrWriter.Flush()
 	if loopErr != nil {
 		_ = stdinPipe.Close()

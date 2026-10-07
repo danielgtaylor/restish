@@ -36,7 +36,7 @@ func TestHandleCommandPluginMessageRejectsMalformedDone(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	done, gotErr := cli.handleCommandPluginMessage(cmd, context.Background(), nil, nil, "done", raw)
+	done, gotErr := cli.handleCommandPluginMessage(cmd, context.Background(), nil, nil, nil, "done", raw)
 	if !done {
 		t.Fatal("expected malformed done message to stop processing")
 	}
@@ -63,7 +63,7 @@ func TestHandleCommandPluginMessageRejectsOversizedStdoutData(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	done, gotErr := cli.handleCommandPluginMessage(cmd, context.Background(), nil, nil, pluginwire.MsgTypeStdoutData, raw)
+	done, gotErr := cli.handleCommandPluginMessage(cmd, context.Background(), nil, nil, nil, pluginwire.MsgTypeStdoutData, raw)
 	if done {
 		t.Fatal("stdout-data should not mark command plugin done")
 	}
@@ -93,7 +93,7 @@ func TestHandleCommandPluginMessageRejectsOversizedStderrData(t *testing.T) {
 		t.Fatalf("marshal: %v", err)
 	}
 
-	done, gotErr := cli.handleCommandPluginMessage(cmd, context.Background(), nil, nil, pluginwire.MsgTypeStderrData, raw)
+	done, gotErr := cli.handleCommandPluginMessage(cmd, context.Background(), nil, nil, nil, pluginwire.MsgTypeStderrData, raw)
 	if done {
 		t.Fatal("stderr-data should not mark command plugin done")
 	}

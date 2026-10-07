@@ -510,6 +510,12 @@ func (c *CommandClient) Progress(text string) error {
 	return c.WriteMessage(ProgressMsg{Type: MsgTypeProgress, Text: text})
 }
 
+// ProgressUpdate sends structured progress with Text as its plain fallback.
+func (c *CommandClient) ProgressUpdate(msg ProgressMsg) error {
+	msg.Type = MsgTypeProgress
+	return c.WriteMessage(msg)
+}
+
 // Done signals that the plugin has finished.  exitCode 0 means success; any
 // other value causes the host to exit with that code.
 func (c *CommandClient) Done(exitCode int) error {

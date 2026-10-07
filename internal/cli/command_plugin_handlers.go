@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func (c *CLI) handleCommandPluginMessage(cmd *cobra.Command, requestCtx context.Context, writer *commandPluginWriter, requestWG *sync.WaitGroup, msgType string, raw []byte) (bool, error) {
+func (c *CLI) handleCommandPluginMessage(cmd *cobra.Command, requestCtx context.Context, writer *commandPluginWriter, requestWG *sync.WaitGroup, progress *commandProgressRenderer, msgType string, raw []byte) (bool, error) {
 	if len(raw) > maxCommandPluginInboundMessageBytes {
 		return false, fmt.Errorf("command plugin: message %s exceeded %d bytes", msgType, maxCommandPluginInboundMessageBytes)
 	}
@@ -127,6 +127,15 @@ func (c *CLI) handleCommandPluginMessage(cmd *cobra.Command, requestCtx context.
 		var msg pluginwire.ProgressMsg
 		if err := decodeCommandPluginMessage(msgType, raw, &msg); err != nil {
 			return false, err
+		}
+		if progress != nil && (msg.ID != "" || msg.Label != "") {
+			handled, err := progress.Write(msg)
+			if err != nil {
+				writeDiagnostic(cmd.ErrOrStderr(), diagnosticWarn, "warning", "progress formatter unavailable: %v", err)
+			}
+			if handled {
+				break
+			}
 		}
 		if msg.Text != "" {
 			fmt.Fprintln(cmd.ErrOrStderr(), msg.Text)

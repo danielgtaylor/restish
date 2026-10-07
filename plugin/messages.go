@@ -307,10 +307,18 @@ type WarnMsg struct {
 	Text string `cbor:"text"`
 }
 
-// ProgressMsg prints an informational progress line on the host stderr.
+// ProgressMsg reports command progress on the host stderr. Text is the plain
+// fallback when no structured progress formatter is available.
 type ProgressMsg struct {
-	Type string `cbor:"type"`
-	Text string `cbor:"text"`
+	Type    string `cbor:"type"`
+	Text    string `cbor:"text"`
+	ID      string `cbor:"id,omitempty"`
+	Label   string `cbor:"label,omitempty"`
+	State   string `cbor:"state,omitempty"`
+	Current *int64 `cbor:"current,omitempty"`
+	Total   *int64 `cbor:"total,omitempty"`
+	Unit    string `cbor:"unit,omitempty"`
+	Message string `cbor:"message,omitempty"`
 }
 
 // SpinnerMsg requests spinner-style status text on the host stderr.

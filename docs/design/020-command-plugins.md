@@ -89,12 +89,26 @@ The current implementation handles these message types:
 - `api-spec` to ask Restish to resolve a registered API spec
 - `response` to ask Restish to format and print a normalized response
 - `stdout-data` and `stderr-data` to write raw bytes directly
-- `progress`, `spinner`, and `log` to print status text on stderr
+- `progress` to report structured or plain-text status on stderr
+- `spinner` and `log` to print status text on stderr
 - `warn` to print a warning-prefixed message
 - `done` to terminate with an exit code
 
 Prompt/confirm style interactions are also valid protocol concepts when a
 plugin needs host-owned prompting behavior.
+
+`progress` always includes `text` as a plain fallback. It may also include
+`id`, `label`, `state`, `current`, `total`, `unit`, and `message`. When a streaming
+formatter named `progress` is registered and the record has an `id` or `label`,
+the host sends those structured fields through one formatter session for the
+command. Otherwise it prints `text` as a normal stderr line. Formatter startup
+or rendering failures warn once and fall back to `text`; they do not fail the
+command. The host closes an active formatter session whenever the command ends.
+
+The fields are additive to the v2 CBOR contract. New plugins must keep `text`
+meaningful because older hosts ignore the structured fields, and installations
+without a progress formatter use it directly. Plugins must not discover or
+execute sibling plugins themselves.
 
 ### Messages From Restish To Plugin
 

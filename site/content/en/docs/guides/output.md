@@ -129,6 +129,12 @@ without choosing a filter, metadata shortcut, collection, or explicit output
 format. Response middleware plugins are skipped on this raw-download path; they
 run when Restish renders, filters, collects, or prints an interpreted response.
 
+When stderr is a terminal and a streaming formatter named `progress` is
+installed, non-verbose bounded raw downloads report transferred bytes on
+stderr. Known totals use the final response's `Content-Length`; chunked or
+unknown-length responses report bytes without a percentage. Redirected stderr,
+verbose requests, and installations without the formatter remain silent.
+
 Control exactly what stdout contains with `--rsh-print`:
 
 ```bash

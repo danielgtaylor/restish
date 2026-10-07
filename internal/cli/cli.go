@@ -81,6 +81,8 @@ type testHooks struct {
 	AuthHookFunc func(apiName, profileName string, rawParams map[string]string, secretKeys map[string]bool, req *http.Request) error
 	// StdoutIsTerminal overrides terminal detection in tests.
 	StdoutIsTerminal func(io.Writer) bool
+	// StderrIsTerminal overrides terminal detection in tests.
+	StderrIsTerminal func(io.Writer) bool
 }
 
 func (c *CLI) stdoutIsTerminal() bool {
@@ -88,6 +90,13 @@ func (c *CLI) stdoutIsTerminal() bool {
 		return c.hooks.StdoutIsTerminal(c.Stdout)
 	}
 	return output.IsTerminal(c.Stdout)
+}
+
+func (c *CLI) stderrIsTerminal() bool {
+	if c.hooks.StderrIsTerminal != nil {
+		return c.hooks.StderrIsTerminal(c.Stderr)
+	}
+	return output.IsTerminal(c.Stderr)
 }
 
 // CLI holds all state for a Restish instance. Using a struct instead of

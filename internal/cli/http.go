@@ -346,8 +346,13 @@ func (c *CLI) runHTTPWithOptions(cmd *cobra.Command, method string, args []strin
 	}
 	if printSpec.rawBodyOnly() {
 		defer httpResp.Body.Close()
-		raw, err := c.rawResponseBodyBytes(httpResp, maxBodyBytes(cmd))
+		var progress *downloadProgress
+		if gf.Verbose == 0 {
+			progress = c.newDownloadProgress(requestContext(cmd), httpResp)
+		}
+		raw, err := c.rawResponseBodyBytes(httpResp, maxBodyBytes(cmd), progress)
 		if err != nil {
+			progress.finish(err)
 			return responseBodyReadError(method, rawURL, err)
 		}
 		if gf.Verbose >= 1 {
@@ -357,8 +362,10 @@ func (c *CLI) runHTTPWithOptions(cmd *cobra.Command, method string, args []strin
 		trace.Step("raw")
 		trace.RenderAfter(c.Stderr, gf.Verbose)
 		if err := c.writeRawBytes(raw); err != nil {
+			progress.finish(err)
 			return err
 		}
+		progress.finish(nil)
 		return c.statusError(cmd, httpResp.StatusCode)
 	}
 	if c.canPrintWithoutResponseBody(gf, printSpec) {
@@ -669,7 +676,7 @@ func (c *CLI) runPrintSpec(cmd *cobra.Command, resp *output.Response, prepared *
 	return nil
 }
 
-func (c *CLI) rawResponseBodyBytes(resp *http.Response, maxBytes int64) ([]byte, error) {
+func (c *CLI) rawResponseBodyBytes(resp *http.Response, maxBytes int64, progress *downloadProgress) ([]byte, error) {
 	if resp == nil || resp.Body == nil {
 		return nil, nil
 	}
@@ -679,7 +686,11 @@ func (c *CLI) rawResponseBodyBytes(resp *http.Response, maxBytes int64) ([]byte,
 	if maxBytes <= 0 {
 		maxBytes = output.DefaultMaxBodyBytes
 	}
-	reader, err := c.content.Decompress(resp.Header.Get("Content-Encoding"), resp.Body)
+	body := io.Reader(resp.Body)
+	if progress != nil {
+		body = downloadProgressReader{reader: body, progress: progress}
+	}
+	reader, err := c.content.Decompress(resp.Header.Get("Content-Encoding"), body)
 	if err != nil {
 		return nil, fmt.Errorf("decompressing response: %w", err)
 	}

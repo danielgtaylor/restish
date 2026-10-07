@@ -27,6 +27,7 @@ import (
 	"github.com/rest-sh/restish/v2/internal/output"
 	internalplugin "github.com/rest-sh/restish/v2/internal/plugin"
 	"github.com/rest-sh/restish/v2/internal/spec"
+	pluginwire "github.com/rest-sh/restish/v2/plugin"
 	"github.com/spf13/cobra"
 )
 
@@ -649,9 +650,11 @@ func (c *CLI) Run(args []string) error {
 		if pluginDeclaresHook(p.Manifest, "formatter") {
 			for _, name := range p.Manifest.FormatterNames {
 				c.formatters[name] = &output.PluginFormatter{
-					PluginPath: p.Path,
-					FormatName: name,
-					Context:    ctx,
+					PluginPath:   p.Path,
+					FormatName:   name,
+					Context:      ctx,
+					Timeout:      internalplugin.HookTimeout(p.Manifest, "formatter"),
+					HostFallback: manifestRequiresFeature(p.Manifest, pluginwire.FeatureFormatterHostFallback),
 				}
 			}
 		}

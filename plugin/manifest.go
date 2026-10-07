@@ -35,6 +35,9 @@ const (
 	// FeatureRequestFinalBody means auth and request-middleware hooks may
 	// receive the final request body bytes when Restish has them.
 	FeatureRequestFinalBody = "request.final_body"
+	// FeatureFormatterHostFallback means formatter stdout uses FormatterOutput
+	// messages and may delegate individual values to the host's auto formatter.
+	FeatureFormatterHostFallback = "formatter.host_fallback"
 )
 
 // Manifest is the metadata a plugin reports when called with

@@ -27,6 +27,9 @@ var (
 	fmtPluginBuildOnce sync.Once
 	fmtPluginBin       string
 	fmtPluginBuildErr  error
+	fallbackPluginOnce sync.Once
+	fallbackPluginBin  string
+	fallbackPluginErr  error
 )
 
 func buildFmtPlugin(t *testing.T) string {
@@ -53,6 +56,28 @@ func buildFmtPlugin(t *testing.T) string {
 		t.Fatal("fmt plugin binary not set after build")
 	}
 	return fmtPluginBin
+}
+
+func buildFallbackPlugin(t *testing.T) string {
+	t.Helper()
+	fallbackPluginOnce.Do(func() {
+		bin := filepath.Join(os.TempDir(), "restish-test-fallback-output-tests")
+		if runtime.GOOS == "windows" {
+			bin += ".exe"
+		}
+		_, thisFile, _, _ := runtime.Caller(0)
+		cmd := exec.Command("go", "build", "-o", bin, "./testdata/fallbackfmt")
+		cmd.Dir = filepath.Dir(thisFile)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			fallbackPluginErr = fmt.Errorf("build fallback plugin: %w\n%s", err, out)
+			return
+		}
+		fallbackPluginBin = bin
+	})
+	if fallbackPluginErr != nil {
+		t.Fatal(fallbackPluginErr)
+	}
+	return fallbackPluginBin
 }
 
 func tableResp() *output.Response {
@@ -388,5 +413,30 @@ func TestPluginFormatterFormatValueRoundTrip(t *testing.T) {
 	}
 	if !strings.Contains(got, "end:") {
 		t.Errorf("expected end event in output, got:\n%s", got)
+	}
+}
+
+func TestPluginFormatterHostFallbackRoundTrip(t *testing.T) {
+	f := &output.PluginFormatter{
+		PluginPath:   buildFallbackPlugin(t),
+		FormatName:   "testfallback",
+		HostFallback: true,
+	}
+
+	var buf bytes.Buffer
+	if err := f.FormatValue(&buf, map[string]any{"message": "cannot match command"}, false); err != nil {
+		t.Fatalf("FormatValue: %v", err)
+	}
+	want := "{\n  \"message\": \"cannot match command\"\n}\n"
+	if got := buf.String(); got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+
+	buf.Reset()
+	if err := f.FormatValue(&buf, "plain text", false); err != nil {
+		t.Fatalf("FormatValue string: %v", err)
+	}
+	if got, want := buf.String(), "plain text\n"; got != want {
+		t.Fatalf("string output = %q, want %q", got, want)
 	}
 }

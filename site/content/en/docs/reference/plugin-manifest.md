@@ -163,6 +163,7 @@ Supported `required_features` values are:
 | `manifest.required_features` | Host understands manifest required-feature validation. |
 | `loader.source_metadata` | Loader hooks may receive `content_type`, `source_url`, and `local_path`. |
 | `request.final_body` | Auth and request-middleware hooks may receive final request body bytes when Restish has them. |
+| `formatter.host_fallback` | Formatter stdout uses framed messages and may delegate individual bodies to the host's `auto` formatter. |
 
 ## Command Discovery
 

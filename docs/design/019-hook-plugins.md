@@ -194,8 +194,22 @@ directly define commands.
 Formatter plugins declare `formatter_names` in the manifest. Each declared name
 becomes available through `-o <name>`.
 
-Formatter hooks are slightly different from the other hook types because stdout
-is treated as raw formatted bytes rather than a CBOR reply.
+Formatter hooks are slightly different from the other hook types. By default,
+stdout is treated as raw formatted bytes rather than a CBOR reply.
+
+A plugin that requires `formatter.host_fallback` uses framed stdout instead.
+Restish adds a non-zero `request_id` to each formatter request. The plugin may
+write any number of `formatter-output` CBOR messages containing `data`, which
+keeps asynchronous output such as animation possible. It must finish each
+request with one message containing the matching `request_id` and
+`complete: true`.
+
+On a completing message, `fallback: true` asks Restish to render that request's
+body with the built-in `auto` formatter. This lets a specialised formatter pass
+through unrelated API errors with the normal indentation, highlighting, and
+configured theme. Fallback is only valid for a `start` or `item` request that
+carries a body. The plugin must finish writing output related to a request
+before completing it.
 
 ### Formatter Hook Session
 
@@ -217,8 +231,9 @@ same formatter handle:
 - paginated output by rendering each `item`
 - NDJSON/SSE output by rendering each `item`
 
-The plugin writes raw formatted bytes to stdout as values arrive and exits after
-the `end` message or EOF on stdin.
+Without `formatter.host_fallback`, the plugin writes raw formatted bytes to
+stdout as values arrive. With the feature, it writes `formatter-output` messages
+instead. In both modes it exits after the `end` message or EOF on stdin.
 
 This model is intentionally narrow:
 

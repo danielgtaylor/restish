@@ -721,7 +721,7 @@ func renderMessageSchemaRegion(root string) (string, error) {
 	}
 	for _, group := range [][]string{
 		{"InitMsg", "HTTPRequestMsg", "HTTPResponseMsg", "APISpecMsg", "APISpecResponseMsg", "APIOperation", "APIParam", "ListAPIsMsg", "ListAPIsResponseMsg", "ListProfilesMsg", "ListProfilesResponseMsg", "ConfigReadMsg", "ConfigReadResponseMsg", "PromptMsg", "PromptResponseMsg", "ConfirmMsg", "ConfirmResponseMsg", "ResponseMsg", "DoneMsg", "StdoutDataMsg", "StderrDataMsg", "WarnMsg", "ProgressMsg", "SpinnerMsg", "LogMsg", "StdinDataMsg", "StdinCloseMsg"},
-		{"FormatterResponse", "FormatterRequest", "LoaderRequest", "LoaderResponse"},
+		{"FormatterResponse", "FormatterRequest", "FormatterOutput", "LoaderRequest", "LoaderResponse"},
 		{"HookRequest", "HookRequestHeaderUpdate", "AuthHookInput", "AuthHookOutput", "RequestMiddlewareInput", "RequestMiddlewareOutput", "HookResponse", "ResponseMiddlewareInput", "FollowRequest", "HookResponseUpdate", "ResponseMiddlewareOutput"},
 		{"TLSSignerInitMsg", "TLSSignerReadyMsg", "TLSSignerSignMsg", "TLSSignerSignedMsg", "TLSSignerShutdownMsg"},
 	} {

@@ -835,6 +835,10 @@ CBOR: `profile`; JSON: `profile`; type: `string`; required: yes
 
 CBOR: `params`; JSON: `params`; type: `map[string]string`; required: yes
 
+**`Requirements`**
+
+CBOR: `requirements`; JSON: `requirements`; type: `[]AuthRequirement`; required: no
+
 **`Request`**
 
 CBOR: `request`; JSON: `request`; type: `HookRequest`; required: yes

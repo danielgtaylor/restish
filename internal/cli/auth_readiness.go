@@ -81,10 +81,13 @@ func (c *CLI) profileAuthReadiness(apiName, profileName string, prof *config.Pro
 }
 
 type operationAuthCoverage struct {
-	Callable       int
-	Secured        int
-	FallbackByID   map[string]int
-	FallbackLabels map[string]string
+	Callable          int
+	Secured           int
+	SourceEvaluated   int
+	ResolverEvaluated int
+	ResolverByID      map[string]int
+	FallbackByID      map[string]int
+	FallbackLabels    map[string]string
 }
 
 type operationSecurityIssueKey struct {
@@ -94,6 +97,10 @@ type operationSecurityIssueKey struct {
 }
 
 func operationSecurityIssues(ops []spec.Operation) []string {
+	return operationSecurityIssuesWithResolver(ops, false)
+}
+
+func operationSecurityIssuesWithResolver(ops []spec.Operation, resolverAvailable bool) []string {
 	counts := map[operationSecurityIssueKey]int{}
 	for _, op := range ops {
 		seen := map[operationSecurityIssueKey]bool{}
@@ -101,6 +108,9 @@ func operationSecurityIssues(ops []spec.Operation) []string {
 			for _, requirement := range alternative {
 				text, ok := operationSecurityIssueText(requirement)
 				if !ok {
+					continue
+				}
+				if resolverAvailable && !requirement.Undeclared && !authRequirementKindSupported(requirement.Kind) {
 					continue
 				}
 				key := operationSecurityIssueKey{id: requirement.ID, kind: requirement.Kind, text: text}
@@ -172,6 +182,7 @@ func formatOperationSecurityIssues(counts map[operationSecurityIssueKey]int, uni
 
 func (c *CLI) operationAuthCoverage(apiName, profileName string, prof *config.ProfileConfig, ops []spec.Operation) operationAuthCoverage {
 	coverage := operationAuthCoverage{
+		ResolverByID:   map[string]int{},
 		FallbackByID:   map[string]int{},
 		FallbackLabels: map[string]string{},
 	}
@@ -182,26 +193,76 @@ func (c *CLI) operationAuthCoverage(apiName, profileName string, prof *config.Pr
 		coverage.Secured++
 		if op.OptionalAuth {
 			coverage.Callable++
-			continue
 		}
 		if c.operationHasUsableNamedAlternative(apiName, profileName, prof, op.CredentialAlternatives) {
-			coverage.Callable++
+			if !op.OptionalAuth {
+				coverage.Callable++
+			}
+			continue
+		}
+		if c.operationHasDynamicDPoPAlternative(apiName, profileName, prof, op.CredentialAlternatives) {
+			coverage.SourceEvaluated++
+			continue
+		}
+		if c.authResolverAvailable(apiName) {
+			coverage.ResolverEvaluated++
+			for _, alternative := range op.CredentialAlternatives {
+				for _, requirement := range alternative {
+					coverage.ResolverByID[requirement.ID]++
+				}
+			}
+		}
+		if op.OptionalAuth {
 			continue
 		}
 		policy := &operationAuthPolicy{OptionalAuth: op.OptionalAuth, CredentialAlternatives: op.CredentialAlternatives}
-		if !canUseProfileAuthFallback(policy) {
-			continue
-		}
 		resolved, ready, err := c.profileAuthReadiness(apiName, profileName, prof)
 		if err != nil || !ready.Usable {
 			continue
 		}
-		requirement := op.CredentialAlternatives[0][0]
+		requirement, ok := profileAuthFallbackRequirement(policy, resolved.Config)
+		if !ok {
+			continue
+		}
 		coverage.Callable++
 		coverage.FallbackByID[requirement.ID]++
 		coverage.FallbackLabels[requirement.ID] = profileFallbackLabel(requirement, resolved.Config)
 	}
 	return coverage
+}
+
+func (c *CLI) operationHasDynamicDPoPAlternative(apiName, profileName string, prof *config.ProfileConfig, alternatives []spec.CredentialAlternative) bool {
+	if prof == nil {
+		return false
+	}
+	for _, alternative := range alternatives {
+		if len(alternative) == 0 {
+			continue
+		}
+		dynamic := true
+		for _, requirement := range alternative {
+			credential := prof.Credentials[requirement.ID]
+			resolved, ready, err := c.credentialReadiness(apiName, profileName, requirement.ID, credential)
+			if err != nil || !ready.Usable || resolved.Config == nil || resolved.Config.Type != "dpop" ||
+				resolved.Config.Params["source"] == "" || resolved.Config.Params["reference"] == "" {
+				dynamic = false
+				break
+			}
+		}
+		if dynamic {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *CLI) authResolverAvailable(apiName string) bool {
+	for _, resolver := range c.pluginsByHook["auth-resolver"] {
+		if pluginAppliesToAPI(resolver, apiName) {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *CLI) operationHasUsableNamedAlternative(apiName, profileName string, prof *config.ProfileConfig, alternatives []spec.CredentialAlternative) bool {
@@ -221,6 +282,10 @@ func (c *CLI) operationHasUsableNamedAlternative(apiName, profileName string, pr
 			credential := prof.Credentials[requirement.ID]
 			resolved, ready, err := c.credentialReadiness(apiName, profileName, requirement.ID, credential)
 			if err != nil || !ready.Usable || resolved.Config == nil {
+				ok = false
+				break
+			}
+			if resolved.Config.Type == "dpop" && resolved.Config.Params["source"] != "" && resolved.Config.Params["reference"] != "" {
 				ok = false
 				break
 			}
@@ -253,12 +318,16 @@ func profileFallbackObviouslyMatches(requirement spec.CredentialRequirement, ac 
 		case "bearer", "oauth-client-credentials", "oauth-authorization-code", "oauth-device-code", "external-tool":
 			return true
 		}
+	case "http-dpop":
+		return ac.Type == "dpop"
+	case "oauth2-dpop":
+		return ac.Type == "dpop"
 	case "http-basic":
 		return ac.Type == "http-basic"
 	case "api-key":
 		return ac.Type == "api-key"
 	case "oauth2":
-		return strings.HasPrefix(ac.Type, "oauth-")
+		return strings.HasPrefix(ac.Type, "oauth-") || ac.Type == "dpop"
 	}
 	return false
 }

@@ -409,3 +409,114 @@ func TestTokenCache_ConcurrentRefreshReusesNewToken(t *testing.T) {
 		t.Fatalf("refresh calls = %d, want 1", got)
 	}
 }
+
+func TestTokenCache_ResolveDoesNotBlockOtherKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "tokens.cbor")
+	pending := NewTokenCache(path)
+	other := NewTokenCache(path)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+
+	pendingDone := make(chan error, 1)
+	go func() {
+		_, err := pending.Resolve("pending", func(*CachedToken) (CachedToken, error) {
+			close(started)
+			<-release
+			return CachedToken{AccessToken: "approved"}, nil
+		})
+		pendingDone <- err
+	}()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("pending resolver did not start")
+	}
+
+	otherDone := make(chan error, 1)
+	go func() {
+		_, err := other.Resolve("other", func(*CachedToken) (CachedToken, error) {
+			return CachedToken{AccessToken: "independent"}, nil
+		})
+		otherDone <- err
+	}()
+	select {
+	case err := <-otherDone:
+		if err != nil {
+			t.Fatalf("Resolve(other): %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("Resolve(other) blocked behind an unrelated pending acquisition")
+	}
+
+	close(release)
+	if err := <-pendingDone; err != nil {
+		t.Fatalf("Resolve(pending): %v", err)
+	}
+	for key, want := range map[string]string{"pending": "approved", "other": "independent"} {
+		got, err := NewTokenCache(path).Get(key)
+		if err != nil {
+			t.Fatalf("Get(%q): %v", key, err)
+		}
+		if got == nil || got.AccessToken != want {
+			t.Fatalf("Get(%q) = %+v, want access token %q", key, got, want)
+		}
+	}
+}
+
+func TestTokenCache_ConcurrentResolveSerializesSameKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "tokens.cbor")
+	first := NewTokenCache(path)
+	second := NewTokenCache(path)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	t.Cleanup(func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+	})
+	var acquisitions atomic.Int32
+	resolve := func(current *CachedToken) (CachedToken, error) {
+		if current != nil {
+			return *current, nil
+		}
+		if acquisitions.Add(1) == 1 {
+			close(started)
+			<-release
+		}
+		return CachedToken{AccessToken: "resolved"}, nil
+	}
+
+	errCh := make(chan error, 2)
+	go func() {
+		_, err := first.Resolve("shared", resolve)
+		errCh <- err
+	}()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("first resolver did not start")
+	}
+	go func() {
+		_, err := second.Resolve("shared", resolve)
+		errCh <- err
+	}()
+	close(release)
+
+	for range 2 {
+		if err := <-errCh; err != nil {
+			t.Fatalf("Resolve(shared): %v", err)
+		}
+	}
+	if got := acquisitions.Load(); got != 1 {
+		t.Fatalf("acquisitions = %d, want 1", got)
+	}
+}

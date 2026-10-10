@@ -284,6 +284,10 @@ func TestLoadManifest_CompatibilityMatrix(t *testing.T) {
 			name: "supported required feature",
 			json: `{"name":"supported","restish_api_version":2,"hooks":["loader"],"loader_content_types":["application/x-test"],"required_features":["loader.source_metadata"]}`,
 		},
+		{
+			name: "operation security resolver feature",
+			json: `{"name":"resolver","restish_api_version":2,"hooks":["auth-resolver","auth"],"required_features":["auth.operation_security"]}`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

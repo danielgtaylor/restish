@@ -17,12 +17,13 @@ const DefaultRetryMaxWait = 5 * time.Minute
 // and 5xx responses with exponential backoff + jitter.  4xx responses are
 // returned immediately without retrying.
 type retryTransport struct {
-	inner       http.RoundTripper
-	maxRetry    int
-	retryUnsafe bool
-	baseDelay   time.Duration
-	maxWait     time.Duration
-	logger      io.Writer
+	inner          http.RoundTripper
+	maxRetry       int
+	retryUnsafe    bool
+	baseDelay      time.Duration
+	maxWait        time.Duration
+	logger         io.Writer
+	onRetryRequest func(*http.Request) error
 }
 
 func (rt retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -67,6 +68,11 @@ func (rt retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 				}
 				req = req.Clone(req.Context())
 				req.Body = newBody
+			}
+			if rt.onRetryRequest != nil {
+				if retryErr := rt.onRetryRequest(req); retryErr != nil {
+					return nil, fmt.Errorf("refreshing authentication for retry: %w", retryErr)
+				}
 			}
 		}
 

@@ -2,7 +2,7 @@
 //
 // The token cache (CachedToken, TokenStore, TokenCache) and the
 // auth-handler interfaces (Handler, Param, AuthContext, Prompter, Logger,
-// ForceCapable) are part of the supported public surface. External tools
+// ForceCapable, RequestBound) are part of the supported public surface. External tools
 // that need to share the restish OAuth token cache, or embed restish in
 // a Go binary and register custom auth handlers, use this package.
 //
@@ -73,6 +73,13 @@ type Handler interface {
 // after a 401 and retry once with fresh auth state.
 type ForceCapable interface {
 	SupportsForce()
+}
+
+// RequestBound marks handlers whose authentication value is bound to the
+// exact method and URI. Restish invokes such handlers again for every
+// transport retry and same-origin redirect instead of replaying a proof.
+type RequestBound interface {
+	SupportsRequestBinding()
 }
 
 // Compile-time check that *TokenCache satisfies TokenStore.

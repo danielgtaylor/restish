@@ -64,6 +64,14 @@ type opsBlob struct {
 const currentCacheSchema = 2
 const currentOperationCacheSchema = 12
 
+var cacheDecMode = func() cbor.DecMode {
+	mode, err := (cbor.DecOptions{MaxNestedLevels: 512}).DecMode()
+	if err != nil {
+		panic(fmt.Sprintf("spec cache: initialize CBOR decoder: %v", err))
+	}
+	return mode
+}()
+
 // OperationCacheStatus describes the freshness of cached operation metadata.
 type OperationCacheStatus struct {
 	FetchedAt time.Time
@@ -102,7 +110,7 @@ func readCacheEntry(cacheDir, apiName, version string, allowExpired bool) (*cach
 		return nil, false
 	}
 	var e cacheEntry
-	if err := cbor.Unmarshal(data, &e); err != nil {
+	if err := cacheDecMode.Unmarshal(data, &e); err != nil {
 		return nil, false
 	}
 	if e.Schema > currentCacheSchema {

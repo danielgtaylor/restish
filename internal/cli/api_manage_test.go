@@ -3679,6 +3679,37 @@ func TestAPISyncWarnsAboutUndeclaredSecurityScheme(t *testing.T) {
 	}
 }
 
+func TestAPISyncRecognizesDPoPSecurityScheme(t *testing.T) {
+	c := newSpecTestCLI(t, "syncapi", "https://api.example.com")
+	useOpenAPISpecTransport(c, `{
+  "openapi": "3.1.0",
+  "info": {"title": "Test API", "version": "1.0"},
+  "components": {
+    "securitySchemes": {
+      "DPoP": {"type": "http", "scheme": "DPoP"}
+    }
+  },
+  "paths": {
+    "/wallet": {
+      "get": {
+        "operationId": "getWallet",
+        "security": [{"DPoP": []}],
+        "responses": {"200": {"description": "OK"}}
+      }
+    }
+  }
+}`)
+	var errOut strings.Builder
+	c.Stderr = &errOut
+
+	if err := c.Run([]string{"restish", "api", "sync", "syncapi"}); err != nil {
+		t.Fatalf("api sync: %v", err)
+	}
+	if strings.Contains(errOut.String(), "unsupported") {
+		t.Fatalf("unexpected unsupported security warning:\n%s", errOut.String())
+	}
+}
+
 func TestAPISyncNetworkFailureLeavesRegistrationAndCache(t *testing.T) {
 	c := newSpecTestCLI(t, "syncapi", "https://api.example.com")
 	cacheFile := filepath.Join(c.Hooks().SpecCachePath, "syncapi.cbor")

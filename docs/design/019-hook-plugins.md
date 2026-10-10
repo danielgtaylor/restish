@@ -12,6 +12,7 @@ so they can maintain output state across paginated and event-stream renders.
 
 This model is used for:
 
+- `auth-resolver`
 - `auth`
 - `request-middleware`
 - `response-middleware`
@@ -108,6 +109,34 @@ boundary when the built-in OAuth flows are too small. The plugin can own the
 provider-specific token exchange and return ordinary request updates, while the
 core keeps common OAuth helpers focused on standard client credentials,
 authorization code, and device-code behavior.
+
+### Auth Resolver Hook
+
+The `auth-resolver` hook lets a credential-owning plugin satisfy operation
+security without placeholder credentials in Restish config. Restish consults
+it only after configured credentials fail. It sends one complete OpenAPI
+security alternative (an AND set), the API/profile names, and the final request
+method and URI. The plugin replies only with `handled: true` or `false`.
+
+Restish tries alternatives in document order. Exactly one plugin may claim an
+alternative; multiple claims are an error. Once selected, Restish invokes only
+that plugin's `auth` hook and includes the same requirements, including exact
+scope needs. The resolver cannot change the target, requirement set, or
+profile, and `security: []` never invokes it. Plugins requiring this contract
+declare the `auth.operation_security` feature.
+
+Resolvers should claim only already-available credentials that cover the whole
+alternative. Interactive authorization, refresh, or request signing belongs in
+the selected `auth` hook. This keeps resolution deterministic and prevents a
+resolver from widening authority while Restish is choosing credentials.
+
+Auth inspection does not invoke a resolver without a final request target.
+Instead, it distinguishes statically callable operations from operations whose
+security will be evaluated by a resolver at request time. It must not report
+those operations as missing static credentials or suggest adding a static
+binding as the primary action merely because resolver selection is deferred.
+The diagnostic may retain a generic static-configuration fallback for use when
+the resolver declines.
 
 ### Request Middleware Hook
 

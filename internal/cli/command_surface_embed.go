@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/rest-sh/restish/v2/config"
 	"github.com/rest-sh/restish/v2/internal/spec"
@@ -22,6 +23,24 @@ type CommandSurface struct {
 	SupportCommandNamespace string
 	// HideSupportCommands removes support commands from the custom CLI surface.
 	HideSupportCommands bool
+
+	// HTTPMethods keeps only the named generic HTTP method commands. Method
+	// names are case-insensitive and exposed in lowercase.
+	HTTPMethods []string
+
+	// RegisteredAPIs keeps generated command groups for configured APIs.
+	RegisteredAPIs bool
+
+	// MetadataRefreshTimeout bounds live OpenAPI discovery for a curated
+	// registered API. Zero uses Restish's short interactive refresh default.
+	MetadataRefreshTimeout time.Duration
+
+	// IgnoreUserConfig makes the embedder's default config authoritative.
+	IgnoreUserConfig bool
+
+	// DisablePlugins prevents discovery and execution of external Restish
+	// subprocess plugins in a fully in-process embedded product.
+	DisablePlugins bool
 }
 
 // SetCommandSurface changes the command tree exposed by an embedded CLI.
@@ -29,13 +48,31 @@ type CommandSurface struct {
 func (c *CLI) SetCommandSurface(surface CommandSurface) {
 	surface.PromotedAPI = strings.TrimSpace(surface.PromotedAPI)
 	surface.SupportCommandNamespace = strings.TrimSpace(surface.SupportCommandNamespace)
+	for index, method := range surface.HTTPMethods {
+		surface.HTTPMethods[index] = strings.ToLower(strings.TrimSpace(method))
+	}
 	if surface.HideSupportCommands && surface.SupportCommandNamespace != "" {
 		panic("restish: CommandSurface SupportCommandNamespace and HideSupportCommands are mutually exclusive")
 	}
-	if surface.PromotedAPI == "" && (surface.SupportCommandNamespace != "" || surface.HideSupportCommands) {
+	curated := surface.RegisteredAPIs || len(surface.HTTPMethods) > 0
+	if surface.PromotedAPI == "" && !curated && (surface.SupportCommandNamespace != "" || surface.HideSupportCommands) {
 		panic("restish: CommandSurface support command layout requires PromotedAPI")
 	}
+	if surface.PromotedAPI != "" && curated {
+		panic("restish: promoted and curated command surfaces are mutually exclusive")
+	}
+	for _, method := range surface.HTTPMethods {
+		switch method {
+		case "get", "head", "post", "put", "patch", "delete":
+		default:
+			panic(fmt.Sprintf("restish: unsupported command-surface HTTP method %q", method))
+		}
+	}
 	c.commandSurface = surface
+}
+
+func (c *CLI) hasCuratedCommandSurface() bool {
+	return c.commandSurface.RegisteredAPIs || len(c.commandSurface.HTTPMethods) > 0
 }
 
 func (c *CLI) promotedAPIName() string {
@@ -62,7 +99,26 @@ func (c *CLI) ensurePromotedAPICommandMetadata(ctx context.Context, scan cliArgS
 	return c.ensurePromotedAPIMetadata(ctx, apiName, scan.ProfileName, apiCfg)
 }
 
+func (c *CLI) ensureCuratedAPICommandMetadata(ctx context.Context, scan cliArgScan, cfg *config.Config) error {
+	if !c.commandSurface.RegisteredAPIs || scan.FirstCommand == "" {
+		return nil
+	}
+	api := cfg.APIs[scan.FirstCommand]
+	if api == nil {
+		return nil
+	}
+	timeout := c.commandSurface.MetadataRefreshTimeout
+	if timeout <= 0 {
+		timeout = staleGeneratedOperationRefreshTimeout
+	}
+	return c.ensureAPIMetadata(ctx, scan.FirstCommand, scan.ProfileName, api, timeout)
+}
+
 func (c *CLI) ensurePromotedAPIMetadata(ctx context.Context, apiName, profileName string, apiCfg *config.APIConfig) error {
+	return c.ensureAPIMetadata(ctx, apiName, profileName, apiCfg, staleGeneratedOperationRefreshTimeout)
+}
+
+func (c *CLI) ensureAPIMetadata(ctx context.Context, apiName, profileName string, apiCfg *config.APIConfig, timeout time.Duration) error {
 	opts := spec.OperationOptions{
 		BaseURL:         effectiveProfileBaseURL(apiCfg, profileName),
 		OperationBase:   effectiveOperationBase(apiCfg, profileName),
@@ -73,9 +129,9 @@ func (c *CLI) ensurePromotedAPIMetadata(ctx context.Context, apiName, profileNam
 		return nil
 	}
 
-	refreshCtx, cancel := context.WithTimeout(ctx, staleGeneratedOperationRefreshTimeout)
+	refreshCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	if _, err := c.discoverSpecForProfile(refreshCtx, apiName, profileName, false, staleGeneratedOperationRefreshTimeout); err != nil {
+	if _, err := c.discoverSpecForProfile(refreshCtx, apiName, profileName, false, timeout); err != nil {
 		if status, ok := c.promotedAPIStaleMetadataStatus(apiName, apiCfg, opts); ok {
 			c.warnf("could not refresh API metadata for %q; using last synced metadata from %s: %v", apiName, formatCacheTime(status.FetchedAt), err)
 			return nil
@@ -133,6 +189,9 @@ func promotedSupportCommandNames() map[string]bool {
 func (c *CLI) applyCommandSurface(root, promotedAPICmd *cobra.Command, scan cliArgScan, cfg *config.Config, originalArgs []string) error {
 	apiName := c.promotedAPIName()
 	if apiName == "" {
+		if c.hasCuratedCommandSurface() {
+			c.applyCuratedCommandSurface(root, cfg)
+		}
 		return nil
 	}
 	if promotedAPICmd == nil && c.promotedAPICommandMetadataNeeded(scan) {
@@ -165,6 +224,23 @@ func (c *CLI) applyCommandSurface(root, promotedAPICmd *cobra.Command, scan cliA
 	}
 	c.installPromotedRootFallback(root, cfg, originalArgs)
 	return nil
+}
+
+func (c *CLI) applyCuratedCommandSurface(root *cobra.Command, cfg *config.Config) {
+	_ = root.PersistentFlags().MarkHidden("rsh-config")
+	allowed := make(map[string]bool, len(c.commandSurface.HTTPMethods))
+	for _, method := range c.commandSurface.HTTPMethods {
+		allowed[method] = true
+	}
+	for _, command := range root.Commands() {
+		keep := allowed[command.Name()]
+		if !keep && c.commandSurface.RegisteredAPIs && cfg.APIs[command.Name()] != nil {
+			keep = true
+		}
+		if !keep {
+			root.RemoveCommand(command)
+		}
+	}
 }
 
 func (c *CLI) promotedSupportCommands(root *cobra.Command, apiName string) map[string]*cobra.Command {

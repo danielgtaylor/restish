@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/rest-sh/restish/v2/config"
+	authpkg "github.com/rest-sh/restish/v2/internal/auth"
 	"github.com/rest-sh/restish/v2/internal/hypermedia"
 	"github.com/rest-sh/restish/v2/internal/output"
 	"github.com/rest-sh/restish/v2/internal/request"
@@ -74,6 +75,13 @@ func (c *CLI) prepareRequest(
 		}
 	}
 	explicitOperationAuthOverride := operationAuth != nil && strings.TrimSpace(operationAuth.Override) != ""
+	if apiName != "" {
+		rewritten, _, err := config.ApplyURLOverrides(rawURL, effectiveURLOverrides(c.cfg.APIs[apiName], profileName))
+		if err != nil {
+			return nil, fmt.Errorf("url_overrides: %w", err)
+		}
+		rawURL = rewritten
+	}
 	if (!noAuth || explicitOperationAuthOverride) && operationAuth != nil && apiName != "" {
 		prof := profileForName(c.cfg.APIs[apiName], profileName)
 		policy := *operationAuth
@@ -81,6 +89,9 @@ func (c *CLI) prepareRequest(
 			policy.NoAuth = true
 		}
 		policy.Transport = opts
+		policy.Context = ctx
+		policy.Method = method
+		policy.URL = rawURL
 		selected, handled, err := c.planOperationAuth(apiName, profileName, prof, &policy)
 		if err != nil {
 			return nil, err
@@ -94,15 +105,21 @@ func (c *CLI) prepareRequest(
 				return nil, err
 			}
 			opts.OnRequest = callbacks.OnRequest
+			if callbacks.OnRetryRequest != nil {
+				authorizedURL, parseErr := url.Parse(rawURL)
+				if parseErr != nil {
+					return nil, fmt.Errorf("operation auth target: %w", parseErr)
+				}
+				retryAuth := callbacks.OnRetryRequest
+				opts.OnRetryRequest = func(req *http.Request) error {
+					if !request.SameOrigin(authorizedURL, req.URL) {
+						return nil
+					}
+					return retryAuth(req)
+				}
+			}
 			opts.OnUnauthorized = callbacks.OnUnauthorized
 		}
-	}
-	if apiName != "" {
-		rewritten, _, err := config.ApplyURLOverrides(rawURL, effectiveURLOverrides(c.cfg.APIs[apiName], profileName))
-		if err != nil {
-			return nil, fmt.Errorf("url_overrides: %w", err)
-		}
-		rawURL = rewritten
 	}
 	opts, err = c.resolveTLSSigner(opts)
 	if err != nil {
@@ -129,6 +146,7 @@ func (c *CLI) prepareRequest(
 	// a compromised plugin from issuing credentialed requests to arbitrary hosts.
 	if noAuth {
 		opts.OnRequest = nil
+		opts.OnRetryRequest = nil
 		opts.OnUnauthorized = nil
 		filtered := opts.Headers[:0]
 		for _, h := range opts.Headers {
@@ -356,7 +374,9 @@ func (c *CLI) sendPreparedRequest(ctx context.Context, method string, prepared *
 	retryOpts := cloneRequestOptions(prepared.opts)
 	retryOpts.Transport = prepared.opts.Transport
 	onUnauthorized := retryOpts.OnUnauthorized
+	nonce := resp.Header.Get("DPoP-Nonce")
 	retryOpts.OnRequest = func(req *http.Request) error {
+		authpkg.SetDPoPNonce(req, nonce)
 		if err := onUnauthorized(req); err != nil {
 			return err
 		}

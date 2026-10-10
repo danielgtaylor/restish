@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,10 +20,16 @@ var renameTokenCacheFile = os.Rename
 
 // CachedToken holds a cached OAuth2 access token and optional refresh token.
 type CachedToken struct {
-	AccessToken  string    `cbor:"access_token" json:"access_token"`
-	TokenType    string    `cbor:"token_type,omitempty" json:"token_type,omitempty"`
-	RefreshToken string    `cbor:"refresh_token,omitempty" json:"refresh_token,omitempty"`
-	Expiry       time.Time `cbor:"expiry,omitempty" json:"expiry,omitempty"`
+	AccessToken       string    `cbor:"access_token" json:"access_token"`
+	TokenType         string    `cbor:"token_type,omitempty" json:"token_type,omitempty"`
+	RefreshToken      string    `cbor:"refresh_token,omitempty" json:"refresh_token,omitempty"`
+	Expiry            time.Time `cbor:"expiry,omitempty" json:"expiry,omitempty"`
+	DPoPPrivateKey    []byte    `cbor:"dpop_private_key,omitempty" json:"dpop_private_key,omitempty"`
+	DPoPNonce         string    `cbor:"dpop_nonce,omitempty" json:"dpop_nonce,omitempty"`
+	CredentialSource  string    `cbor:"credential_source,omitempty" json:"credential_source,omitempty"`
+	CredentialRef     string    `cbor:"credential_ref,omitempty" json:"credential_ref,omitempty"`
+	ResourceIndicator string    `cbor:"resource_indicator,omitempty" json:"resource_indicator,omitempty"`
+	Scopes            []string  `cbor:"scopes,omitempty" json:"scopes,omitempty"`
 }
 
 // IsExpired reports whether the token is expired (or will expire within 30s).
@@ -163,6 +171,34 @@ func (c *TokenCache) Refresh(key string, force bool, refresh func(CachedToken) (
 		return nil, false, err
 	}
 	return &refreshed, true, nil
+}
+
+// Resolve serializes provider-backed credential acquisition for key across
+// processes. The resolver receives nil when no entry exists and returns the
+// complete canonical entry that should replace it.
+func (c *TokenCache) Resolve(key string, resolve func(*CachedToken) (CachedToken, error)) (*CachedToken, error) {
+	lock, err := fileutil.LockSiblingFile(c.resolveLockPath(key))
+	if err != nil {
+		return nil, err
+	}
+	defer lock.Close()
+	current, err := c.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	next, err := resolve(current)
+	if saveErr := c.Set(key, next); saveErr != nil {
+		return nil, saveErr
+	}
+	if err != nil {
+		return &next, err
+	}
+	return &next, nil
+}
+
+func (c *TokenCache) resolveLockPath(key string) string {
+	digest := sha256.Sum256([]byte(key))
+	return c.path + ".resolve-" + hex.EncodeToString(digest[:])
 }
 
 func (c *TokenCache) load() (map[string]CachedToken, error) {

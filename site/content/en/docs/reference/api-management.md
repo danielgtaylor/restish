@@ -271,7 +271,7 @@ Examples:
 
 Subcommands:
 
-**`restish api auth add`**: Add an empty credential binding to an API profile
+**`restish api auth add`**: Add or configure a credential binding on an API profile
 
 **`restish api auth get`**: Print curl-friendly auth material for an API profile
 
@@ -284,7 +284,7 @@ Subcommands:
 
 ### `restish api auth add`
 
-Add an empty credential binding to an API profile
+Add or configure a credential binding on an API profile
 
 Add or initialize a credential binding for an API profile.
 
@@ -293,14 +293,30 @@ Use this after `api auth inspect` reports a missing credential ID. When cached O
 Usage:
 
 ```text
-restish api auth add <api> <credential-id>
+restish api auth add <api> <credential-id> [flags]
 ```
 
 Examples:
 
 ```bash
   restish api auth add demo PartnerKey
+  restish api auth add demo ResourceDPoP --source identity --reference https://identity.example/resources/123
 ```
+
+Flags:
+
+**`--reference`**
+
+Type: `string`; default: none
+
+opaque credential-source reference for a DPoP credential
+
+**`--source`**
+
+Type: `string`; default: none
+
+credential-source plugin for a DPoP credential
+
 
 
 ### `restish api auth remove`
@@ -535,6 +551,11 @@ non-Authorization credentials such as API-key headers and query params. Use
 `get` when another tool needs one curl-friendly auth fragment. Use
 `--operation` when an operation's OpenAPI security policy affects which
 credential applies.
+
+If a runtime auth resolver applies and no static credential is configured,
+`inspect` reports resolver evaluation as deferred until the final request is
+built. Deferred operations are not counted as statically callable, and Restish
+offers static `auth add` only as a generic fallback if the resolver declines.
 
 ## Related Pages
 

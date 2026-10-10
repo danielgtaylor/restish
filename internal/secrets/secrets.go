@@ -13,6 +13,7 @@ import (
 var HeaderNames = map[string]bool{
 	"Authorization":             true,
 	"Cookie":                    true,
+	"Dpop":                      true,
 	"Api-Key":                   true,
 	"Ocp-Apim-Subscription-Key": true,
 	"Proxy-Authorization":       true,
@@ -76,7 +77,16 @@ var OAuthErrorBodyKeys = map[string]bool{
 }
 
 func IsHeaderName(name string) bool {
-	return HeaderNames[http.CanonicalHeaderKey(name)]
+	canonical := http.CanonicalHeaderKey(name)
+	if HeaderNames[canonical] {
+		return true
+	}
+	for _, suffix := range []string{"-Authorization", "-Cookie", "-Dpop", "-Api-Key", "-Api-Token", "-Auth-Token"} {
+		if strings.HasSuffix(canonical, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 func IsHeaderValue(name, value string) bool {
@@ -137,6 +147,7 @@ func RedactDiagnosticText(value string) string {
 		"authorization",
 		"proxy-authorization",
 		"cookie",
+		"dpop",
 		"set-cookie",
 		"x-api-key",
 		"x-api-token",
@@ -247,7 +258,7 @@ func redactDiagnosticAssignment(value, marker string) string {
 
 func diagnosticMarkerStopsAtSpace(marker string) bool {
 	switch marker {
-	case "authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key", "x-api-token", "x-auth-token":
+	case "authorization", "proxy-authorization", "cookie", "dpop", "set-cookie", "x-api-key", "x-api-token", "x-auth-token":
 		return false
 	default:
 		return true

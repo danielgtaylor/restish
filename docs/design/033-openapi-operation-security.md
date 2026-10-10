@@ -49,6 +49,8 @@ credential inside that profile according to normalized operation requirements.
   checks.
 - Keep startup command registration offline. Operation security matching must
   use cached operation metadata and local config.
+- Allow a credential-owning auth plugin to satisfy exact operation security
+  requirements without persisting a synthetic credential binding.
 - Keep `x-cli-config` useful as setup guidance without letting it replace
   standard OpenAPI `securitySchemes` and operation `security` policy.
 - Keep the Restish config model generic enough that another loader could produce
@@ -103,6 +105,26 @@ Startup command registration must stay offline. Any security matching must use
 the generated operation cache, local config, and already-loaded plugin metadata.
 It must not contact OAuth issuers, fetch specs, or prompt the user during shell
 startup.
+
+When configured credentials cannot satisfy an operation, Restish may ask
+installed `auth-resolver` plugins about each complete security alternative in
+OpenAPI order. A resolver receives the final rewritten request target and exact
+requirements. It may claim the alternative but cannot edit it. More than one
+claim is rejected as ambiguous. A selected plugin receives the same
+requirements in its `auth` hook. Explicit configured credentials remain higher
+priority, and public `security: []` operations never enter resolver selection.
+Authentication selected through a resolver is request-bound: Restish invokes
+the selected plugin again before each transport retry so proof-of-possession
+headers are never replayed across network attempts.
+
+Inspection remains offline and side-effect free. When no configured credential
+can be inspected and an applicable resolver is installed, `api auth inspect`
+reports resolver evaluation as deferred until the final request method and URL
+are known. It does not claim that the operation is callable, and it does not
+recommend a specific static credential before the resolver is evaluated. It may
+retain a generic `auth add` fallback for a resolver that declines. Configured
+credential errors remain authoritative and are not hidden by deferred resolver
+status.
 
 ## OpenAPI Security Model
 

@@ -70,7 +70,11 @@ func (c *CLI) printAPIDiscovery(apiName, baseURL string, d configureAuthDiscover
 		if scheme.Kind == "mtls" {
 			details = append(details, "use TLS client certificate or signer")
 		} else if !scheme.Supported {
-			details = append(details, "unsupported")
+			if c.authResolverAvailable(apiName) {
+				details = append(details, "resolver evaluated at request time")
+			} else {
+				details = append(details, "unsupported")
+			}
 		}
 		if scheme.Deprecated {
 			details = append(details, "deprecated")
@@ -129,7 +133,11 @@ func (c *CLI) configureFallbackAuth(ctx context.Context, apiCfg *config.APIConfi
 		if err := c.promptAuthParams(ctx, "default", scheme.ID, credential.Auth, defaultNeeds, answers); err != nil {
 			return err
 		}
-		if len(defaultNeeds) > 0 {
+		if credential.Auth.Type == "dpop" {
+			delete(credential.Auth.Params, "scopes")
+			credential.Satisfies = nil
+		}
+		if len(defaultNeeds) > 0 && credential.Auth.Type != "dpop" {
 			if credential.Auth.Params == nil {
 				credential.Auth.Params = map[string]string{}
 			}
@@ -321,6 +329,9 @@ func defaultAuthParamValue(p auth.Param, defaultNeeds []string) string {
 }
 
 func authSatisfiesValues(defaultNeeds []string, ac *config.AuthConfig) []string {
+	if ac != nil && ac.Type == "dpop" {
+		return nil
+	}
 	if ac != nil && ac.Params != nil {
 		if scopes := uniqueStrings(strings.Fields(ac.Params["scopes"])); len(scopes) > 0 {
 			return scopes
@@ -519,11 +530,11 @@ func (c *CLI) printAuthCoverage(apiName, profileName string, apiCfg *config.APIC
 			skippedIDs = append(skippedIDs, scheme.ID)
 		}
 	}
-	var callable, secured int
+	var callable, secured, resolverEvaluated int
 	if apiCfg != nil {
 		prof := profileForName(apiCfg, profileName)
 		coverage := c.operationAuthCoverage(apiName, profileName, prof, d.operations)
-		callable, secured = coverage.Callable, coverage.Secured
+		callable, secured, resolverEvaluated = coverage.Callable, coverage.Secured, coverage.ResolverEvaluated
 	}
 	fmt.Fprintf(c.Stdout, "\nAuth coverage for profile %q:\n", profileName)
 	fmt.Fprintf(c.Stdout, "  configured: %s\n", formatIDList(configuredIDs))
@@ -531,7 +542,11 @@ func (c *CLI) printAuthCoverage(apiName, profileName string, apiCfg *config.APIC
 		fmt.Fprintf(c.Stdout, "  unresolved: %s\n", formatIDList(unresolved))
 	}
 	fmt.Fprintf(c.Stdout, "  skipped:    %s\n", formatIDList(skippedIDs))
-	fmt.Fprintf(c.Stdout, "  callable:   %d/%d secured operations\n\n", callable, secured)
+	fmt.Fprintf(c.Stdout, "  callable:   %d/%d secured operations\n", callable, secured)
+	if resolverEvaluated > 0 {
+		fmt.Fprintf(c.Stdout, "  resolver:   %d secured operations evaluated at request time\n", resolverEvaluated)
+	}
+	fmt.Fprintln(c.Stdout)
 }
 
 func (c *CLI) authCoverageCredentialStatus(apiName, profileName string, apiCfg *config.APIConfig, credentialID string) (string, bool) {

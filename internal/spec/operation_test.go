@@ -464,6 +464,40 @@ paths:
 	}})
 }
 
+func TestOperationsRecognizesDPoPSecurityScheme(t *testing.T) {
+	raw := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0.0"
+components:
+  securitySchemes:
+    DPoP:
+      type: http
+      scheme: DPoP
+paths:
+  /wallet:
+    get:
+      operationId: getWallet
+      security:
+        - DPoP: []
+      responses:
+        "200":
+          description: OK`
+	loaded, err := load("application/yaml", []byte(raw), DefaultLoaders())
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+
+	ops, err := loaded.Operations(OperationOptions{BaseURL: "https://api.example.com"})
+	if err != nil {
+		t.Fatalf("operations: %v", err)
+	}
+
+	requireCredential(t, operationByID(t, ops, "getWallet"), [][]CredentialRequirement{{
+		{ID: "DPoP", Ref: "#/components/securitySchemes/DPoP", Kind: "http-dpop", Source: "openapi"},
+	}})
+}
+
 func TestOperationsUsesConfiguredServerVariables(t *testing.T) {
 	raw := `openapi: "3.1.0"
 info:

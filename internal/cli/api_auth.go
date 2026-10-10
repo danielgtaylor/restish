@@ -29,14 +29,17 @@ func (c *CLI) newAPIAuthCommand() *cobra.Command {
 			return cmd.Help()
 		},
 	}
-	cmd.AddCommand(&cobra.Command{
+	addCmd := &cobra.Command{
 		Use:     "add <api> <credential-id>",
-		Short:   "Add an empty credential binding to an API profile",
+		Short:   "Add or configure a credential binding on an API profile",
 		Long:    apiAuthAddLong,
-		Example: fmt.Sprintf("  %s api auth add demo PartnerKey", c.commandNameOrDefault()),
+		Example: fmt.Sprintf("  %s api auth add demo PartnerKey\n  %s api auth add demo ResourceDPoP --source identity --reference https://identity.example/resources/123", c.commandNameOrDefault(), c.commandNameOrDefault()),
 		Args:    usageExactArgs(2),
 		RunE:    c.runAPIAuthAdd,
-	})
+	}
+	addCmd.Flags().String("source", "", "credential-source plugin for a DPoP credential")
+	addCmd.Flags().String("reference", "", "opaque credential-source reference for a DPoP credential")
+	cmd.AddCommand(addCmd)
 	cmd.AddCommand(&cobra.Command{
 		Use:     "remove <api> <credential-id>",
 		Short:   "Remove a credential binding from an API profile",
@@ -115,12 +118,26 @@ func (c *CLI) printAPIAuthOverview(cmd *cobra.Command, apiName, profileName stri
 		fmt.Fprintf(c.Stdout, "Generic request auth: %s\n", style.warn("none"))
 	}
 	if hasOps {
-		fmt.Fprintf(c.Stdout, "Callable secured operations: %d/%d\n", coverage.Callable, coverage.Secured)
+		if coverage.SourceEvaluated > 0 || coverage.ResolverEvaluated > 0 {
+			fmt.Fprintf(c.Stdout, "Statically callable secured operations: %d/%d\n", coverage.Callable, coverage.Secured)
+			if coverage.SourceEvaluated > 0 {
+				fmt.Fprintf(c.Stdout, "Credential source evaluated per request: %d/%d secured operations\n", coverage.SourceEvaluated, coverage.Secured)
+			}
+			if coverage.ResolverEvaluated > 0 {
+				fmt.Fprintf(c.Stdout, "Resolver evaluated at request time: %d/%d secured operations\n", coverage.ResolverEvaluated, coverage.Secured)
+			}
+		} else {
+			fmt.Fprintf(c.Stdout, "Callable secured operations: %d/%d\n", coverage.Callable, coverage.Secured)
+		}
 	} else {
 		fmt.Fprintf(c.Stdout, "Operation metadata: %s (%s)\n", style.warn("unavailable"), style.hint("run \"restish api sync "+apiName+"\" to refresh"))
 	}
 	if len(ids) == 0 {
-		fmt.Fprintf(c.Stdout, "Credentials: %s\n", style.warn("none"))
+		label := "Credentials"
+		if coverage.ResolverEvaluated > 0 {
+			label = "Configured credentials"
+		}
+		fmt.Fprintf(c.Stdout, "%s: %s\n", label, style.warn("none"))
 	} else {
 		fmt.Fprintln(c.Stdout, "Credentials:")
 		for _, id := range ids {
@@ -137,7 +154,9 @@ func (c *CLI) printAPIAuthOverview(cmd *cobra.Command, apiName, profileName stri
 	if hasOps {
 		coverage := c.operationAuthCoverage(apiName, profileName, prof, set.Operations)
 		c.printAPIAuthRequirementSummary(apiName, profileName, set.Operations, prof, coverage)
-		if credentialID := nextMissingCredentialID(set.Operations, prof, coverage); credentialID != "" {
+		if coverage.ResolverEvaluated > 0 {
+			fmt.Fprintf(c.Stdout, "%s invoke a secured operation to evaluate the runtime auth resolver; if it declines, run \"restish api auth add %s <credential-id>\".\n", style.hint("Next:"), apiName)
+		} else if credentialID := nextMissingCredentialID(set.Operations, prof, coverage); credentialID != "" {
 			fmt.Fprintf(c.Stdout, "%s run \"restish api auth add %s %s\".\n", style.hint("Next:"), apiName, credentialID)
 		}
 	}
@@ -145,6 +164,11 @@ func (c *CLI) printAPIAuthOverview(cmd *cobra.Command, apiName, profileName stri
 
 func (c *CLI) runAPIAuthAdd(cmd *cobra.Command, args []string) error {
 	apiName, credentialID := args[0], args[1]
+	source, _ := cmd.Flags().GetString("source")
+	reference, _ := cmd.Flags().GetString("reference")
+	if (source == "") != (reference == "") {
+		return fmt.Errorf("--source and --reference must be supplied together")
+	}
 	profileName := c.profileFromCmd(cmd)
 	apiCfg, prof, err := c.apiProfileForAuth(apiName, profileName, true)
 	if err != nil {
@@ -164,11 +188,28 @@ func (c *CLI) runAPIAuthAdd(cmd *cobra.Command, args []string) error {
 			prof.Credentials[credentialID].Auth = authCfg
 		}
 	}
+	if source != "" && prof.Credentials[credentialID].Auth == nil {
+		return fmt.Errorf("credential %q has no OpenAPI DPoP security scheme; sync the API and use its published credential ID", credentialID)
+	}
 	if prof.Credentials[credentialID].Auth != nil {
+		if source != "" {
+			if prof.Credentials[credentialID].Auth.Type != "dpop" {
+				return fmt.Errorf("--source and --reference require a DPoP credential")
+			}
+			if prof.Credentials[credentialID].Auth.Params == nil {
+				prof.Credentials[credentialID].Auth.Params = map[string]string{}
+			}
+			prof.Credentials[credentialID].Auth.Params["source"] = source
+			prof.Credentials[credentialID].Auth.Params["reference"] = reference
+		}
 		if err := c.promptAuthParams(requestContext(cmd), profileName, credentialID, prof.Credentials[credentialID].Auth, defaultNeeds, configurePromptAnswers{}); err != nil {
 			return err
 		}
-		if len(defaultNeeds) > 0 {
+		if prof.Credentials[credentialID].Auth.Type == "dpop" {
+			delete(prof.Credentials[credentialID].Auth.Params, "scopes")
+			prof.Credentials[credentialID].Satisfies = nil
+		}
+		if len(defaultNeeds) > 0 && prof.Credentials[credentialID].Auth.Type != "dpop" {
 			if prof.Credentials[credentialID].Auth.Params == nil {
 				prof.Credentials[credentialID].Auth.Params = map[string]string{}
 			}
@@ -268,6 +309,10 @@ func (c *CLI) runAPIAuthInspect(cmd *cobra.Command, args []string) error {
 				continue
 			}
 		}
+		if dynamicDPoPConfig(target.Resolved.Config) {
+			c.printDynamicDPoPInspection(target.Resolved.Config, nil)
+			continue
+		}
 		req, err := c.authInspectionRequest(cmd, apiName, profileName, target.Resolved)
 		if err != nil {
 			return err
@@ -335,6 +380,10 @@ func (c *CLI) runAPIAuthInspectOperation(cmd *cobra.Command, apiName, profileNam
 		fmt.Fprintf(c.Stdout, "Operation: %s\nAuth: none (security: [{}])\n", op.ID)
 		return nil
 	}
+	if c.operationAuthDeferredToResolver(apiName, prof, op) {
+		c.printResolverDeferredOperationAuth(op)
+		return nil
+	}
 
 	var selected []selectedOperationAuth
 	if len(op.CredentialAlternatives) > 0 {
@@ -360,6 +409,17 @@ func (c *CLI) runAPIAuthInspectOperation(cmd *cobra.Command, apiName, profileNam
 		}
 		selected = []selectedOperationAuth{{requirement: spec.CredentialRequirement{ID: selectedCredential}, resolved: resolved, source: "profile auth"}}
 	}
+	if selectedOperationUsesDynamicDPoP(selected) {
+		fmt.Fprintf(c.Stdout, "Operation: %s\n", op.ID)
+		fmt.Fprintf(c.Stdout, "Credentials: %s\n", strings.Join(selectedOperationCredentialIDs(selected), ", "))
+		fmt.Fprintf(c.Stdout, "Source: %s\n", strings.Join(selectedOperationSources(selected), ", "))
+		for _, item := range selected {
+			if dynamicDPoPConfig(item.resolved.Config) {
+				c.printDynamicDPoPInspection(item.resolved.Config, item.requirement.Needs)
+			}
+		}
+		return nil
+	}
 
 	req, err := c.operationAuthInspectionRequest(cmd, apiName, profileName, selected)
 	if err != nil {
@@ -370,6 +430,29 @@ func (c *CLI) runAPIAuthInspectOperation(cmd *cobra.Command, apiName, profileNam
 	fmt.Fprintf(c.Stdout, "Source: %s\n", strings.Join(selectedOperationSources(selected), ", "))
 	c.printAuthInspectionRequest(req, selectedOperationAuthConfigs(selected), redact)
 	return nil
+}
+
+func dynamicDPoPConfig(config *config.AuthConfig) bool {
+	return config != nil && config.Type == "dpop" && config.Params["source"] != "" && config.Params["reference"] != ""
+}
+
+func selectedOperationUsesDynamicDPoP(selected []selectedOperationAuth) bool {
+	for _, item := range selected {
+		if dynamicDPoPConfig(item.resolved.Config) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *CLI) printDynamicDPoPInspection(config *config.AuthConfig, needs []string) {
+	fmt.Fprintln(c.Stdout, "Auth type: dpop")
+	fmt.Fprintf(c.Stdout, "Credential source: %s\n", config.Params["source"])
+	fmt.Fprintf(c.Stdout, "Credential reference: %s\n", config.Params["reference"])
+	if len(needs) > 0 {
+		fmt.Fprintf(c.Stdout, "Operation scopes: %s\n", strings.Join(needs, " "))
+	}
+	fmt.Fprintln(c.Stdout, "Auth material: evaluated when the operation is invoked")
 }
 
 func (c *CLI) runAPIAuthGet(cmd *cobra.Command, args []string) error {
@@ -653,7 +736,10 @@ func (c *CLI) operationAuthInspectionRequest(cmd *cobra.Command, apiName, profil
 	if err != nil {
 		return nil, err
 	}
-	req, _ := http.NewRequestWithContext(requestContext(cmd), "GET", "http://example.com", nil)
+	req, err := http.NewRequestWithContext(requestContext(cmd), http.MethodGet, c.authBaseURL(apiName, profileName), nil)
+	if err != nil {
+		return nil, fmt.Errorf("build auth inspection target: %w", err)
+	}
 	for _, item := range selected {
 		step, err := c.operationAuthStep(apiName, profileName, item, authOpts)
 		if err != nil {
@@ -670,6 +756,12 @@ func (c *CLI) applyOperationAuthInspectionStep(req *http.Request, s operationAut
 	params, err := c.buildAuthParams(s.rawParams)
 	if err != nil {
 		return err
+	}
+	if s.authType == "dpop" {
+		if params == nil {
+			params = map[string]string{}
+		}
+		params["scopes"] = strings.Join(s.needs, " ")
 	}
 	if s.authType == "external-tool" {
 		if err := c.ensureExternalToolApproved(req.Context(), s.apiName, s.profileName, params["commandline"]); err != nil {
@@ -692,7 +784,10 @@ func (c *CLI) authInspectionRequest(cmd *cobra.Command, apiName, profileName str
 	if err != nil {
 		return nil, err
 	}
-	req, _ := http.NewRequestWithContext(requestContext(cmd), "GET", "http://example.com", nil)
+	req, err := http.NewRequestWithContext(requestContext(cmd), http.MethodGet, c.authBaseURL(apiName, profileName), nil)
+	if err != nil {
+		return nil, fmt.Errorf("build auth inspection target: %w", err)
+	}
 	if err := handler.Authenticate(requestContext(cmd), req, c.authContext(requestContext(cmd), apiName, profileName, params, resolved.CacheKey, false)); err != nil {
 		return nil, fmt.Errorf("building auth inspection: %w", err)
 	}
@@ -984,8 +1079,15 @@ func (c *CLI) printAPIAuthRequirementSummary(apiName, profileName string, ops []
 				satisfies = credential.Satisfies
 			}
 		}
+		resolverDeferred := status == "missing" && !summary.undeclared && coverage.ResolverByID[summary.id] > 0
+		if resolverDeferred {
+			status = "unconfigured"
+		}
 		var parts []string
 		parts = append(parts, style.authStatus(status))
+		if resolverDeferred {
+			parts = append(parts, "resolver evaluated at request time")
+		}
 		if status == "missing" && coverage.FallbackByID[summary.id] > 0 {
 			parts = append(parts, coverage.FallbackLabels[summary.id])
 		}
@@ -995,7 +1097,7 @@ func (c *CLI) printAPIAuthRequirementSummary(apiName, profileName string, ops []
 		if len(satisfies) > 0 {
 			parts = append(parts, "satisfies "+strings.Join(satisfies, " "))
 		}
-		if !authRequirementKindSupported(summary.kind) {
+		if !authRequirementKindSupported(summary.kind) && !resolverDeferred {
 			parts = append(parts, "unsupported "+summary.kind)
 		}
 		if summary.undeclared {
@@ -1013,6 +1115,48 @@ func (c *CLI) printAPIAuthRequirementSummary(apiName, profileName string, ops []
 		}
 		parts = append(parts, fmt.Sprintf("%d %s", summary.opCount, operationWord))
 		fmt.Fprintf(c.Stdout, "  %s: %s\n", summary.id, strings.Join(parts, ", "))
+	}
+}
+
+func (c *CLI) operationAuthDeferredToResolver(apiName string, prof *config.ProfileConfig, op spec.Operation) bool {
+	if len(op.CredentialAlternatives) == 0 || !c.authResolverAvailable(apiName) {
+		return false
+	}
+	if prof == nil {
+		return true
+	}
+	if prof.Auth != nil || prof.AuthRef != "" {
+		return false
+	}
+	for _, alternative := range op.CredentialAlternatives {
+		for _, requirement := range alternative {
+			credential := prof.Credentials[requirement.ID]
+			if credential != nil && (credential.Auth != nil || credential.AuthRef != "") {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (c *CLI) printResolverDeferredOperationAuth(op spec.Operation) {
+	fmt.Fprintf(c.Stdout, "Operation: %s\n", op.ID)
+	if op.OptionalAuth {
+		fmt.Fprintln(c.Stdout, "Auth: optional; resolver evaluated at request time before anonymous fallback")
+	} else {
+		fmt.Fprintln(c.Stdout, "Auth: resolver evaluated at request time")
+	}
+	fmt.Fprintln(c.Stdout, "Security alternatives:")
+	for _, alternative := range op.CredentialAlternatives {
+		parts := make([]string, 0, len(alternative))
+		for _, requirement := range alternative {
+			part := requirement.ID
+			if len(requirement.Needs) > 0 {
+				part += " (needs " + strings.Join(requirement.Needs, " ") + ")"
+			}
+			parts = append(parts, part)
+		}
+		fmt.Fprintf(c.Stdout, "  - %s\n", strings.Join(parts, " + "))
 	}
 }
 
@@ -1088,7 +1232,7 @@ func mergeStringSet(existing, values []string) []string {
 
 func authRequirementKindSupported(kind string) bool {
 	switch kind {
-	case "api-key", "http-basic", "http-bearer", "oauth2", "mtls":
+	case "api-key", "http-basic", "http-bearer", "http-dpop", "oauth2", "oauth2-dpop", "mtls":
 		return true
 	default:
 		return false

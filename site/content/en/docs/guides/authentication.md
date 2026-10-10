@@ -152,6 +152,26 @@ declared requirements.
 These commands use placeholder operation names because the public example API
 does not expose a multi-scheme partner-auth fixture.
 
+## DPoP Credential Sources
+
+When an OpenAPI security scheme uses `type: http` with `scheme: DPoP`, or an
+OAuth 2.0/OpenID Connect scheme declares `x-dpop-required: true`, Restish can
+own the proof key and token lifecycle while an installed plugin supplies
+provider-specific token acquisition. First obtain an opaque source reference
+from that provider, then bind it to the exact OpenAPI credential ID:
+
+```bash
+restish api auth add myapi ResourceDPoP \
+  --source provider-plugin \
+  --reference https://identity.example/resources/123
+```
+
+The source and reference are configuration, not access tokens. Restish creates
+and stores the P-256 private key, asks the source for short-lived tokens, signs
+each target request, renews expired credentials, and forces one renewal after
+a `401`. `api auth logout` deletes the cached token and key; `api auth remove`
+removes the local OpenAPI credential binding.
+
 ## Inspect Auth Material
 
 For configured API auth, inspect the computed auth material without making the
@@ -176,6 +196,13 @@ shareable output. `--redact` is safe to include even when no secrets are
 configured, which makes it a good default for bug reports. Use
 `api auth get` when a script or curl command needs a single auth header or
 query-string fragment.
+
+When an installed `auth-resolver` owns the credential, inspection does not run
+the plugin without a final request target. It reports how many secured
+operations will evaluate a resolver at request time and labels the affected
+requirements as unconfigured rather than missing. Invoke the generated
+operation to determine whether the resolver can satisfy its exact URL and
+security requirements.
 
 For curl, pass a header fragment to `-H` or append a query fragment to the URL:
 

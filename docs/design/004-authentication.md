@@ -421,6 +421,12 @@ requests but stops after producing the auth mutations that would be applied.
 The command lives under API management because v2 auth can be credential-specific
 and operation-specific.
 
+An auth resolver needs the final request method, URL, and complete security
+alternative. When inspection does not have that final target, it reports that
+resolver evaluation is deferred until request time instead of invoking the
+plugin, reporting the credential as missing, or claiming the operation is
+callable. Static credential configuration errors still fail inspection.
+
 Default output is human-oriented and shows the computed auth values because the
 user explicitly asked to inspect auth material. Ambient request diagnostics,
 logs, plugin payloads, and config display remain redacted by default.

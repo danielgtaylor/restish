@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -8,11 +9,15 @@ import (
 
 	"github.com/rest-sh/restish/v2/auth"
 	"github.com/rest-sh/restish/v2/config"
+	internalplugin "github.com/rest-sh/restish/v2/internal/plugin"
 	"github.com/rest-sh/restish/v2/internal/request"
 	"github.com/rest-sh/restish/v2/internal/spec"
 )
 
 type operationAuthPolicy struct {
+	Context                context.Context
+	Method                 string
+	URL                    string
 	OptionalAuth           bool
 	NoAuth                 bool
 	CredentialAlternatives []spec.CredentialAlternative
@@ -21,9 +26,11 @@ type operationAuthPolicy struct {
 }
 
 type selectedOperationAuth struct {
-	requirement spec.CredentialRequirement
-	resolved    resolvedAuthConfig
-	source      string
+	requirement  spec.CredentialRequirement
+	requirements spec.CredentialAlternative
+	resolved     resolvedAuthConfig
+	source       string
+	resolver     *internalplugin.Plugin
 }
 
 func (c *CLI) planOperationAuth(apiName, profileName string, prof *config.ProfileConfig, policy *operationAuthPolicy) ([]selectedOperationAuth, bool, error) {
@@ -94,18 +101,27 @@ func (c *CLI) planOperationAuth(apiName, profileName string, prof *config.Profil
 			return selected, true, nil
 		}
 	}
+	if policy.URL != "" {
+		resolved, ok, err := c.resolveOperationAuth(apiName, profileName, policy)
+		if err != nil {
+			return nil, false, err
+		}
+		if ok {
+			return []selectedOperationAuth{resolved}, true, nil
+		}
+	}
 
 	if policy.OptionalAuth {
 		return nil, true, nil
 	}
 
-	if prof != nil && canUseProfileAuthFallback(policy) {
+	if prof != nil {
 		resolved, err := c.resolveProfileAuth(apiName, profileName, prof)
 		if err != nil {
 			return nil, false, err
 		}
-		if resolved.Config != nil {
-			return []selectedOperationAuth{{requirement: policy.CredentialAlternatives[0][0], resolved: resolved, source: "profile auth fallback"}}, true, nil
+		if requirement, ok := profileAuthFallbackRequirement(policy, resolved.Config); ok {
+			return []selectedOperationAuth{{requirement: requirement, resolved: resolved, source: "profile auth fallback"}}, true, nil
 		}
 	}
 
@@ -319,6 +335,14 @@ func (c *CLI) operationAuthCallbacks(apiName, profileName string, selected []sel
 	if len(selected) == 0 {
 		return authCallbacks{}, nil
 	}
+	if len(selected) == 1 && selected[0].resolver != nil {
+		resolver := *selected[0].resolver
+		requirements := pluginAuthRequirements(selected[0].requirements)
+		apply := func(req *http.Request) error {
+			return c.runSelectedAuthPlugin(resolver, apiName, profileName, requirements, req)
+		}
+		return authCallbacks{OnRequest: apply, OnRetryRequest: apply}, nil
+	}
 	steps := make([]operationAuthStep, 0, len(selected))
 	for _, item := range selected {
 		step, err := c.operationAuthStep(apiName, profileName, item, opts)
@@ -336,6 +360,12 @@ func (c *CLI) operationAuthCallbacks(apiName, profileName string, selected []sel
 			}
 			return c.runOperationAuthHookPlugins(req, steps)
 		},
+	}
+	for _, step := range steps {
+		if step.requestBound {
+			callbacks.OnRetryRequest = callbacks.OnRequest
+			break
+		}
 	}
 	for _, step := range steps {
 		if step.forceCapable {
@@ -373,10 +403,12 @@ type operationAuthStep struct {
 	rawParams    map[string]string
 	cacheKey     string
 	forceCapable bool
+	requestBound bool
 	secretKeys   map[string]bool
 	apiName      string
 	profileName  string
 	authType     string
+	needs        []string
 }
 
 func (c *CLI) operationAuthStep(apiName, profileName string, selected selectedOperationAuth, opts authHandlerOptions) (operationAuthStep, error) {
@@ -391,15 +423,18 @@ func (c *CLI) operationAuthStep(apiName, profileName string, selected selectedOp
 		}
 	}
 	_, forceCapable := handler.(auth.ForceCapable)
+	_, requestBound := handler.(auth.RequestBound)
 	return operationAuthStep{
 		handler:      handler,
 		rawParams:    selected.resolved.Config.Params,
 		cacheKey:     selected.resolved.CacheKey,
 		forceCapable: forceCapable,
+		requestBound: requestBound,
 		secretKeys:   secretKeys,
 		apiName:      apiName,
 		profileName:  profileName,
 		authType:     selected.resolved.Config.Type,
+		needs:        append([]string(nil), selected.requirement.Needs...),
 	}, nil
 }
 
@@ -410,6 +445,12 @@ func (c *CLI) applyOperationAuthStep(req *http.Request, s operationAuthStep, for
 	params, err := c.buildAuthParams(s.rawParams)
 	if err != nil {
 		return err
+	}
+	if s.authType == "dpop" {
+		if params == nil {
+			params = map[string]string{}
+		}
+		params["scopes"] = strings.Join(s.needs, " ")
 	}
 	if s.authType == "external-tool" {
 		if err := c.ensureExternalToolApproved(req.Context(), s.apiName, s.profileName, params["commandline"]); err != nil {
@@ -432,6 +473,9 @@ func (c *CLI) applyOperationAuthStep(req *http.Request, s operationAuthStep, for
 
 func credentialSatisfies(requirement spec.CredentialRequirement, credential *config.CredentialConfig, authCfg *config.AuthConfig) error {
 	if len(requirement.Needs) == 0 {
+		return nil
+	}
+	if authCfg != nil && authCfg.Type == "dpop" && authCfg.Params["source"] != "" && authCfg.Params["reference"] != "" {
 		return nil
 	}
 	satisfies := credential.Satisfies
@@ -492,11 +536,30 @@ func operationMTLSMissingRequirementMessage(requirement spec.CredentialRequireme
 	return fmt.Sprintf("%s requires mutual TLS; supply --rsh-client-cert and --rsh-client-key, or configure profile client_cert/client_key or tls_signer", id)
 }
 
-func canUseProfileAuthFallback(policy *operationAuthPolicy) bool {
-	return policy != nil &&
-		len(policy.CredentialAlternatives) == 1 &&
+func profileAuthFallbackRequirement(policy *operationAuthPolicy, authConfig *config.AuthConfig) (spec.CredentialRequirement, bool) {
+	if policy == nil || authConfig == nil {
+		return spec.CredentialRequirement{}, false
+	}
+	if len(policy.CredentialAlternatives) == 1 &&
 		len(policy.CredentialAlternatives[0]) == 1 &&
-		policy.CredentialAlternatives[0][0].Kind != "mtls"
+		policy.CredentialAlternatives[0][0].Kind != "mtls" {
+		return policy.CredentialAlternatives[0][0], true
+	}
+	var matched *spec.CredentialRequirement
+	for _, alternative := range policy.CredentialAlternatives {
+		if len(alternative) != 1 || !profileFallbackObviouslyMatches(alternative[0], authConfig) {
+			continue
+		}
+		if matched != nil {
+			return spec.CredentialRequirement{}, false
+		}
+		value := alternative[0]
+		matched = &value
+	}
+	if matched == nil {
+		return spec.CredentialRequirement{}, false
+	}
+	return *matched, true
 }
 
 func parseAuthOverride(value string) (map[string]bool, error) {
@@ -583,7 +646,7 @@ func authMutationKey(ac *config.AuthConfig) string {
 		default:
 			return ""
 		}
-	case "bearer", "http-basic", "oauth-client-credentials", "oauth-authorization-code", "oauth-device-code":
+	case "bearer", "http-basic", "dpop", "oauth-client-credentials", "oauth-authorization-code", "oauth-device-code":
 		return "header:authorization"
 	case "external-tool":
 		// External tools may return complete header/query mutations, so the

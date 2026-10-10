@@ -35,6 +35,15 @@ const (
 	// FeatureRequestFinalBody means auth and request-middleware hooks may
 	// receive the final request body bytes when Restish has them.
 	FeatureRequestFinalBody = "request.final_body"
+	// FeatureAuthOperationSecurity means auth resolver and auth hooks receive
+	// the exact OpenAPI operation security alternative selected by Restish.
+	FeatureAuthOperationSecurity = "auth.operation_security"
+	// FeatureDPoPCredentialSource means the host supports provider-neutral,
+	// proof-bound DPoP acquisition through credential-source hooks.
+	FeatureDPoPCredentialSource = "auth.dpop_credential_source"
+	// FeatureDPoPOperationScopes means credential-source hooks receive the
+	// exact OpenAPI operation scopes required by the current request.
+	FeatureDPoPOperationScopes = "auth.dpop_operation_scopes"
 )
 
 // Manifest is the metadata a plugin reports when called with

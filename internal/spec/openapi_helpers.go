@@ -89,6 +89,10 @@ func ParamExtBool(p *v3.Parameter, key string) bool {
 	return extValue[bool](p.Extensions.GetOrZero(key))
 }
 
+func securitySchemeDPoPRequired(scheme *v3.SecurityScheme) bool {
+	return scheme != nil && scheme.Extensions != nil && extValue[bool](scheme.Extensions.GetOrZero("x-dpop-required"))
+}
+
 type decodableNode interface {
 	Decode(any) error
 }

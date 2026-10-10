@@ -16,6 +16,7 @@ import (
 
 	"github.com/rest-sh/restish/v2/auth"
 	"github.com/rest-sh/restish/v2/config"
+	authpkg "github.com/rest-sh/restish/v2/internal/auth"
 	"github.com/rest-sh/restish/v2/internal/cache"
 	internalconfig "github.com/rest-sh/restish/v2/internal/config"
 	"github.com/rest-sh/restish/v2/internal/output"
@@ -684,7 +685,7 @@ func (c *CLI) emitGeneratedCommandWarnings(apiName string, apiCfg *config.APICon
 	}
 	set, err := apiSpec.OperationSet(opOpts)
 	if err == nil {
-		for _, issue := range operationSecurityIssues(set.Operations) {
+		for _, issue := range operationSecurityIssuesWithResolver(set.Operations, c.authResolverAvailable(apiName)) {
 			c.warnf("OpenAPI security: %s", issue)
 		}
 	}
@@ -1324,7 +1325,9 @@ func (c *CLI) doDiscoveryRequest(ctx context.Context, method, rawURL string, opt
 	}
 	retryOpts := opts
 	onUnauthorized := retryOpts.OnUnauthorized
+	nonce := resp.Header.Get("DPoP-Nonce")
 	retryOpts.OnRequest = func(req *http.Request) error {
+		authpkg.SetDPoPNonce(req, nonce)
 		if err := onUnauthorized(req); err != nil {
 			return err
 		}
@@ -1341,6 +1344,9 @@ func authHandlerOptionsFromContext(ctx context.Context) authHandlerOptions {
 
 func discoveryAuthOrigins(apiCfg *config.APIConfig, profileName string) []*url.URL {
 	if apiCfg == nil {
+		return nil
+	}
+	if apiCfg.UnauthenticatedSpec {
 		return nil
 	}
 	var origins []*url.URL

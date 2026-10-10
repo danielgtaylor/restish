@@ -11,9 +11,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	authpkg "github.com/rest-sh/restish/v2/internal/auth"
 	"github.com/rest-sh/restish/v2/internal/output"
 	"github.com/rest-sh/restish/v2/internal/plugin"
 	"github.com/rest-sh/restish/v2/internal/request"
+	"github.com/rest-sh/restish/v2/internal/spec"
 	pluginwire "github.com/rest-sh/restish/v2/plugin"
 )
 
@@ -24,6 +26,72 @@ func (c *CLI) pluginForHook(name, hook string) (plugin.Plugin, bool) {
 		}
 	}
 	return plugin.Plugin{}, false
+}
+
+type pluginDPoPCredentialSource struct {
+	cli *CLI
+}
+
+func (s pluginDPoPCredentialSource) Describe(
+	ctx context.Context,
+	apiName, profileName, sourceName, reference string, scopes []string,
+) (authpkg.DPoPCredentialDescription, error) {
+	p, ok := s.cli.pluginForHook(sourceName, "credential-source")
+	if !ok {
+		return authpkg.DPoPCredentialDescription{}, fmt.Errorf("credential-source plugin %q is not installed", sourceName)
+	}
+	in := pluginwire.CredentialSourceInput{
+		Type: "credential-source", Action: "describe", API: apiName, Profile: profileName, Reference: reference,
+		Scopes: append([]string(nil), scopes...),
+	}
+	var out pluginwire.CredentialSourceOutput
+	if err := plugin.CallHookWithTimeoutContext(ctx, p.Path, plugin.HookTimeout(p.Manifest, "credential-source"), in, &out); err != nil {
+		return authpkg.DPoPCredentialDescription{}, fmt.Errorf("credential-source plugin %s: %w", p.Manifest.Name, err)
+	}
+	if out.Description == nil || out.Credential != nil || out.Challenge != nil {
+		return authpkg.DPoPCredentialDescription{}, fmt.Errorf("credential-source plugin %s returned an invalid describe response", p.Manifest.Name)
+	}
+	return authpkg.DPoPCredentialDescription{
+		ProofMethod: out.Description.ProofMethod,
+		ProofURI:    out.Description.ProofURI,
+		Resource:    out.Description.Resource,
+		Scopes:      append([]string(nil), out.Description.Scopes...),
+	}, nil
+}
+
+func (s pluginDPoPCredentialSource) Issue(
+	ctx context.Context,
+	apiName, profileName, sourceName, reference, proof string, scopes []string,
+) (authpkg.DPoPIssuedCredential, error) {
+	p, ok := s.cli.pluginForHook(sourceName, "credential-source")
+	if !ok {
+		return authpkg.DPoPIssuedCredential{}, fmt.Errorf("credential-source plugin %q is not installed", sourceName)
+	}
+	in := pluginwire.CredentialSourceInput{
+		Type: "credential-source", Action: "issue", API: apiName, Profile: profileName, Reference: reference, Proof: proof,
+		Scopes: append([]string(nil), scopes...),
+	}
+	var out pluginwire.CredentialSourceOutput
+	if err := plugin.CallHookWithTimeoutContext(ctx, p.Path, plugin.HookTimeout(p.Manifest, "credential-source"), in, &out); err != nil {
+		return authpkg.DPoPIssuedCredential{}, fmt.Errorf("credential-source plugin %s: %w", p.Manifest.Name, err)
+	}
+	if out.Challenge != nil {
+		if out.Credential != nil || out.Description != nil || out.Challenge.Type != "dpop-nonce" {
+			return authpkg.DPoPIssuedCredential{}, fmt.Errorf("credential-source plugin %s returned an invalid challenge response", p.Manifest.Name)
+		}
+		return authpkg.DPoPIssuedCredential{}, &authpkg.DPoPNonceChallenge{Nonce: out.Challenge.Nonce}
+	}
+	if out.Credential == nil || out.Description != nil {
+		return authpkg.DPoPIssuedCredential{}, fmt.Errorf("credential-source plugin %s returned an invalid issue response", p.Manifest.Name)
+	}
+	return authpkg.DPoPIssuedCredential{
+		AccessToken: out.Credential.AccessToken,
+		TokenType:   out.Credential.TokenType,
+		ExpiresAt:   out.Credential.ExpiresAt,
+		Resource:    out.Credential.Resource,
+		Scopes:      append([]string(nil), out.Credential.Scopes...),
+		Nonce:       out.Credential.Nonce,
+	}, nil
 }
 
 func indexPluginsByHook(plugins []plugin.Plugin) map[string][]plugin.Plugin {
@@ -52,6 +120,88 @@ func indexAuthPluginsByAPI(plugins []plugin.Plugin) ([]plugin.Plugin, map[string
 		}
 	}
 	return global, byAPI
+}
+
+func pluginAppliesToAPI(p plugin.Plugin, apiName string) bool {
+	if len(p.Manifest.AuthAPINames) == 0 {
+		return true
+	}
+	for _, name := range p.Manifest.AuthAPINames {
+		if name == apiName {
+			return true
+		}
+	}
+	return false
+}
+
+func pluginAuthRequirements(alternative spec.CredentialAlternative) []pluginwire.AuthRequirement {
+	requirements := make([]pluginwire.AuthRequirement, 0, len(alternative))
+	for _, requirement := range alternative {
+		requirements = append(requirements, pluginwire.AuthRequirement{
+			ID: requirement.ID, Ref: requirement.Ref, Kind: requirement.Kind,
+			Needs: append([]string(nil), requirement.Needs...), In: requirement.In,
+			Name: requirement.Name, Source: requirement.Source, External: requirement.External,
+			Undeclared: requirement.Undeclared, Deprecated: requirement.Deprecated,
+		})
+	}
+	return requirements
+}
+
+func (c *CLI) resolveOperationAuth(apiName, profileName string, policy *operationAuthPolicy) (selectedOperationAuth, bool, error) {
+	ctx := policy.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	for _, alternative := range policy.CredentialAlternatives {
+		var claimed []plugin.Plugin
+		for _, p := range c.pluginsByHook["auth-resolver"] {
+			if !pluginAppliesToAPI(p, apiName) {
+				continue
+			}
+			in := pluginwire.AuthResolverInput{
+				Type: "auth-resolver", API: apiName, Profile: profileName,
+				Requirements: pluginAuthRequirements(alternative),
+				Request:      pluginwire.HookRequest{Method: policy.Method, URI: policy.URL, Headers: map[string][]string{}},
+			}
+			handled := false
+			var err error
+			if c.hooks.AuthResolverHookFunc != nil {
+				handled, err = c.hooks.AuthResolverHookFunc(p, in)
+			} else {
+				var out pluginwire.AuthResolverOutput
+				err = plugin.CallHookWithTimeoutContext(ctx, p.Path, plugin.HookTimeout(p.Manifest, "auth-resolver"), in, &out)
+				handled = out.Handled
+			}
+			if err != nil {
+				return selectedOperationAuth{}, false, fmt.Errorf("auth resolver plugin %s: %w", p.Manifest.Name, err)
+			}
+			if handled {
+				claimed = append(claimed, p)
+			}
+		}
+		if len(claimed) > 1 {
+			names := pluginNameList(claimed)
+			return selectedOperationAuth{}, false, fmt.Errorf("multiple auth resolver plugins claimed the same operation security alternative: %s", names)
+		}
+		if len(claimed) == 1 {
+			p := claimed[0]
+			return selectedOperationAuth{requirements: alternative, source: "auth resolver plugin " + p.Manifest.Name, resolver: &p}, true, nil
+		}
+	}
+	return selectedOperationAuth{}, false, nil
+}
+
+func (c *CLI) runSelectedAuthPlugin(p plugin.Plugin, apiName, profileName string, requirements []pluginwire.AuthRequirement, req *http.Request) error {
+	in := pluginwire.AuthHookInput{
+		Type: "auth", API: apiName, Profile: profileName, Requirements: requirements,
+		Request: hookRequestForPlugin(req, p),
+	}
+	var out pluginwire.AuthHookOutput
+	if err := plugin.CallHookWithTimeoutContext(req.Context(), p.Path, plugin.HookTimeout(p.Manifest, "auth"), in, &out); err != nil {
+		return fmt.Errorf("auth plugin %s: %w", p.Manifest.Name, err)
+	}
+	applyRequestUpdate(req, out.Request)
+	return nil
 }
 
 func pluginDeclaresHook(manifest plugin.Manifest, hook string) bool {

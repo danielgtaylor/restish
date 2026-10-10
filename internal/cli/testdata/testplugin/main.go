@@ -171,7 +171,8 @@ func runHookPlugin() {
 		Version:            "1.0.0",
 		Description:        "Test hook plugin",
 		RestishAPIVersion:  2,
-		Hooks:              []string{"auth", "request-middleware", "response-middleware", "formatter", "loader"},
+		Hooks:              []string{"auth-resolver", "auth", "request-middleware", "response-middleware", "formatter", "loader"},
+		RequiredFeatures:   []string{plugin.FeatureAuthOperationSecurity},
 		FormatterNames:     []string{"hookformat"},
 		LoaderContentTypes: []string{"application/x-hook-api"},
 	}
@@ -190,6 +191,15 @@ func runHookPlugin() {
 	}
 
 	switch plugin.MessageType(raw) {
+	case "auth-resolver":
+		var msg plugin.AuthResolverInput
+		_ = plugin.DecMode.Unmarshal(raw, &msg)
+		handled := os.Getenv("RSH_HOOK_RESOLVE_AUTH") == "1"
+		if handled && len(msg.Requirements) != 1 {
+			fmt.Fprintf(os.Stderr, "resolver requirements = %#v\n", msg.Requirements)
+			os.Exit(1)
+		}
+		_ = plugin.WriteMessage(os.Stdout, plugin.AuthResolverOutput{Handled: handled})
 	case "auth":
 		var msg plugin.AuthHookInput
 		_ = plugin.DecMode.Unmarshal(raw, &msg)

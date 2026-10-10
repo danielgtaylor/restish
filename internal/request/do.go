@@ -162,6 +162,10 @@ type Options struct {
 	// OnUnauthorized, when non-nil, is used by callers that want to retry once
 	// after a 401 with freshly acquired credentials.
 	OnUnauthorized func(*http.Request) error
+	// OnRetryRequest, when non-nil, refreshes request-bound authentication before
+	// each transport retry and same-origin redirect. Dynamic proof schemes use
+	// this to avoid replaying a signature bound to another request target.
+	OnRetryRequest func(*http.Request) error
 	// CacheDir, if non-empty, enables RFC 7234 response caching in that
 	// directory.  NoCache overrides this and skips the cache entirely.
 	CacheDir string
@@ -296,8 +300,16 @@ func Do(ctx context.Context, method, rawURL string, body io.Reader, opts Options
 		builtTransport = true
 	}
 	client := &http.Client{
-		Transport:     transport,
-		CheckRedirect: credentialStrippingRedirectPolicy,
+		Transport: transport,
+		CheckRedirect: func(redirected *http.Request, via []*http.Request) error {
+			if err := credentialStrippingRedirectPolicy(redirected, via); err != nil {
+				return err
+			}
+			if len(via) > 0 && SameOrigin(via[len(via)-1].URL, redirected.URL) && opts.OnRetryRequest != nil {
+				return opts.OnRetryRequest(redirected)
+			}
+			return nil
+		},
 	}
 
 	resp, err := doWithResponseTimeout(client, req, opts.Timeout, opts.HeaderTimeoutOnly, cancelRequest)
@@ -652,7 +664,7 @@ func BuildTransport(opts Options) http.RoundTripper {
 		if delay == 0 {
 			delay = time.Second
 		}
-		inner = retryTransport{inner: base, maxRetry: opts.Retry, retryUnsafe: opts.RetryUnsafe, baseDelay: delay, maxWait: opts.RetryMaxWait, logger: opts.Logger}
+		inner = retryTransport{inner: base, maxRetry: opts.Retry, retryUnsafe: opts.RetryUnsafe, baseDelay: delay, maxWait: opts.RetryMaxWait, logger: opts.Logger, onRetryRequest: opts.OnRetryRequest}
 	}
 
 	if opts.NoCache || opts.CacheDir == "" {

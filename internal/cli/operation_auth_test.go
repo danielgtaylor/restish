@@ -9,8 +9,10 @@ import (
 
 	"github.com/rest-sh/restish/v2/auth"
 	"github.com/rest-sh/restish/v2/config"
+	internalplugin "github.com/rest-sh/restish/v2/internal/plugin"
 	"github.com/rest-sh/restish/v2/internal/request"
 	"github.com/rest-sh/restish/v2/internal/spec"
+	pluginwire "github.com/rest-sh/restish/v2/plugin"
 )
 
 type forceRecordingAuth struct {
@@ -466,6 +468,30 @@ func TestOperationAuthCoverageCountsOptionalAnonymousAsCallable(t *testing.T) {
 	}
 }
 
+func TestOperationAuthCoverageDefersConfiguredDPoPSourcePerRequest(t *testing.T) {
+	c := &CLI{}
+	prof := &config.ProfileConfig{Credentials: map[string]*config.CredentialConfig{
+		"RealmrootOAuth": {
+			Auth: &config.AuthConfig{Type: "dpop", Params: map[string]string{
+				"source": "realmroot", "reference": "https://identity.example/resources/wallet",
+			}},
+		},
+	}}
+	ops := []spec.Operation{
+		{ID: "readWallet", CredentialAlternatives: []spec.CredentialAlternative{{{
+			ID: "RealmrootOAuth", Kind: "oauth2-dpop", Needs: []string{"wallet:read"},
+		}}}},
+		{ID: "pay", CredentialAlternatives: []spec.CredentialAlternative{{{
+			ID: "RealmrootOAuth", Kind: "oauth2-dpop", Needs: []string{"wallet:x402:pay"},
+		}}}},
+	}
+
+	coverage := c.operationAuthCoverage("wallet", "default", prof, ops)
+	if coverage.Callable != 0 || coverage.SourceEvaluated != 2 || coverage.Secured != 2 {
+		t.Fatalf("coverage = %#v, want 0 statically callable and 2 source-evaluated", coverage)
+	}
+}
+
 func TestOperationAuthCoverageCountsProfileMTLSAsCallable(t *testing.T) {
 	c := &CLI{}
 	prof := &config.ProfileConfig{
@@ -702,5 +728,110 @@ func TestOperationAuthPreserveHeaderCaseDoesNotRewriteManualHeader(t *testing.T)
 	}
 	if got := req.Header["X-Sourcesystem"]; len(got) != 0 {
 		t.Fatalf("operation auth added canonicalized duplicate: %#v", req.Header)
+	}
+}
+
+func TestPlanOperationAuthUsesResolverOnlyAfterConfiguredCredentialsFail(t *testing.T) {
+	resolver := internalplugin.Plugin{Path: "/resolver", Manifest: pluginwire.Manifest{Name: "vault", Hooks: []string{"auth-resolver", "auth"}}}
+	c := &CLI{pluginsByHook: map[string][]internalplugin.Plugin{"auth-resolver": {resolver}}}
+	var received pluginwire.AuthResolverInput
+	c.hooks.AuthResolverHookFunc = func(_ internalplugin.Plugin, input pluginwire.AuthResolverInput) (bool, error) {
+		received = input
+		return true, nil
+	}
+	policy := &operationAuthPolicy{
+		Context: context.Background(), Method: http.MethodGet, URL: "https://api.example.com/v1/projects",
+		CredentialAlternatives: []spec.CredentialAlternative{{{ID: "OAuth", Kind: "oauth2", Needs: []string{"projects:read"}}}},
+	}
+	selected, handled, err := c.planOperationAuth("projects", "default", nil, policy)
+	if err != nil {
+		t.Fatalf("planOperationAuth: %v", err)
+	}
+	if !handled || len(selected) != 1 || selected[0].resolver == nil || selected[0].resolver.Manifest.Name != "vault" {
+		t.Fatalf("selected resolver = %#v, handled = %v", selected, handled)
+	}
+	if received.Request.URI != policy.URL || received.Request.Method != http.MethodGet || len(received.Requirements) != 1 || received.Requirements[0].Needs[0] != "projects:read" {
+		t.Fatalf("resolver input = %#v", received)
+	}
+
+	called := false
+	c.hooks.AuthResolverHookFunc = func(_ internalplugin.Plugin, _ pluginwire.AuthResolverInput) (bool, error) {
+		called = true
+		return true, nil
+	}
+	profile := &config.ProfileConfig{Credentials: map[string]*config.CredentialConfig{
+		"OAuth": {Auth: &config.AuthConfig{Type: "api-key", Params: map[string]string{"in": "header", "name": "Authorization", "value": "Bearer configured"}}, Satisfies: []string{"projects:read"}},
+	}}
+	selected, handled, err = c.planOperationAuth("projects", "default", profile, policy)
+	if err != nil || !handled || len(selected) != 1 {
+		t.Fatalf("configured plan = %#v, handled = %v, err = %v", selected, handled, err)
+	}
+	if called || selected[0].resolver != nil {
+		t.Fatal("resolver must not override a configured credential")
+	}
+}
+
+func TestAPIAuthInspectDefersUnconfiguredOperationToResolver(t *testing.T) {
+	var out strings.Builder
+	c := &CLI{
+		Stdout: &out,
+		pluginsByHook: map[string][]internalplugin.Plugin{"auth-resolver": {{
+			Manifest: pluginwire.Manifest{Name: "vault", Hooks: []string{"auth-resolver", "auth"}},
+		}}},
+	}
+	op := spec.Operation{
+		ID: "listProjects",
+		CredentialAlternatives: []spec.CredentialAlternative{
+			{{ID: "OIDC", Kind: "openid", Needs: []string{"projects:read"}}},
+			{{ID: "Session", Kind: "api-key"}},
+		},
+	}
+	if !c.operationAuthDeferredToResolver("projects", &config.ProfileConfig{}, op) {
+		t.Fatal("expected operation auth inspection to defer to the resolver")
+	}
+	c.printResolverDeferredOperationAuth(op)
+	got := out.String()
+	for _, want := range []string{
+		"Operation: listProjects",
+		"Auth: resolver evaluated at request time",
+		"OIDC (needs projects:read)",
+		"Session",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("output = %q, want %q", got, want)
+		}
+	}
+}
+
+func TestAPIAuthInspectDoesNotHideConfiguredCredentialErrorsBehindResolver(t *testing.T) {
+	c := &CLI{pluginsByHook: map[string][]internalplugin.Plugin{"auth-resolver": {{
+		Manifest: pluginwire.Manifest{Name: "vault", Hooks: []string{"auth-resolver", "auth"}},
+	}}}}
+	op := spec.Operation{
+		ID: "listProjects",
+		CredentialAlternatives: []spec.CredentialAlternative{{{
+			ID: "OIDC", Kind: "oauth2", Needs: []string{"projects:read"},
+		}}},
+	}
+	profile := &config.ProfileConfig{Credentials: map[string]*config.CredentialConfig{
+		"OIDC": {Auth: &config.AuthConfig{Type: "bearer", Params: map[string]string{"token": "env:MISSING"}}},
+	}}
+	if c.operationAuthDeferredToResolver("projects", profile, op) {
+		t.Fatal("configured credential inspection must retain strict readiness errors")
+	}
+}
+
+func TestPlanOperationAuthRejectsAmbiguousResolvers(t *testing.T) {
+	c := &CLI{pluginsByHook: map[string][]internalplugin.Plugin{"auth-resolver": {
+		{Manifest: pluginwire.Manifest{Name: "first"}},
+		{Manifest: pluginwire.Manifest{Name: "second"}},
+	}}}
+	c.hooks.AuthResolverHookFunc = func(_ internalplugin.Plugin, _ pluginwire.AuthResolverInput) (bool, error) { return true, nil }
+	_, _, err := c.planOperationAuth("projects", "default", nil, &operationAuthPolicy{
+		Method: http.MethodGet, URL: "https://api.example.com/projects",
+		CredentialAlternatives: []spec.CredentialAlternative{{{ID: "OAuth", Kind: "oauth2"}}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "multiple auth resolver plugins") {
+		t.Fatalf("error = %v", err)
 	}
 }

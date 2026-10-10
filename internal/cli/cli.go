@@ -27,6 +27,7 @@ import (
 	"github.com/rest-sh/restish/v2/internal/output"
 	internalplugin "github.com/rest-sh/restish/v2/internal/plugin"
 	"github.com/rest-sh/restish/v2/internal/spec"
+	pluginwire "github.com/rest-sh/restish/v2/plugin"
 	"github.com/spf13/cobra"
 )
 
@@ -79,6 +80,8 @@ type testHooks struct {
 	SignalAwareContext func() (context.Context, context.CancelFunc)
 	// AuthHookFunc overrides auth hook plugin execution in tests.
 	AuthHookFunc func(apiName, profileName string, rawParams map[string]string, secretKeys map[string]bool, req *http.Request) error
+	// AuthResolverHookFunc overrides one auth-resolver plugin invocation in tests.
+	AuthResolverHookFunc func(internalplugin.Plugin, pluginwire.AuthResolverInput) (bool, error)
 	// StdoutIsTerminal overrides terminal detection in tests.
 	StdoutIsTerminal func(io.Writer) bool
 }
@@ -597,15 +600,26 @@ func (c *CLI) Run(args []string) error {
 
 	// On first run (no config file yet), suggest shell setup if on a supported
 	// shell so users discover the noglob alias before hitting the foot-gun.
-	if cfgPath := c.configFilePath(); cfgPath != "" {
-		if _, statErr := os.Stat(cfgPath); errors.Is(statErr, os.ErrNotExist) {
-			if output.IsTerminal(c.Stderr) {
-				c.hintShellSetup()
+	if !c.commandSurface.IgnoreUserConfig {
+		if cfgPath := c.configFilePath(); cfgPath != "" {
+			if _, statErr := os.Stat(cfgPath); errors.Is(statErr, os.ErrNotExist) {
+				if output.IsTerminal(c.Stderr) {
+					c.hintShellSetup()
+				}
 			}
 		}
 	}
 
-	cfg, err := c.loadConfig()
+	var cfg *config.Config
+	var err error
+	if c.commandSurface.IgnoreUserConfig {
+		cfg = cloneConfigForEmbedding(c.defaultConfig)
+		if cfg == nil {
+			cfg = &config.Config{}
+		}
+	} else {
+		cfg, err = c.loadConfig()
+	}
 	if err != nil {
 		if argScan.Bootstrap {
 			c.cfg = &config.Config{}
@@ -614,8 +628,10 @@ func (c *CLI) Run(args []string) error {
 		}
 		return err
 	}
-	if insecure, permErr := config.ConfigFileHasInsecurePermissions(c.configFilePath()); permErr == nil && insecure {
-		return fmt.Errorf("%s is group/world-readable; credentials in config should be kept private (chmod 600)", c.configFilePath())
+	if !c.commandSurface.IgnoreUserConfig {
+		if insecure, permErr := config.ConfigFileHasInsecurePermissions(c.configFilePath()); permErr == nil && insecure {
+			return fmt.Errorf("%s is group/world-readable; credentials in config should be kept private (chmod 600)", c.configFilePath())
+		}
 	}
 	c.cfg = cfg
 	if cfg.Migration != nil {
@@ -638,9 +654,11 @@ func (c *CLI) Run(args []string) error {
 
 	// Discover hook plugins at startup; warn about broken plugins so users
 	// know their plugin is not active rather than silently ignoring it.
-	c.plugins = internalplugin.Discover(c.pluginDir(), func(path string, err error) {
-		c.warnf("plugin %s: %v", filepath.Base(path), err)
-	}, c.pluginManifestCachePath(), diagnosticPrefixWriter(c.Stderr))
+	if !c.commandSurface.DisablePlugins {
+		c.plugins = internalplugin.Discover(c.pluginDir(), func(path string, err error) {
+			c.warnf("plugin %s: %v", filepath.Base(path), err)
+		}, c.pluginManifestCachePath(), diagnosticPrefixWriter(c.Stderr))
+	}
 	c.pluginsByHook = indexPluginsByHook(c.plugins)
 	c.globalAuthPlugins, c.authPluginsByAPI = indexAuthPluginsByAPI(c.pluginsByHook["auth"])
 
@@ -667,6 +685,9 @@ func (c *CLI) Run(args []string) error {
 	root := c.newRootCmd()
 	c.quietGeneratedWarnings = quietGeneratedWarningsForScan(argScan, cfg)
 	if err := c.ensurePromotedAPICommandMetadata(ctx, argScan, cfg); err != nil {
+		return err
+	}
+	if err := c.ensureCuratedAPICommandMetadata(ctx, argScan, cfg); err != nil {
 		return err
 	}
 	if !c.hasPromotedAPI() {

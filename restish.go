@@ -9,12 +9,27 @@ package restish
 import (
 	"github.com/rest-sh/restish/v2/auth"
 	"github.com/rest-sh/restish/v2/config"
+	internal_auth "github.com/rest-sh/restish/v2/internal/auth"
 	internalcli "github.com/rest-sh/restish/v2/internal/cli"
 	"github.com/rest-sh/restish/v2/internal/content"
 	"github.com/rest-sh/restish/v2/internal/hypermedia"
 	"github.com/rest-sh/restish/v2/internal/output"
 	"github.com/rest-sh/restish/v2/internal/spec"
 )
+
+// DPoPCredentialDescription describes the authorization server and Resource
+// binding used by Restish's native DPoP credential lifecycle.
+type DPoPCredentialDescription = internal_auth.DPoPCredentialDescription
+
+// DPoPIssuedCredential is a short-lived DPoP access token returned to Restish.
+type DPoPIssuedCredential = internal_auth.DPoPIssuedCredential
+
+// DPoPNonceChallenge requests one nonce-bound retry at the credential endpoint.
+type DPoPNonceChallenge = internal_auth.DPoPNonceChallenge
+
+// DPoPCredentialSource supplies provider-issued target credentials while
+// Restish retains custody of target keys, proofs, tokens, and cache state.
+type DPoPCredentialSource = internal_auth.DPoPCredentialSource
 
 // CLI is an embeddable Restish runtime.
 //
@@ -83,6 +98,12 @@ type CommandSurface = internalcli.CommandSurface
 // AddLinkParser, AddLoader, and AddFormatter before calling Run.
 func New() *CLI {
 	return internalcli.New()
+}
+
+// NewDPoPAuthHandler creates Restish's native operation-aware DPoP handler for
+// an in-process provider credential source.
+func NewDPoPAuthHandler(source DPoPCredentialSource) AuthHandler {
+	return &internal_auth.DPoP{Source: source}
 }
 
 // Version is the current build version. Set github.com/rest-sh/restish/v2/internal/cli.Version

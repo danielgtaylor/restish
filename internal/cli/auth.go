@@ -32,6 +32,7 @@ type authHandlerOptions struct {
 
 type authCallbacks struct {
 	OnRequest      func(*http.Request) error
+	OnRetryRequest func(*http.Request) error
 	OnUnauthorized func(*http.Request) error
 }
 
@@ -77,6 +78,8 @@ func (c *CLI) authHandlerFor(ac *config.AuthConfig, opts authHandlerOptions) (au
 		return &authpkg.Bearer{}, nil
 	case "http-basic":
 		return &authpkg.HTTPBasic{}, nil
+	case "dpop":
+		return &authpkg.DPoP{Source: pluginDPoPCredentialSource{cli: c}}, nil
 	case "oauth-client-credentials":
 		return &authpkg.ClientCredentials{
 			Cache:      auth.NewTokenCache(c.tokenCachePath()),
@@ -102,7 +105,7 @@ func (c *CLI) authHandlerFor(ac *config.AuthConfig, opts authHandlerOptions) (au
 	case "external-tool":
 		return &authpkg.ExternalTool{Stderr: c.Stderr}, nil
 	default:
-		return nil, fmt.Errorf("unknown auth type %q; supported: api-key, bearer, http-basic, oauth-client-credentials, oauth-authorization-code, oauth-device-code, external-tool", ac.Type)
+		return nil, fmt.Errorf("unknown auth type %q; supported: api-key, bearer, http-basic, dpop, oauth-client-credentials, oauth-authorization-code, oauth-device-code, external-tool", ac.Type)
 	}
 }
 
@@ -129,7 +132,7 @@ func (c *CLI) authOnRequest(apiName, profileName string, prof *config.ProfileCon
 				secretKeys[p.Name] = true
 			}
 		}
-		callbacks.OnRequest = func(req *http.Request) error {
+		apply := func(req *http.Request) error {
 			if c.applyCachedOAuthClientCredentials(req, resolvedAuth.Config.Type, resolvedAuth.CacheKey, apiName, profileName, false) {
 				return c.runAuthHookPlugins(apiName, profileName, rawParams, secretKeys, req)
 			}
@@ -154,6 +157,10 @@ func (c *CLI) authOnRequest(apiName, profileName string, prof *config.ProfileCon
 			}
 			markAuthCredentialTargets(req, resolvedAuth.Config.Type, params)
 			return c.runAuthHookPlugins(apiName, profileName, rawParams, secretKeys, req)
+		}
+		callbacks.OnRequest = apply
+		if _, ok := handler.(auth.RequestBound); ok {
+			callbacks.OnRetryRequest = apply
 		}
 		if _, ok := handler.(auth.ForceCapable); ok {
 			callbacks.OnUnauthorized = func(req *http.Request) error {

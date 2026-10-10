@@ -73,6 +73,9 @@ type APIConfig struct {
 	// SpecURL is the URL of the OpenAPI spec for this API (optional).
 	// Mutually exclusive with SpecFiles; SpecFiles takes precedence when both are set.
 	SpecURL string `json:"spec_url,omitempty"`
+	// UnauthenticatedSpec fetches OpenAPI discovery metadata without applying
+	// the API profile credential. Use it only for publicly published contracts.
+	UnauthenticatedSpec bool `json:"unauthenticated_spec,omitempty"`
 	// AllowCrossOriginSpec permits discovery from Link-header spec URLs on
 	// hosts other than base_url. Private, loopback, link-local, and
 	// unspecified IP literal targets are still rejected.
@@ -89,6 +92,13 @@ type APIConfig struct {
 	// API command. Empty or "flat" keeps one flat command namespace; "tags"
 	// groups operations under first-tag subcommands.
 	CommandLayout string `json:"command_layout,omitempty"`
+	// ExcludedOperationIDs hides selected OpenAPI operations from generated
+	// commands for an embedded product surface without changing the upstream
+	// API description.
+	ExcludedOperationIDs []string `json:"excluded_operation_ids,omitempty"`
+	// ShowHiddenOperations exposes operations marked x-cli-hidden when an
+	// embedded product intentionally owns a different curated command surface.
+	ShowHiddenOperations bool `json:"show_hidden_operations,omitempty"`
 	// ServerVariables supplies explicit values for OpenAPI server URL variables.
 	// Values are used for generated operation path resolution; enum values from
 	// remote specs are never expanded eagerly.

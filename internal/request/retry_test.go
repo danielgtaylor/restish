@@ -123,6 +123,47 @@ func TestRetryTransportRetries429AndLogsProgress(t *testing.T) {
 	}
 }
 
+func TestRetryTransportRefreshesRequestBoundAuthentication(t *testing.T) {
+	attempts := 0
+	refreshes := 0
+	rt := retryTransport{
+		baseDelay: time.Nanosecond,
+		maxRetry:  1,
+		onRetryRequest: func(req *http.Request) error {
+			refreshes++
+			req.Header.Set("DPoP", "proof-2")
+			return nil
+		},
+		inner: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			attempts++
+			wantProof := "proof-1"
+			status := http.StatusInternalServerError
+			if attempts == 2 {
+				wantProof = "proof-2"
+				status = http.StatusOK
+			}
+			if got := req.Header.Get("DPoP"); got != wantProof {
+				t.Fatalf("attempt %d DPoP = %q, want %q", attempts, got, wantProof)
+			}
+			return &http.Response{StatusCode: status, Header: http.Header{}, Body: http.NoBody}, nil
+		}),
+	}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "https://api.example.com/items", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("DPoP", "proof-1")
+
+	resp, err := rt.RoundTrip(req)
+	if err != nil {
+		t.Fatalf("round trip: %v", err)
+	}
+	defer resp.Body.Close()
+	if refreshes != 1 {
+		t.Fatalf("auth refreshes = %d, want 1", refreshes)
+	}
+}
+
 func TestShouldRetryStatusUsesExplicitTransientSet(t *testing.T) {
 	retryable := []int{
 		http.StatusInternalServerError,

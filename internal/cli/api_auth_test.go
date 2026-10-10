@@ -212,14 +212,14 @@ func TestAPIAuthInspectCredentialAPIKeyQuery(t *testing.T) {
 	app.SetConfigPath(cfgFile)
 	app.Run("api", "auth", "inspect", "myapi", "--credential", "PartnerKey")
 	got := app.Stdout.String()
-	if !strings.Contains(got, "Query: http://example.com?partner=secret") {
+	if !strings.Contains(got, "Query: https://api.example.com?partner=secret") {
 		t.Fatalf("expected API key query inspection to show value, got %q", got)
 	}
 
 	app.Stdout.Reset()
 	app.Run("api", "auth", "inspect", "myapi", "--credential", "PartnerKey", "--redact")
 	got = app.Stdout.String()
-	if strings.Contains(got, "secret") || !strings.Contains(got, "Query: http://example.com?partner=%3Credacted%3E") {
+	if strings.Contains(got, "secret") || !strings.Contains(got, "Query: https://api.example.com?partner=%3Credacted%3E") {
 		t.Fatalf("expected redacted API key query inspection with --redact, got %q", got)
 	}
 }
@@ -348,6 +348,33 @@ func TestAPIAuthInspectUsesCachedOperationMetadata(t *testing.T) {
 		"MutualTLS: missing, 1 operation",
 		"GhostAuth: missing, unsupported unknown, undeclared security scheme",
 		"urn:example:auth:TenantKey: missing, URI-backed",
+	)
+}
+
+func TestAPIAuthInspectDefersDynamicDPoPMaterialWithoutCallingTheSource(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	env := setupEnvWithSpec(t, mux, func(baseURL string) string {
+		return openAPISpec(baseURL, "DPoP API",
+			openAPISecuritySchemes(`"RealmrootOAuth":{"type":"oauth2","x-dpop-required":true,"flows":{"clientCredentials":{"tokenUrl":"https://identity.example/token","scopes":{"wallet:read":"Read Wallet"}}}}`),
+			openAPIPaths(openAPIGet("/wallet", "readWallet", `"security":[{"RealmrootOAuth":["wallet:read"]}]`)))
+	})
+	env.writeAPIConfig(t, testAPIConfig(env.baseURL(t), profileCredentials(map[string]*config.CredentialConfig{
+		"RealmrootOAuth": testCredential(&config.AuthConfig{Type: "dpop", Params: map[string]string{
+			"source": "missing-plugin", "reference": "https://identity.example/resources/wallet",
+		}}),
+	})))
+
+	c, out := env.newCaptureCLI()
+	if err := c.Run([]string{"restish", "api", "auth", "inspect", "tapi", "--operation", "readWallet", "--redact"}); err != nil {
+		t.Fatalf("api auth inspect: %v", err)
+	}
+	requireContains(t, out.String(),
+		"Operation: readWallet",
+		"Auth type: dpop",
+		"Credential source: missing-plugin",
+		"Operation scopes: wallet:read",
+		"Auth material: evaluated when the operation is invoked",
 	)
 }
 

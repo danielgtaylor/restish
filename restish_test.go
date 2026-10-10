@@ -83,3 +83,11 @@ func TestPublicAPIEmbeddableCLI(t *testing.T) {
 		t.Fatalf("default and user APIs should both be present: %#v", c.Config().APIs)
 	}
 }
+
+func TestPublicAPICuratedCommandSurface(t *testing.T) {
+	c := restish.New()
+	c.SetCommandSurface(restish.CommandSurface{
+		HTTPMethods:    []string{"GET", "post"},
+		RegisteredAPIs: true,
+	})
+}

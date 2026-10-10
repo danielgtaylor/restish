@@ -470,8 +470,14 @@ func credentialRequirementKind(scheme *v3.SecurityScheme) string {
 	case "apiKey":
 		return "api-key"
 	case "oauth2":
+		if securitySchemeDPoPRequired(scheme) {
+			return "oauth2-dpop"
+		}
 		return "oauth2"
 	case "openIdConnect":
+		if securitySchemeDPoPRequired(scheme) {
+			return "oauth2-dpop"
+		}
 		return "openid"
 	case "mutualTLS":
 		return "mtls"
@@ -481,6 +487,8 @@ func credentialRequirementKind(scheme *v3.SecurityScheme) string {
 			return "http-basic"
 		case "bearer":
 			return "http-bearer"
+		case "dpop":
+			return "http-dpop"
 		default:
 			return "http"
 		}

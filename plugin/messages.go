@@ -1,5 +1,7 @@
 package plugin
 
+import "time"
+
 // Message type constants for the command plugin protocol.
 // Use these instead of bare strings to avoid typos; a mismatched type string
 // causes the host or plugin to silently ignore the message.
@@ -398,16 +400,94 @@ type HookRequestHeaderUpdate struct {
 
 // AuthHookInput is sent to plugins registered for the "auth" hook.
 type AuthHookInput struct {
-	Type    string            `cbor:"type" json:"type"`
-	API     string            `cbor:"api" json:"api"`
-	Profile string            `cbor:"profile" json:"profile"`
-	Params  map[string]string `cbor:"params" json:"params"`
-	Request HookRequest       `cbor:"request" json:"request"`
+	Type         string            `cbor:"type" json:"type"`
+	API          string            `cbor:"api" json:"api"`
+	Profile      string            `cbor:"profile" json:"profile"`
+	Params       map[string]string `cbor:"params" json:"params"`
+	Requirements []AuthRequirement `cbor:"requirements,omitempty" json:"requirements,omitempty"`
+	Request      HookRequest       `cbor:"request" json:"request"`
 }
 
 // AuthHookOutput is the reply from an "auth" hook plugin.
 type AuthHookOutput struct {
 	Request *HookRequestHeaderUpdate `cbor:"request,omitempty" json:"request,omitempty"`
+}
+
+// AuthRequirement describes one OpenAPI security scheme in an AND
+// alternative. Needs contains the scopes required by the operation.
+type AuthRequirement struct {
+	ID         string   `cbor:"id" json:"id"`
+	Ref        string   `cbor:"ref,omitempty" json:"ref,omitempty"`
+	Kind       string   `cbor:"kind" json:"kind"`
+	Needs      []string `cbor:"needs,omitempty" json:"needs,omitempty"`
+	In         string   `cbor:"in,omitempty" json:"in,omitempty"`
+	Name       string   `cbor:"name,omitempty" json:"name,omitempty"`
+	Source     string   `cbor:"source,omitempty" json:"source,omitempty"`
+	External   bool     `cbor:"external,omitempty" json:"external,omitempty"`
+	Undeclared bool     `cbor:"undeclared,omitempty" json:"undeclared,omitempty"`
+	Deprecated bool     `cbor:"deprecated,omitempty" json:"deprecated,omitempty"`
+}
+
+// AuthResolverInput asks an auth plugin whether it can satisfy one complete
+// OpenAPI security alternative for the final request target.
+type AuthResolverInput struct {
+	Type         string            `cbor:"type" json:"type"`
+	API          string            `cbor:"api" json:"api"`
+	Profile      string            `cbor:"profile" json:"profile"`
+	Requirements []AuthRequirement `cbor:"requirements" json:"requirements"`
+	Request      HookRequest       `cbor:"request" json:"request"`
+}
+
+// AuthResolverOutput is the reply from an "auth-resolver" hook plugin.
+type AuthResolverOutput struct {
+	Handled bool `cbor:"handled" json:"handled"`
+}
+
+// CredentialSourceInput is sent to a plugin registered for the
+// "credential-source" hook. Describe resolves public acquisition metadata;
+// issue redeems the same opaque reference with a proof created by Restish.
+type CredentialSourceInput struct {
+	Type      string   `cbor:"type" json:"type"`
+	Action    string   `cbor:"action" json:"action"`
+	API       string   `cbor:"api" json:"api"`
+	Profile   string   `cbor:"profile" json:"profile"`
+	Reference string   `cbor:"reference" json:"reference"`
+	Scopes    []string `cbor:"scopes,omitempty" json:"scopes,omitempty"`
+	Proof     string   `cbor:"proof,omitempty" json:"proof,omitempty"`
+}
+
+// CredentialSourceDescription supplies the public values Restish binds into
+// a DPoP proof before asking the source to issue a credential.
+type CredentialSourceDescription struct {
+	ProofMethod string   `cbor:"proof_method" json:"proofMethod"`
+	ProofURI    string   `cbor:"proof_uri" json:"proofUri"`
+	Resource    string   `cbor:"resource" json:"resource"`
+	Scopes      []string `cbor:"scopes,omitempty" json:"scopes,omitempty"`
+}
+
+// CredentialSourceCredential is the short-lived credential returned only
+// over the bounded plugin channel. Hosts must never print it.
+type CredentialSourceCredential struct {
+	AccessToken string    `cbor:"access_token" json:"accessToken"`
+	TokenType   string    `cbor:"token_type" json:"tokenType"`
+	ExpiresAt   time.Time `cbor:"expires_at" json:"expiresAt"`
+	Resource    string    `cbor:"resource" json:"resource"`
+	Scopes      []string  `cbor:"scopes,omitempty" json:"scopes,omitempty"`
+	Nonce       string    `cbor:"nonce,omitempty" json:"nonce,omitempty"`
+}
+
+// CredentialSourceChallenge asks Restish to create a fresh proof for the
+// described endpoint. Nonce values remain opaque to plugins and Restish.
+type CredentialSourceChallenge struct {
+	Type  string `cbor:"type" json:"type"`
+	Nonce string `cbor:"nonce" json:"nonce"`
+}
+
+// CredentialSourceOutput is the reply from a credential-source hook.
+type CredentialSourceOutput struct {
+	Description *CredentialSourceDescription `cbor:"description,omitempty" json:"description,omitempty"`
+	Credential  *CredentialSourceCredential  `cbor:"credential,omitempty" json:"credential,omitempty"`
+	Challenge   *CredentialSourceChallenge   `cbor:"challenge,omitempty" json:"challenge,omitempty"`
 }
 
 // RequestMiddlewareInput is sent to plugins registered for the

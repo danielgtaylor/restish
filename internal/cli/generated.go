@@ -62,7 +62,13 @@ func (c *CLI) buildAPICommandFromOperationResult(apiName string, apiCfg *config.
 }
 
 func (c *CLI) buildAPICommandFromOperationSet(apiName string, apiCfg *config.APIConfig, set spec.OperationSet, operationBase string) *cobra.Command {
-	ops := set.Operations
+	ops := filterExcludedOperations(set.Operations, apiCfg.ExcludedOperationIDs)
+	if apiCfg.ShowHiddenOperations {
+		ops = append([]spec.Operation(nil), ops...)
+		for index := range ops {
+			ops[index].XCLI.Hidden = false
+		}
+	}
 	// ops == nil means no V3 model or no paths section — nothing to generate.
 	if ops == nil {
 		return nil
@@ -81,9 +87,13 @@ func (c *CLI) buildAPICommandFromOperationSet(apiName string, apiCfg *config.API
 		if long != "" {
 			long += "\n\n"
 		}
-		long += fmt.Sprintf("Auth: run %q for credential coverage. Use --rsh-auth on generated operations when you need an explicit credential override.", c.commandNameOrDefault()+" api auth inspect "+apiName)
+		authHelp := fmt.Sprintf("Auth: run %q for credential coverage. Use --rsh-auth on generated operations when you need an explicit credential override.", c.commandNameOrDefault()+" api auth inspect "+apiName)
+		if c.hasCuratedCommandSurface() {
+			authHelp = "Auth: credentials and operation scopes are resolved by the embedding CLI."
+		}
+		long += authHelp
 		if fullLong != "" {
-			fullLong += "\n\n" + fmt.Sprintf("Auth: run %q for credential coverage. Use --rsh-auth on generated operations when you need an explicit credential override.", c.commandNameOrDefault()+" api auth inspect "+apiName)
+			fullLong += "\n\n" + authHelp
 		}
 	}
 
@@ -191,6 +201,23 @@ func (c *CLI) buildAPICommandFromOperationSet(apiName string, apiCfg *config.API
 	apiCmd.Example = strings.Join(rootExamples, "\n")
 
 	return apiCmd
+}
+
+func filterExcludedOperations(operations []spec.Operation, excluded []string) []spec.Operation {
+	if len(excluded) == 0 {
+		return operations
+	}
+	blocked := make(map[string]bool, len(excluded))
+	for _, operationID := range excluded {
+		blocked[strings.TrimSpace(operationID)] = true
+	}
+	filtered := make([]spec.Operation, 0, len(operations))
+	for _, operation := range operations {
+		if !blocked[operation.ID] {
+			filtered = append(filtered, operation)
+		}
+	}
+	return filtered
 }
 
 func generatedAPIHasAuth(ops []spec.Operation) bool {
@@ -470,6 +497,7 @@ func (c *CLI) buildOperationCommand(apiName, examplePrefix string, op spec.Opera
 		}
 		long += argDocs.String()
 	}
+	long = appendGeneratedAuthorizationHelp(long, op)
 	long = appendGeneratedOperationHelp(long, required, optional, op.Help)
 
 	cmd := &cobra.Command{
@@ -558,6 +586,34 @@ func (c *CLI) buildOperationCommand(apiName, examplePrefix string, op spec.Opera
 		}
 	}
 	return cmd, nil
+}
+
+func appendGeneratedAuthorizationHelp(long string, op spec.Operation) string {
+	if op.NoAuth || len(op.CredentialAlternatives) == 0 {
+		return long
+	}
+	var help strings.Builder
+	if long != "" {
+		help.WriteString(long)
+		help.WriteString("\n\n")
+	}
+	help.WriteString("Authorization:\n")
+	for index, alternative := range op.CredentialAlternatives {
+		parts := make([]string, 0, len(alternative))
+		for _, requirement := range alternative {
+			part := requirement.ID + " (" + requirement.Kind + ")"
+			if len(requirement.Needs) > 0 {
+				part += ": " + strings.Join(requirement.Needs, ", ")
+			}
+			parts = append(parts, part)
+		}
+		prefix := "  "
+		if len(op.CredentialAlternatives) > 1 {
+			prefix = fmt.Sprintf("  alternative %d: ", index+1)
+		}
+		help.WriteString(prefix + strings.Join(parts, " + ") + "\n")
+	}
+	return strings.TrimRight(help.String(), "\n")
 }
 
 func generatedParamSatisfiedByAPIKeySecurity(p *paramInfo, alternatives []spec.CredentialAlternative) bool {

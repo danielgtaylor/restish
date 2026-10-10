@@ -35,6 +35,46 @@ func TestWriteAndReadCache(t *testing.T) {
 	}
 }
 
+func TestWriteAndReadCacheWithDeepOperationSchema(t *testing.T) {
+	dir := t.TempDir()
+	schema := map[string]any{"type": "string"}
+	for range 64 {
+		schema = map[string]any{"properties": schema}
+	}
+	entry := &cacheEntry{
+		Version:   "v2",
+		FetchedAt: time.Now(),
+		ExpiresAt: time.Now().Add(time.Hour),
+		Spec: cachedRaw{
+			ContentType: "application/json",
+			Raw:         []byte(testSpecRaw),
+		},
+	}
+	entry.upsertOperationSet(OperationOptions{BaseURL: "https://api.example.com"}, OperationSet{
+		Operations: []Operation{{
+			ID:     "getItem",
+			Method: "GET",
+			Path:   "/items/{id}",
+			Parameters: []Param{{
+				Name:       "id",
+				In:         "path",
+				JSONSchema: schema,
+			}},
+		}},
+	})
+	if err := writeCache(dir, "testapi", entry); err != nil {
+		t.Fatalf("writeCache: %v", err)
+	}
+
+	got, ok := readCache(dir, "testapi", "v2")
+	if !ok {
+		t.Fatal("expected cache hit")
+	}
+	if len(got.Operations) != 1 || len(got.Operations[0].Operations) != 1 {
+		t.Fatalf("cached operations = %#v", got.Operations)
+	}
+}
+
 func TestWriteCacheUsesAtomicReplacement(t *testing.T) {
 	dir := t.TempDir()
 	entry := &cacheEntry{

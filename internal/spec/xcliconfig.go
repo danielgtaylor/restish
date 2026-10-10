@@ -247,6 +247,15 @@ func referencedFallbackSecuritySchemeNames(model v3high.Document) []string {
 func SchemeToXCLIAuth(scheme *v3high.SecurityScheme, params map[string]string) *XCLIAuth {
 	p := map[string]string{}
 	var authType string
+	if securitySchemeDPoPRequired(scheme) && (scheme.Type == "oauth2" || scheme.Type == "openIdConnect") {
+		authType = "dpop"
+		p["source"] = ""
+		p["reference"] = ""
+		for k, v := range params {
+			p[k] = v
+		}
+		return &XCLIAuth{Type: authType, Params: p}
+	}
 
 	switch scheme.Type {
 	case "apiKey":
@@ -258,7 +267,7 @@ func SchemeToXCLIAuth(scheme *v3high.SecurityScheme, params map[string]string) *
 		p["name"] = scheme.Name
 		p["value"] = ""
 	case "http":
-		switch scheme.Scheme {
+		switch strings.ToLower(scheme.Scheme) {
 		case "basic":
 			authType = "http-basic"
 			p["username"] = ""
@@ -266,6 +275,10 @@ func SchemeToXCLIAuth(scheme *v3high.SecurityScheme, params map[string]string) *
 		case "bearer":
 			authType = "bearer"
 			p["token"] = ""
+		case "dpop":
+			authType = "dpop"
+			p["source"] = ""
+			p["reference"] = ""
 		default:
 			return nil
 		}

@@ -73,6 +73,9 @@ func (c *CLI) newRootCmd() *cobra.Command {
 			return unknownCommandError(cmd, args[0], rootUnknownCommandHint(cmd, args))
 		},
 	}
+	if strings.Contains(use, " ") {
+		root.Annotations = map[string]string{cobra.CommandDisplayNameAnnotation: use}
+	}
 	root.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
 		return newUsageError(suggestFlagError(cmd, err))
 	})

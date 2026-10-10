@@ -301,9 +301,10 @@ func TestVerboseRedactsSensitiveResponseHeaders(t *testing.T) {
 			StatusCode: 200,
 			Proto:      "HTTP/1.1",
 			Header: http.Header{
-				"Content-Type": []string{"application/json"},
-				"Set-Cookie":   []string{"session=secret"},
-				"X-Request-Id": []string{"visible"},
+				"Content-Type":           []string{"application/json"},
+				"Set-Cookie":             []string{"session=secret"},
+				"X-Varied-Authorization": []string{"DPoP secret-token"},
+				"X-Request-Id":           []string{"visible"},
 			},
 			Body:    io.NopCloser(strings.NewReader(`{"ok":true}`)),
 			Request: r,
@@ -314,11 +315,14 @@ func TestVerboseRedactsSensitiveResponseHeaders(t *testing.T) {
 		t.Fatalf("get: %v", err)
 	}
 	stderr := errOut.String()
-	if strings.Contains(stderr, "session=secret") {
+	if strings.Contains(stderr, "session=secret") || strings.Contains(stderr, "secret-token") {
 		t.Fatalf("verbose response leaked Set-Cookie:\n%s", stderr)
 	}
 	if !strings.Contains(stderr, "< Set-Cookie: <redacted>") {
 		t.Fatalf("expected redacted Set-Cookie, got:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "< X-Varied-Authorization: <redacted>") {
+		t.Fatalf("expected derived Authorization header to be redacted, got:\n%s", stderr)
 	}
 	if !strings.Contains(stderr, "< X-Request-Id: visible") {
 		t.Fatalf("expected non-sensitive header to remain visible, got:\n%s", stderr)

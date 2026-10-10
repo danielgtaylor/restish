@@ -35,7 +35,9 @@ const (
 )
 
 var knownHooks = map[string]bool{
+	"auth-resolver":       true,
 	"auth":                true,
+	"credential-source":   true,
 	"request-middleware":  true,
 	"response-middleware": true,
 	"loader":              true,
@@ -48,6 +50,9 @@ var supportedRequiredFeatures = map[string]bool{
 	pluginwire.FeatureManifestRequiredFeatures: true,
 	pluginwire.FeatureLoaderSourceMetadata:     true,
 	pluginwire.FeatureRequestFinalBody:         true,
+	pluginwire.FeatureAuthOperationSecurity:    true,
+	pluginwire.FeatureDPoPCredentialSource:     true,
+	pluginwire.FeatureDPoPOperationScopes:      true,
 }
 
 var renameManifestCacheFile = os.Rename

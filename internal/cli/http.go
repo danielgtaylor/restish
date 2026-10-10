@@ -94,14 +94,17 @@ func genericHTTPLong(method string) string {
 	case "GET", "HEAD", "OPTIONS":
 		return fmt.Sprintf("Perform an HTTP `%s` request against a full URL or registered API short-name URL.\n\n", method) +
 			"Use generic HTTP commands for one-off requests, scripting, and APIs that are not registered with `api connect`. Restish still applies global request flags, profile settings for registered API short names, response normalization, output formatting, filtering, retries, caching, pagination, and plugin hooks.\n\n" +
+			"For a registered API with cached OpenAPI metadata, pass a parent short-name path such as `demo/` to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash still send requests.\n\n" +
 			"Pass request headers with `-H`, query parameters with `-q`, filters with `-f`, and output format with `-o`."
 	case "POST", "PUT", "PATCH":
 		return fmt.Sprintf("Perform an HTTP `%s` request with optional shorthand, file, or stdin body input.\n\n", method) +
 			"Use generic HTTP commands for one-off writes, scripting, and APIs that are not registered with `api connect`. Body arguments use Restish shorthand by default; pass `@file.json`, pipe stdin, or set `--rsh-content-type` when you need a specific wire format.\n\n" +
+			"For a registered API with cached OpenAPI metadata, pass a parent short-name path without a body, such as `demo/`, to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash and body-bearing requests still send requests.\n\n" +
 			"Restish still applies global request flags, response normalization, output formatting, filtering, retries, caching, pagination, and plugin hooks. Unsafe methods are not retried unless you opt in with `--rsh-retry-unsafe`."
 	case "DELETE":
 		return "Perform an HTTP `DELETE` request against a full URL or registered API short-name URL.\n\n" +
 			"Use this for direct delete requests when a generated OpenAPI command is not available or would add friction. Restish still applies global request flags, profile settings for registered API short names, response normalization, output formatting, filtering, and plugin hooks.\n\n" +
+			"For a registered API with cached OpenAPI metadata, pass a parent short-name path such as `demo/` to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash still send requests.\n\n" +
 			"By default, HTTP error statuses produce non-zero exit codes. Use `--rsh-ignore-status-code` only when a script intentionally handles those responses."
 	default:
 		return fmt.Sprintf("Perform an HTTP `%s` request with Restish's request, output, and plugin pipeline.", method)
@@ -114,9 +117,9 @@ func genericHTTPExamples(commandName, verb string) string {
 	}
 	switch verb {
 	case "get":
-		return fmt.Sprintf("  %s get https://api.example.com/items\n  %s get https://api.example.com/items -f body.items -o table", commandName, commandName)
+		return fmt.Sprintf("  %s get https://api.example.com/items\n  %s get https://api.example.com/items -f body.items -o table\n  %s get demo/", commandName, commandName, commandName)
 	case "post":
-		return fmt.Sprintf("  %s post https://api.example.com/items 'name: Ada, active: true'\n  %s post -c json https://api.example.com/items @item.json", commandName, commandName)
+		return fmt.Sprintf("  %s post https://api.example.com/items 'name: Ada, active: true'\n  %s post -c json https://api.example.com/items @item.json\n  %s post demo/", commandName, commandName, commandName)
 	case "put":
 		return fmt.Sprintf("  %s put https://api.example.com/items/123 'name: Ada'\n  %s put -c json https://api.example.com/items/123 @item.json", commandName, commandName)
 	case "patch":
@@ -181,8 +184,7 @@ func (c *CLI) runHTTPWithOptions(cmd *cobra.Command, method string, args []strin
 	if err := c.validateHTTPOutputFlags(cmd, gf); err != nil {
 		return err
 	}
-	c.requestExecutionStarted = true
-	trace := ensureRequestTrace(cmd)
+	explicitMethod := method != ""
 	rawURL := args[0]
 	bodyArgs := args[1:] // positional args after the URL are shorthand body input
 
@@ -234,15 +236,23 @@ func (c *CLI) runHTTPWithOptions(cmd *cobra.Command, method string, args []strin
 			return err
 		}
 	}
-	inputSource := traceInputSource(bodyInfo, bodyVal != nil)
-	if bodyVal != nil {
-		trace.Step(inputSource)
-	}
 	if method == "" {
 		method = "GET"
 		if bodyVal != nil {
 			method = "POST"
 		}
+	}
+	if explicitMethod && !followMode && bodyVal == nil && !bodyOpts.bodyOverrideSet {
+		if browsed, err := c.browseGenericOperations(cmd, method, rawURL); browsed || err != nil {
+			return err
+		}
+	}
+
+	c.requestExecutionStarted = true
+	trace := ensureRequestTrace(cmd)
+	inputSource := traceInputSource(bodyInfo, bodyVal != nil)
+	if bodyVal != nil {
+		trace.Step(inputSource)
 	}
 
 	prepared, err := c.prepareRequest(requestContext(cmd), method, rawURL, profileName, opts, bodyVal, extraHeaders, noAuth, authOpts, bodyOpts.operationAuth, bodyOpts.rawBinaryBody, bodyOpts.explicitAPIName)

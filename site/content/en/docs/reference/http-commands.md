@@ -21,6 +21,8 @@ Perform an HTTP `GET` request against a full URL or registered API short-name UR
 
 Use generic HTTP commands for one-off requests, scripting, and APIs that are not registered with `api connect`. Restish still applies global request flags, profile settings for registered API short names, response normalization, output formatting, filtering, retries, caching, pagination, and plugin hooks.
 
+For a registered API with cached OpenAPI metadata, pass a parent short-name path such as `demo/` to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash still send requests.
+
 Pass request headers with `-H`, query parameters with `-q`, filters with `-f`, and output format with `-o`.
 
 Usage:
@@ -36,6 +38,7 @@ Examples:
 ```bash
   restish get https://api.example.com/items
   restish get https://api.example.com/items -f body.items -o table
+  restish get demo/
 ```
 
 
@@ -46,6 +49,8 @@ Perform an HTTP HEAD request
 Perform an HTTP `HEAD` request against a full URL or registered API short-name URL.
 
 Use generic HTTP commands for one-off requests, scripting, and APIs that are not registered with `api connect`. Restish still applies global request flags, profile settings for registered API short names, response normalization, output formatting, filtering, retries, caching, pagination, and plugin hooks.
+
+For a registered API with cached OpenAPI metadata, pass a parent short-name path such as `demo/` to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash still send requests.
 
 Pass request headers with `-H`, query parameters with `-q`, filters with `-f`, and output format with `-o`.
 
@@ -72,6 +77,8 @@ Perform an HTTP `OPTIONS` request against a full URL or registered API short-nam
 
 Use generic HTTP commands for one-off requests, scripting, and APIs that are not registered with `api connect`. Restish still applies global request flags, profile settings for registered API short names, response normalization, output formatting, filtering, retries, caching, pagination, and plugin hooks.
 
+For a registered API with cached OpenAPI metadata, pass a parent short-name path such as `demo/` to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash still send requests.
+
 Pass request headers with `-H`, query parameters with `-q`, filters with `-f`, and output format with `-o`.
 
 Usage:
@@ -97,6 +104,8 @@ Perform an HTTP `POST` request with optional shorthand, file, or stdin body inpu
 
 Use generic HTTP commands for one-off writes, scripting, and APIs that are not registered with `api connect`. Body arguments use Restish shorthand by default; pass `@file.json`, pipe stdin, or set `--rsh-content-type` when you need a specific wire format.
 
+For a registered API with cached OpenAPI metadata, pass a parent short-name path without a body, such as `demo/`, to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash and body-bearing requests still send requests.
+
 Restish still applies global request flags, response normalization, output formatting, filtering, retries, caching, pagination, and plugin hooks. Unsafe methods are not retried unless you opt in with `--rsh-retry-unsafe`.
 
 Usage:
@@ -112,6 +121,7 @@ Examples:
 ```bash
   restish post https://api.example.com/items 'name: Ada, active: true'
   restish post -c json https://api.example.com/items @item.json
+  restish post demo/
 ```
 
 
@@ -122,6 +132,8 @@ Perform an HTTP PUT request
 Perform an HTTP `PUT` request with optional shorthand, file, or stdin body input.
 
 Use generic HTTP commands for one-off writes, scripting, and APIs that are not registered with `api connect`. Body arguments use Restish shorthand by default; pass `@file.json`, pipe stdin, or set `--rsh-content-type` when you need a specific wire format.
+
+For a registered API with cached OpenAPI metadata, pass a parent short-name path without a body, such as `demo/`, to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash and body-bearing requests still send requests.
 
 Restish still applies global request flags, response normalization, output formatting, filtering, retries, caching, pagination, and plugin hooks. Unsafe methods are not retried unless you opt in with `--rsh-retry-unsafe`.
 
@@ -149,6 +161,8 @@ Perform an HTTP `PATCH` request with optional shorthand, file, or stdin body inp
 
 Use generic HTTP commands for one-off writes, scripting, and APIs that are not registered with `api connect`. Body arguments use Restish shorthand by default; pass `@file.json`, pipe stdin, or set `--rsh-content-type` when you need a specific wire format.
 
+For a registered API with cached OpenAPI metadata, pass a parent short-name path without a body, such as `demo/`, to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash and body-bearing requests still send requests.
+
 Restish still applies global request flags, response normalization, output formatting, filtering, retries, caching, pagination, and plugin hooks. Unsafe methods are not retried unless you opt in with `--rsh-retry-unsafe`.
 
 Usage:
@@ -175,6 +189,8 @@ Perform an HTTP `DELETE` request against a full URL or registered API short-name
 
 Use this for direct delete requests when a generated OpenAPI command is not available or would add friction. Restish still applies global request flags, profile settings for registered API short names, response normalization, output formatting, filtering, and plugin hooks.
 
+For a registered API with cached OpenAPI metadata, pass a parent short-name path such as `demo/` to list matching operation command templates instead of sending a request. Exact operation paths without a trailing slash still send requests.
+
 By default, HTTP error statuses produce non-zero exit codes. Use `--rsh-ignore-status-code` only when a script intentionally handles those responses.
 
 Usage:
@@ -192,6 +208,34 @@ Examples:
   restish delete https://api.example.com/items/123 --rsh-ignore-status-code
 ```
 <!-- END GENERATED -->
+
+## Browse Registered Operations
+
+When a registered API has cached OpenAPI metadata, use a generic HTTP verb with
+an API parent path to discover command templates for that method:
+
+```bash
+restish get demo/
+restish get demo/users/42/
+restish post demo/
+```
+
+Interactive output is a table containing `command`, `summary`, and
+`operation_id`. Redirected output is structured JSON by default, and explicit
+formats such as `-o json` and `-o table` continue to work.
+
+The browser includes operations marked `x-cli-hidden`; that extension only
+hides generated commands and shell completions. Replace any remaining
+`{parameter}` placeholders before running a listed command.
+
+An exact short-name path without a trailing slash sends a normal HTTP request.
+A trailing slash explicitly browses descendants when they exist, so
+`restish get demo/users` can execute a collection operation while
+`restish get demo/users/` browses operations below it. Restish also sends a
+request when it has a body, the target contains a query or fragment, no matching
+descendant operation exists, or the target is a full URL. Use the full URL when
+you intentionally need to request a parent path that otherwise acts as a
+browser.
 
 ## Common Examples
 

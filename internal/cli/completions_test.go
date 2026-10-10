@@ -254,6 +254,19 @@ paths:
       responses:
         "200":
           description: OK
+  /users/{user-id}:
+    get:
+      operationId: getUser
+      summary: Get user
+      parameters:
+        - name: user-id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
   /items/{item-id}/tags:
     get:
       operationId: listItemTags

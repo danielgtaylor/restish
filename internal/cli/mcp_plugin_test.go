@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -206,8 +205,8 @@ func writeMCPFrame(t *testing.T, buf *bytes.Buffer, msg map[string]any) {
 	if err != nil {
 		t.Fatalf("marshal frame: %v", err)
 	}
-	fmt.Fprintf(buf, "Content-Length: %d\r\n\r\n", len(data))
 	buf.Write(data)
+	buf.WriteByte('\n')
 }
 
 func readMCPResponses(t *testing.T, data []byte) []map[string]any {
@@ -215,46 +214,19 @@ func readMCPResponses(t *testing.T, data []byte) []map[string]any {
 	var out []map[string]any
 	reader := bufio.NewReader(bytes.NewReader(data))
 	for {
-		payload, err := readMCPFrame(reader)
-		if err != nil {
+		line, err := reader.ReadBytes('\n')
+		if err != nil && len(line) == 0 {
 			break
 		}
+		line = bytes.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
 		var msg map[string]any
-		if err := json.Unmarshal(payload, &msg); err != nil {
+		if err := json.Unmarshal(line, &msg); err != nil {
 			t.Fatalf("unmarshal MCP response: %v", err)
 		}
 		out = append(out, msg)
 	}
 	return out
-}
-
-func readMCPFrame(r *bufio.Reader) ([]byte, error) {
-	length := -1
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
-		line = strings.TrimRight(line, "\r\n")
-		if line == "" {
-			break
-		}
-		if strings.HasPrefix(strings.ToLower(line), "content-length:") {
-			var n int
-			if _, err := fmt.Sscanf(line, "Content-Length: %d", &n); err != nil {
-				if _, err := fmt.Sscanf(line, "content-length: %d", &n); err != nil {
-					return nil, err
-				}
-			}
-			length = n
-		}
-	}
-	if length < 0 {
-		return nil, fmt.Errorf("missing content-length")
-	}
-	payload := make([]byte, length)
-	if _, err := io.ReadFull(r, payload); err != nil {
-		return nil, err
-	}
-	return payload, nil
 }

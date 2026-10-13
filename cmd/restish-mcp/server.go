@@ -7,16 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
-	"strings"
 	"unicode/utf8"
 )
 
-// maxRPCPayloadBytes caps the Content-Length accepted from an MCP client to
-// prevent memory exhaustion. Matches the CBOR plugin protocol limit.
+// maxRPCPayloadBytes caps the size of a single NDJSON message accepted from
+// an MCP client to prevent memory exhaustion. Matches the CBOR plugin
+// protocol limit.
 const maxRPCPayloadBytes = 64 << 20 // 64 MiB
-const maxRPCHeaderLineBytes = 8 << 10
-const maxRPCHeaderBytes = 16 << 10
 
 type Server struct {
 	Tools          []*Tool
@@ -269,62 +266,37 @@ func marshalPretty(v any) string {
 	return fmt.Sprint(v)
 }
 
+// readFrame reads one newline-delimited JSON-RPC message from the MCP stdio
+// transport (spec revision 2025-06-18 and later: messages are single-line
+// JSON objects separated by '\n'). Blank lines are skipped.
 func readFrame(r *bufio.Reader) ([]byte, error) {
-	length := -1
-	totalHeaderBytes := 0
 	for {
-		line, n, err := readHeaderLine(r)
-		if err != nil {
-			if errors.Is(err, io.EOF) && line == "" {
-				return nil, io.EOF
+		var line []byte
+		for {
+			frag, err := r.ReadSlice('\n')
+			line = append(line, frag...)
+			if len(line) > maxRPCPayloadBytes {
+				return nil, fmt.Errorf("MCP message exceeds %d bytes", maxRPCPayloadBytes)
+			}
+			if err == nil {
+				break
+			}
+			if errors.Is(err, bufio.ErrBufferFull) {
+				continue
+			}
+			if errors.Is(err, io.EOF) {
+				if len(bytes.TrimSpace(line)) == 0 {
+					return nil, io.EOF
+				}
+				break
 			}
 			return nil, err
 		}
-		totalHeaderBytes += n
-		if totalHeaderBytes > maxRPCHeaderBytes {
-			return nil, fmt.Errorf("MCP frame headers exceed %d bytes", maxRPCHeaderBytes)
-		}
-		line = strings.TrimRight(line, "\r\n")
-		if line == "" {
-			break
-		}
-		if strings.HasPrefix(strings.ToLower(line), "content-length:") {
-			value := strings.TrimSpace(line[len("content-length:"):])
-			n, err := strconv.Atoi(value)
-			if err != nil {
-				return nil, fmt.Errorf("invalid content-length %q", value)
-			}
-			if n < 0 || n > maxRPCPayloadBytes {
-				return nil, fmt.Errorf("content-length %d out of range (max %d)", n, maxRPCPayloadBytes)
-			}
-			length = n
-		}
-	}
-	if length < 0 {
-		return nil, errors.New("missing Content-Length header")
-	}
-	payload := make([]byte, length)
-	if _, err := io.ReadFull(r, payload); err != nil {
-		return nil, err
-	}
-	return payload, nil
-}
-
-func readHeaderLine(r *bufio.Reader) (string, int, error) {
-	var line []byte
-	for {
-		frag, err := r.ReadSlice('\n')
-		line = append(line, frag...)
-		if len(line) > maxRPCHeaderLineBytes {
-			return string(line), len(line), fmt.Errorf("MCP frame header line exceeds %d bytes", maxRPCHeaderLineBytes)
-		}
-		if err == nil {
-			return string(line), len(line), nil
-		}
-		if errors.Is(err, bufio.ErrBufferFull) {
+		line = bytes.TrimSpace(line)
+		if len(line) == 0 {
 			continue
 		}
-		return string(line), len(line), err
+		return line, nil
 	}
 }
 
@@ -337,9 +309,9 @@ func writeRPC(w io.Writer, resp rpcResponse) error {
 }
 
 func writeFrame(w io.Writer, payload []byte) error {
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "Content-Length: %d\r\n\r\n", len(payload))
-	buf.Write(payload)
-	_, err := w.Write(buf.Bytes())
+	buf := make([]byte, 0, len(payload)+1)
+	buf = append(buf, payload...)
+	buf = append(buf, '\n')
+	_, err := w.Write(buf)
 	return err
 }

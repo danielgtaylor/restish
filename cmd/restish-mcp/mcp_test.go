@@ -693,37 +693,37 @@ func TestServeStdioInvalidRequests(t *testing.T) {
 	}
 }
 
-func TestReadFrameHeaderLimits(t *testing.T) {
+func TestReadFrameLineLimits(t *testing.T) {
 	t.Run("oversized line", func(t *testing.T) {
-		input := strings.Repeat("X", maxRPCHeaderLineBytes+1) + "\r\n\r\n"
+		input := strings.Repeat("X", maxRPCPayloadBytes+1) + "\n"
 		_, err := readFrame(bufio.NewReader(strings.NewReader(input)))
-		if err == nil || !strings.Contains(err.Error(), "header line exceeds") {
-			t.Fatalf("err = %v, want header line limit", err)
+		if err == nil || !strings.Contains(err.Error(), "message exceeds") {
+			t.Fatalf("err = %v, want message size limit", err)
 		}
 	})
 
-	t.Run("oversized preamble", func(t *testing.T) {
-		var input strings.Builder
-		for input.Len() <= maxRPCHeaderBytes {
-			input.WriteString("X-Test: ")
-			input.WriteString(strings.Repeat("a", 512))
-			input.WriteString("\r\n")
+	t.Run("payload accepted within line limits", func(t *testing.T) {
+		got, err := readFrame(bufio.NewReader(strings.NewReader("{}\n")))
+		if err != nil {
+			t.Fatalf("readFrame: %v", err)
 		}
-		input.WriteString("\r\n")
-		_, err := readFrame(bufio.NewReader(strings.NewReader(input.String())))
-		if err == nil || !strings.Contains(err.Error(), "headers exceed") {
-			t.Fatalf("err = %v, want total header limit", err)
+		if string(got) != "{}" {
+			t.Fatalf("payload = %q", got)
 		}
 	})
 
-	t.Run("payload accepted within header limits", func(t *testing.T) {
-		payload := []byte("{}")
-		var input bytes.Buffer
-		input.WriteString("Content-Length: 2\r\n")
-		input.WriteString(strings.Repeat("X-Test: a\r\n", 10))
-		input.WriteString("\r\n")
-		input.Write(payload)
-		got, err := readFrame(bufio.NewReader(&input))
+	t.Run("blank lines are skipped", func(t *testing.T) {
+		got, err := readFrame(bufio.NewReader(strings.NewReader("\n\n{}\n")))
+		if err != nil {
+			t.Fatalf("readFrame: %v", err)
+		}
+		if string(got) != "{}" {
+			t.Fatalf("payload = %q", got)
+		}
+	})
+
+	t.Run("trailing message without newline", func(t *testing.T) {
+		got, err := readFrame(bufio.NewReader(strings.NewReader("{}")))
 		if err != nil {
 			t.Fatalf("readFrame: %v", err)
 		}
@@ -734,7 +734,7 @@ func TestReadFrameHeaderLimits(t *testing.T) {
 }
 
 func TestServeStdioWritesFramingError(t *testing.T) {
-	input := strings.Repeat("X", maxRPCHeaderLineBytes+1) + "\r\n\r\n"
+	input := strings.Repeat("X", maxRPCPayloadBytes+1) + "\n"
 	var stdout bytes.Buffer
 	err := (&Server{}).ServeStdio(strings.NewReader(input), &stdout)
 	if err == nil {

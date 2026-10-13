@@ -103,6 +103,11 @@ func (c *CLI) handleCommandPluginMessage(cmd *cobra.Command, requestCtx context.
 		}
 		if len(msg.Data) > 0 {
 			_, _ = c.Stdout.Write(msg.Data)
+			// Passthrough stdio commands (e.g. `restish mcp serve`) need each
+			// chunk flushed immediately: when stdout is not a terminal the CLI
+			// wraps it in a buffered writer that otherwise flushes only on
+			// exit, stalling interactive protocols like MCP.
+			_ = c.flushStdout()
 		}
 	case pluginwire.MsgTypeStderrData:
 		var msg pluginwire.StderrDataMsg

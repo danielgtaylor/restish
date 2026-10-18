@@ -15,6 +15,7 @@ type credentialRedactionTargets struct {
 	headers     map[string]bool
 	queryParams map[string]bool
 	cookies     map[string]bool
+	body        bool
 }
 
 func redactionTargets(req *http.Request, create bool) *credentialRedactionTargets {
@@ -74,6 +75,11 @@ func MarkCredentialCookie(req *http.Request, name string) {
 	targets.cookies[name] = true
 }
 
+// MarkCredentialBody records that a request body contains a credential value.
+func MarkCredentialBody(req *http.Request) {
+	redactionTargets(req, true).body = true
+}
+
 // IsMarkedCredentialHeader reports whether a request header was marked as
 // carrying a credential by Restish auth setup.
 func IsMarkedCredentialHeader(req *http.Request, name string) bool {
@@ -93,6 +99,12 @@ func IsMarkedCredentialQueryParam(req *http.Request, name string) bool {
 func IsMarkedCredentialCookie(req *http.Request, name string) bool {
 	targets := redactionTargets(req, false)
 	return targets != nil && targets.cookies[strings.ToLower(name)]
+}
+
+// IsMarkedCredentialBody reports whether a request body contains a credential.
+func IsMarkedCredentialBody(req *http.Request) bool {
+	targets := redactionTargets(req, false)
+	return targets != nil && targets.body
 }
 
 // RedactedRequestURL returns req.URL with generic secrets and auth-marked query

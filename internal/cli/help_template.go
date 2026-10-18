@@ -38,6 +38,7 @@ var flagGroupOrder = []string{
 var defaultFlagGroups = map[string]string{
 	"rsh-header":             flagGroupRequest,
 	"rsh-query":              flagGroupRequest,
+	"rsh-prompt-secret":      flagGroupRequest,
 	"rsh-server":             flagGroupRequest,
 	"rsh-content-type":       flagGroupRequest,
 	"rsh-timeout":            flagGroupRequest,

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/rest-sh/restish/v2/internal/procutil"
+	"github.com/rest-sh/restish/v2/internal/request"
 )
 
 const (
@@ -125,7 +126,8 @@ func (a *ExternalTool) run(ctx context.Context, req *http.Request, params map[st
 	// larger than the OS pipe buffer (~64 KB).
 	cmd.Stdin = bytes.NewReader(payload)
 	stderrCapture := &limitedBuffer{limit: maxExternalToolStderrBytes}
-	if a.Stderr != nil {
+	credentialBody := request.IsMarkedCredentialBody(req) && !omitBody
+	if a.Stderr != nil && !credentialBody {
 		cmd.Stderr = io.MultiWriter(a.Stderr, stderrCapture)
 	} else {
 		cmd.Stderr = stderrCapture
@@ -136,7 +138,7 @@ func (a *ExternalTool) run(ctx context.Context, req *http.Request, params map[st
 		if ctx.Err() != nil {
 			return fmt.Errorf("external-tool auth: tool timed out or was canceled: %w", ctx.Err())
 		}
-		if excerpt := redactExternalToolStderr(stderrCapture.String()); excerpt != "" {
+		if excerpt := redactExternalToolStderr(stderrCapture.String()); excerpt != "" && !credentialBody {
 			return fmt.Errorf("external-tool auth: tool exited with error: %w: stderr: %s", err, excerpt)
 		}
 		return fmt.Errorf("external-tool auth: tool exited with error: %w", err)

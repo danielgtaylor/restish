@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -36,5 +37,17 @@ func TestPromptSourceClosesOpenedTTY(t *testing.T) {
 	cleanup()
 	if _, err := f.Stat(); err == nil {
 		t.Fatal("expected cleanup to close opened prompt file")
+	}
+}
+
+func TestVisiblePromptHookDoesNotEnableSecretPrompt(t *testing.T) {
+	oldOpenTTY := promptOpenTTY
+	t.Cleanup(func() { promptOpenTTY = oldOpenTTY })
+	promptOpenTTY = func() (*os.File, error) { return nil, os.ErrNotExist }
+
+	c := &CLI{Stdin: io.NopCloser(strings.NewReader(""))}
+	c.hooks.PromptFunc = func(context.Context, string) (string, error) { return "", nil }
+	if c.canPromptSecretInteractively() {
+		t.Fatal("visible prompt hook unexpectedly enabled secret prompting")
 	}
 }

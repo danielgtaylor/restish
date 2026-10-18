@@ -142,6 +142,21 @@ semantics in the shell command. Multipart bodies treat `@path` as a file part
 reference at encoding time; use `@@value` in multipart input to send a literal
 text value that starts with `@`.
 
+## Hidden Secret Values
+
+Use `--rsh-prompt-secret <path>` to fill a shorthand body path from a hidden,
+single-line terminal prompt. The flag is repeatable and works with generic and
+generated commands:
+
+```bash
+restish post api.rest.sh/login 'username: alice' --rsh-prompt-secret password
+```
+
+Prompted values override the same paths from stdin or shorthand. They do not
+appear in shell history or process arguments, and Restish redacts them from
+request-body diagnostics even when their field names are not recognizably
+sensitive. Use `@path` instead when a value contains newlines.
+
 ## Stdin
 
 With no shorthand arguments, structured stdin becomes the request body:

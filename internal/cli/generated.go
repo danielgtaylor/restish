@@ -905,6 +905,9 @@ func generatedOperationArgs(required []*paramInfo, hasBody bool) func(*cobra.Com
 		if generateBody, _ := cmd.Flags().GetBool("rsh-generate-body"); generateBody {
 			return nil
 		}
+		if !hasBody && cmd.Flags().Changed("rsh-prompt-secret") {
+			return fmt.Errorf("--rsh-prompt-secret cannot be used because this operation has no request body")
+		}
 		requiredCount := len(required)
 		if len(args) < requiredCount {
 			missing := make([]string, 0, requiredCount-len(args))

@@ -39,6 +39,43 @@ func (c *countingCloser) Close() error {
 	return nil
 }
 
+func TestSendPreparedRequestMarksCredentialBodyOnUnauthorizedRetry(t *testing.T) {
+	var marked []bool
+	var attempts int
+	prepared := &preparedRequest{
+		rawURL:      "https://api.example.com/items",
+		bodyRaw:     []byte(`{"pin":"secret"}`),
+		bodySecrets: []string{"secret"},
+		opts: request.Options{
+			Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+				attempts++
+				status := http.StatusOK
+				if attempts == 1 {
+					status = http.StatusUnauthorized
+				}
+				return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("")), Request: req}, nil
+			}),
+			OnRequest: func(req *http.Request) error {
+				request.MarkCredentialBody(req)
+				return nil
+			},
+			OnBeforeRequest: func(req *http.Request) {
+				marked = append(marked, request.IsMarkedCredentialBody(req))
+			},
+			OnUnauthorized: func(*http.Request) error { return nil },
+		},
+	}
+
+	resp, err := New().sendPreparedRequest(context.Background(), http.MethodPost, prepared)
+	if err != nil {
+		t.Fatalf("sendPreparedRequest: %v", err)
+	}
+	defer resp.Body.Close()
+	if attempts != 2 || len(marked) != 2 || !marked[0] || !marked[1] {
+		t.Fatalf("attempts = %d, marked = %v", attempts, marked)
+	}
+}
+
 func TestPrepareRequestBuildsSharedRequestState(t *testing.T) {
 	c := New()
 	c.cfg = &config.Config{

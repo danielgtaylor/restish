@@ -20,6 +20,7 @@ import (
 type GlobalFlags struct {
 	Headers          []string
 	Query            []string
+	PromptSecrets    []string
 	Server           string
 	OutputFormat     string
 	OutputFormatSet  bool
@@ -69,6 +70,7 @@ func parseGlobalFlags(cmd *cobra.Command) (GlobalFlags, error) {
 	// StringArray flags
 	gf.Headers, _ = cmd.Flags().GetStringArray("rsh-header")
 	gf.Query, _ = cmd.Flags().GetStringArray("rsh-query")
+	gf.PromptSecrets, _ = cmd.Flags().GetStringArray("rsh-prompt-secret")
 	gf.TLSSignerParams, _ = cmd.Flags().GetStringArray("rsh-tls-signer-param")
 
 	// String flags

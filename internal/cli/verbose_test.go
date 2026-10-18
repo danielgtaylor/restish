@@ -384,6 +384,23 @@ func TestVerboseRedactsFormBodies(t *testing.T) {
 	}
 }
 
+func TestVerboseRedactsTruncatedPromptedFormSecret(t *testing.T) {
+	secret := strings.Repeat("s", 5000)
+	c, _, errOut := newTestCLI(t)
+	c.Hooks().PassReader = strings.NewReader(secret + "\n")
+	useTransport(c, func(r *http.Request) (*http.Response, error) {
+		return jsonResponse(200, `{}`), nil
+	})
+
+	if err := c.Run([]string{"restish", "post", "-v", "-c", "form", "--rsh-prompt-secret", "pin", "https://api.example.com/items"}); err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	stderr := errOut.String()
+	if strings.Contains(stderr, strings.Repeat("s", 100)) || !strings.Contains(stderr, "<redacted request body>") {
+		t.Fatalf("verbose output leaked truncated prompted secret:\n%s", stderr)
+	}
+}
+
 func TestVerboseNonTextBodyUsesPlaceholder(t *testing.T) {
 	c, _, errOut := newTestCLI(t)
 	useTransport(c, func(r *http.Request) (*http.Response, error) {

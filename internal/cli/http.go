@@ -11,6 +11,7 @@ import (
 	"net/url"
 	urlpath "path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +27,8 @@ import (
 	"github.com/rest-sh/restish/v2/internal/secrets"
 	"github.com/spf13/cobra"
 )
+
+type bodySecretsContextKey struct{}
 
 // cacheDir returns the effective HTTP response cache directory, checking the
 // CachePath override (used in tests), then RSH_CACHE_DIR, then the default.
@@ -210,17 +213,44 @@ func (c *CLI) runHTTPWithOptions(cmd *cobra.Command, method string, args []strin
 
 	var bodyVal any
 	var bodyInfo input.BodyInfo
+	var bodySecrets []string
 	if bodyOpts.bodyOverrideSet {
 		bodyVal = bodyOpts.bodyOverride
 	} else {
+		promptValues := make([]input.PromptValue, 0, len(gf.PromptSecrets))
+		if len(gf.PromptSecrets) > 0 && !c.canPromptSecretInteractively() {
+			return fmt.Errorf("--rsh-prompt-secret requires an interactive terminal")
+		}
+		promptMediaType := c.content.MIMETypeForName(opts.ContentType)
+		if promptMediaType == "" {
+			promptMediaType = opts.ContentType
+		}
+		promptMultipart := strings.HasPrefix(strings.ToLower(promptMediaType), "multipart/form-data")
+		for _, path := range gf.PromptSecrets {
+			path = strings.TrimSpace(path)
+			if path == "" {
+				return fmt.Errorf("--rsh-prompt-secret requires a body path")
+			}
+			value, err := c.Secret(requestContext(cmd), fmt.Sprintf("Secret for %s: ", path))
+			if err != nil {
+				return fmt.Errorf("reading secret for body path %q: %w", path, err)
+			}
+			bodyValue := value
+			if promptMultipart && strings.HasPrefix(bodyValue, "@") {
+				bodyValue = "@" + bodyValue
+			}
+			promptValues = append(promptValues, input.PromptValue{Path: path, Value: bodyValue})
+			bodySecrets = append(bodySecrets, value)
+		}
 		// Build request body from shorthand args and/or piped stdin.
 		stdinIsTTY := output.IsTerminalReader(c.Stdin)
 		var err error
 		bodyVal, bodyInfo, err = input.BodyWithInfo(c.Stdin, stdinIsTTY, bodyArgs, opts.ContentType, input.BodyOptions{
-			Warnf: c.warnf,
+			Warnf:        c.warnf,
+			PromptValues: promptValues,
 		})
 		if err != nil {
-			return fmt.Errorf("building request body: %w", err)
+			return fmt.Errorf("building request body: %w", redactBodySecretError(err, bodySecrets))
 		}
 	}
 	if bodyOpts.bodyRequired && bodyVal == nil {
@@ -231,8 +261,11 @@ func (c *CLI) runHTTPWithOptions(cmd *cobra.Command, method string, args []strin
 	}
 	if bodyOpts.validationRequested && bodyVal != nil {
 		if err := validateGeneratedJSONBody(bodyVal, opts.ContentType, bodyOpts.validationMediaType, bodyOpts.validationSchema, bodyOpts.validationSchemaDialect, output.ColorEnabled(c.Stderr)); err != nil {
-			return err
+			return redactBodySecretError(err, bodySecrets)
 		}
+	}
+	if len(bodySecrets) > 0 {
+		opts.NoCache = true
 	}
 	inputSource := traceInputSource(bodyInfo, bodyVal != nil)
 	if bodyVal != nil {
@@ -247,7 +280,18 @@ func (c *CLI) runHTTPWithOptions(cmd *cobra.Command, method string, args []strin
 
 	prepared, err := c.prepareRequest(requestContext(cmd), method, rawURL, profileName, opts, bodyVal, extraHeaders, noAuth, authOpts, bodyOpts.operationAuth, bodyOpts.rawBinaryBody, bodyOpts.explicitAPIName)
 	if err != nil {
-		return err
+		return redactBodySecretError(err, bodySecrets)
+	}
+	prepared.bodySecrets = bodySecrets
+	if len(bodySecrets) > 0 {
+		onRequest := prepared.opts.OnRequest
+		prepared.opts.OnRequest = func(req *http.Request) error {
+			request.MarkCredentialBody(req)
+			if onRequest != nil {
+				return onRequest(req)
+			}
+			return nil
+		}
 	}
 	defer c.closePreparedTransport(prepared)
 	rawURL = prepared.rawURL
@@ -265,8 +309,9 @@ func (c *CLI) runHTTPWithOptions(cmd *cobra.Command, method string, args []strin
 	httpResp, err := c.sendPreparedRequest(requestContext(cmd), method, prepared)
 	if err != nil {
 		if isLocalRequestExecutionError(err) {
-			return err
+			return redactBodySecretError(err, bodySecrets)
 		}
+		err = redactBodySecretError(err, bodySecrets)
 		networkURL := redactedNetworkErrorURL(rawURL, opts.Server)
 		if hint := networkErrorHint(err); hint != "" {
 			return fmt.Errorf("network error for %s %s: %w\nhint: %s", method, networkURL, err, hint)
@@ -880,7 +925,7 @@ func (c *CLI) writeRequestBody(prepared *preparedRequest, spec printSpec) error 
 	if mediaType == "application/json" || strings.HasSuffix(mediaType, "+json") {
 		var value any
 		if err := json.Unmarshal(prepared.bodyRaw, &value); err == nil {
-			redactSensitiveJSON(value)
+			redactSensitiveJSON(value, prepared.bodySecrets...)
 			var encoded []byte
 			var marshalErr error
 			if spec.pretty {
@@ -891,11 +936,15 @@ func (c *CLI) writeRequestBody(prepared *preparedRequest, spec printSpec) error 
 			if marshalErr == nil {
 				data = encoded
 			}
+		} else if len(prepared.bodySecrets) > 0 {
+			data = []byte("<redacted request body>")
 		}
 	} else if mediaType == "application/x-www-form-urlencoded" {
-		if rendered := redactVerboseBody(prepared.bodyRaw, prepared.bodyContentType); rendered != "" {
+		if rendered := redactVerboseBody(prepared.bodyRaw, prepared.bodyContentType, prepared.bodySecrets...); rendered != "" {
 			data = []byte(rendered)
 		}
+	} else if len(prepared.bodySecrets) > 0 {
+		data = []byte("<redacted request body>")
 	}
 	if len(data) == 0 || data[len(data)-1] != '\n' {
 		data = append(append([]byte(nil), data...), '\n')
@@ -989,18 +1038,23 @@ func (c *CLI) renderValueWithPrint(cmd *cobra.Command, value any, spec printSpec
 }
 
 func traceInputSource(info input.BodyInfo, hasBody bool) string {
-	switch {
-	case !hasBody:
-		return "none"
-	case info.UsedStdin && info.UsedArgs:
-		return "stdin + args"
-	case info.UsedStdin:
-		return "stdin"
-	case info.UsedArgs:
-		return "args"
-	default:
+	if !hasBody {
 		return "none"
 	}
+	sources := make([]string, 0, 3)
+	if info.UsedStdin {
+		sources = append(sources, "stdin")
+	}
+	if info.UsedArgs {
+		sources = append(sources, "args")
+	}
+	if info.UsedPrompt {
+		sources = append(sources, "prompt")
+	}
+	if len(sources) == 0 {
+		return "none"
+	}
+	return strings.Join(sources, " + ")
 }
 
 func traceContentDecode(trace *requestTrace, contentType string) {
@@ -1640,7 +1694,8 @@ func (c *CLI) logVerboseRequestBody(req *http.Request) {
 		if body, err := req.GetBody(); err == nil {
 			data, _ := io.ReadAll(io.LimitReader(body, verboseBodyLimit+1))
 			_ = body.Close()
-			c.logVerboseBody("> body", data, req.Header.Get("Content-Type"))
+			secretValues, _ := req.Context().Value(bodySecretsContextKey{}).([]string)
+			c.logVerboseBody("> body", data, req.Header.Get("Content-Type"), secretValues...)
 		}
 	}
 }
@@ -1651,7 +1706,7 @@ func (c *CLI) logVerboseResponseBody(resp *output.Response) {
 	}
 }
 
-func (c *CLI) logVerboseBody(label string, data []byte, contentType string) {
+func (c *CLI) logVerboseBody(label string, data []byte, contentType string, secretValues ...string) {
 	if len(data) == 0 {
 		return
 	}
@@ -1659,7 +1714,10 @@ func (c *CLI) logVerboseBody(label string, data []byte, contentType string) {
 	if truncated {
 		data = data[:verboseBodyLimit]
 	}
-	rendered := redactVerboseBody(data, contentType)
+	rendered := "<redacted request body>"
+	if !truncated || len(secretValues) == 0 {
+		rendered = redactVerboseBody(data, contentType, secretValues...)
+	}
 	if rendered == "" {
 		return
 	}
@@ -1669,12 +1727,12 @@ func (c *CLI) logVerboseBody(label string, data []byte, contentType string) {
 	}
 }
 
-func redactVerboseBody(data []byte, contentType string) string {
+func redactVerboseBody(data []byte, contentType string, secretValues ...string) string {
 	mediaType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
 	if mediaType == "application/json" || strings.HasSuffix(mediaType, "+json") {
 		var value any
 		if err := json.Unmarshal(data, &value); err == nil {
-			redactSensitiveJSON(value)
+			redactSensitiveJSON(value, secretValues...)
 			if out, err := json.MarshalIndent(value, "", "  "); err == nil {
 				return string(out)
 			}
@@ -1685,7 +1743,7 @@ func redactVerboseBody(data []byte, contentType string) string {
 		if err == nil {
 			for key, items := range values {
 				for i, item := range items {
-					if secrets.IsQueryParamValue(key, item) {
+					if secrets.IsQueryParamValue(key, item) || promptedSecret(item, secretValues) {
 						items[i] = "<redacted>"
 					}
 				}
@@ -1693,6 +1751,9 @@ func redactVerboseBody(data []byte, contentType string) string {
 			}
 			return values.Encode()
 		}
+	}
+	if len(secretValues) > 0 {
+		return "<redacted request body>"
 	}
 	if mediaType != "" && mediaType != "text/plain" && !strings.HasPrefix(mediaType, "text/") && !json.Valid(data) {
 		return fmt.Sprintf("<%d bytes of %s body>", len(data), mediaType)
@@ -1706,12 +1767,16 @@ func redactVerboseBody(data []byte, contentType string) string {
 	return string(data)
 }
 
-func redactSensitiveJSON(value any) {
+func redactSensitiveJSON(value any, secretValues ...string) {
 	switch v := value.(type) {
 	case map[string]any:
 		for key, item := range v {
 			if stringItem, ok := item.(string); ok {
-				if redacted, changed := redactSensitiveStringValue(key, stringItem); changed {
+				if promptedSecret(stringItem, secretValues) {
+					v[key] = "<redacted>"
+					continue
+				}
+				if redacted, changed := redactSensitiveStringValue(key, stringItem, secretValues...); changed {
 					v[key] = redacted
 					continue
 				}
@@ -1720,16 +1785,20 @@ func redactSensitiveJSON(value any) {
 				v[key] = "<redacted>"
 				continue
 			}
-			redactSensitiveJSON(item)
+			redactSensitiveJSON(item, secretValues...)
 		}
 	case []any:
-		for _, item := range v {
-			redactSensitiveJSON(item)
+		for i, item := range v {
+			if stringItem, ok := item.(string); ok && promptedSecret(stringItem, secretValues) {
+				v[i] = "<redacted>"
+				continue
+			}
+			redactSensitiveJSON(item, secretValues...)
 		}
 	}
 }
 
-func redactSensitiveStringValue(key, value string) (string, bool) {
+func redactSensitiveStringValue(key, value string, secretValues ...string) (string, bool) {
 	if secrets.IsJSONBodyValue(key, value) {
 		return "<redacted>", true
 	}
@@ -1743,7 +1812,7 @@ func redactSensitiveStringValue(key, value string) (string, bool) {
 		var nested any
 		if err := json.Unmarshal([]byte(value), &nested); err == nil {
 			before, _ := json.Marshal(nested)
-			redactSensitiveJSON(nested)
+			redactSensitiveJSON(nested, secretValues...)
 			if out, err := json.Marshal(nested); err == nil {
 				redacted := string(out)
 				if string(before) != redacted {
@@ -1753,6 +1822,39 @@ func redactSensitiveStringValue(key, value string) (string, bool) {
 		}
 	}
 	return value, false
+}
+
+func promptedSecret(value string, secretValues []string) bool {
+	return value != "" && slices.Contains(secretValues, value)
+}
+
+func redactBodySecretError(err error, secretValues []string) error {
+	if err == nil || len(secretValues) == 0 {
+		return err
+	}
+	original := err.Error()
+	message := original
+	for _, secretValue := range secretValues {
+		if secretValue == "" {
+			continue
+		}
+		encodedJSON, _ := json.Marshal(secretValue)
+		for _, representation := range []string{
+			secretValue,
+			strconv.Quote(secretValue),
+			string(encodedJSON),
+			url.QueryEscape(secretValue),
+			url.PathEscape(secretValue),
+		} {
+			if representation != "" {
+				message = strings.ReplaceAll(message, representation, "<redacted>")
+			}
+		}
+	}
+	if message == original {
+		return err
+	}
+	return errors.New(message)
 }
 
 func networkErrorHint(err error) string {

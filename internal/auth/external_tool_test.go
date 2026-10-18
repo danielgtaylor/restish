@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/rest-sh/restish/v2/internal/request"
 )
 
 func TestExternalTool_Parameters(t *testing.T) {
@@ -141,6 +143,24 @@ func TestExternalTool_OnRequest_ToolExitErrorIncludesBoundedStderr(t *testing.T)
 	}
 	if strings.Contains(err.Error(), "super-secret") || !strings.Contains(err.Error(), "client_secret=***") {
 		t.Fatalf("expected redacted stderr in error, got %v", err)
+	}
+}
+
+func TestExternalTool_OnRequest_CredentialBodySuppressesStderr(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell command test not supported on Windows")
+	}
+	const secret = "prompted-secret"
+	var streamed strings.Builder
+	a := &ExternalTool{Stderr: &streamed}
+	req, _ := http.NewRequest("POST", "https://api.example.com", strings.NewReader(`{"pin":"`+secret+`"}`))
+	request.MarkCredentialBody(req)
+	err := a.OnRequest(req, map[string]string{"commandline": "cat >&2; exit 1"})
+	if err == nil {
+		t.Fatal("expected error for non-zero tool exit")
+	}
+	if strings.Contains(streamed.String(), secret) || strings.Contains(err.Error(), secret) {
+		t.Fatalf("external tool stderr leaked credential body: stream %q, error %v", streamed.String(), err)
 	}
 }
 

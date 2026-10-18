@@ -133,6 +133,12 @@ Type: `string`; default: `auto`
 
 Output parts to print: auto or any of H=request headers, B=request body, h=response headers, b=rendered body, p=pretty, c=color
 
+**`--rsh-prompt-secret`**
+
+Type: `stringArray`; default: none
+
+Request body path to fill from a hidden prompt (repeatable)
+
 **`--rsh-retry-max-wait`**
 
 Type: `string`; default: none
@@ -249,6 +255,7 @@ Verbose output: -v shows request/response headers, -vv adds TLS details
 | `-H`, `--rsh-header` | repeatable `Name: Value` | none | Add request headers. Sensitive values are redacted in diagnostics. |
 | `-q`, `--rsh-query` | repeatable `key=value` | none | Add query params without hand-editing the URL. |
 | `-c`, `--rsh-content-type` | content alias or MIME | `json` | Request body encoder, such as `json`, `yaml`, `form`, or `multipart`. |
+| `--rsh-prompt-secret` | repeatable body path | none | Fill a request-body path from a hidden terminal prompt. |
 | `-s`, `--rsh-server` | URL | config/spec server | Override scheme and host for one request. |
 | `-t`, `--rsh-timeout` | duration | transport default | Bound ordinary request lifetime. For SSE/NDJSON streams, bound the wait for response headers before stream rules take over. |
 | `--rsh-max-body-size` | MiB | `100` when `0` | Maximum response body size. |
@@ -257,7 +264,7 @@ Verbose output: -v shows request/response headers, -vv adds TLS details
 ```bash
 restish -H 'Accept: application/json' api.rest.sh/headers
 restish -q api_key=docs-key api.rest.sh/auth/api-key-query
-restish post -c form api.rest.sh/login 'username: alice, password: secret'
+restish post -c form api.rest.sh/login 'username: alice' --rsh-prompt-secret password
 restish --rsh-server https://staging.example.com example list-images
 ```
 

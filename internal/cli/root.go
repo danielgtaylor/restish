@@ -234,6 +234,7 @@ func (c *CLI) addGlobalFlags(root *cobra.Command) {
 	pf := root.PersistentFlags()
 	pf.StringArrayP("rsh-header", "H", nil, `Request header in "Name: Value" format (repeatable)`)
 	pf.StringArrayP("rsh-query", "q", nil, `Query parameter in "key=value" format (repeatable)`)
+	pf.StringArray("rsh-prompt-secret", nil, "Request body path to fill from a hidden prompt (repeatable)")
 	pf.StringP("rsh-server", "s", "", "Override scheme://host for all requests (e.g. https://staging.example.com)")
 	pf.StringP("rsh-output-format", "o", "auto", "Output format for rendered response bodies: "+output.FormatterNames(c.formatters)+" (use -o lines for shell-friendly filtered values; see --rsh-columns, --rsh-sort-by for table)")
 	pf.String("rsh-print", "auto", "Output parts to print: auto or any of H=request headers, B=request body, h=response headers, b=rendered body, p=pretty, c=color")

@@ -13,13 +13,21 @@ const MaxStdinBodyBytes = 16 << 20
 
 // BodyOptions controls request-body parsing.
 type BodyOptions struct {
-	Warnf func(string, ...any)
+	Warnf        func(string, ...any)
+	PromptValues []PromptValue
+}
+
+// PromptValue is a body path and exact string value read from a hidden prompt.
+type PromptValue struct {
+	Path  string
+	Value string
 }
 
 // BodyInfo describes which CLI input sources contributed to the returned body.
 type BodyInfo struct {
-	UsedStdin bool
-	UsedArgs  bool
+	UsedStdin  bool
+	UsedArgs   bool
+	UsedPrompt bool
 }
 
 // Body parses positional CLI args (shorthand syntax) and/or stdin into a
@@ -32,6 +40,7 @@ type BodyInfo struct {
 //     and parsed as shorthand.
 //  4. Stdin + args → stdin document is the base; args are applied as a
 //     shorthand patch on top.
+//  5. Prompt values are applied last without reparsing their secret values.
 //
 // The returned body is a Go value (map/slice/scalar) ready to be marshalled
 // by the content registry, or nil if there is no body.
@@ -52,6 +61,7 @@ func BodyWithInfo(stdinReader io.Reader, stdinIsTTY bool, args []string, content
 
 	var base any
 	var info BodyInfo
+	hasPatches := len(args) > 0 || len(bodyOpts.PromptValues) > 0
 
 	if !stdinIsTTY {
 		data, err := io.ReadAll(io.LimitReader(stdinReader, MaxStdinBodyBytes+1))
@@ -67,21 +77,21 @@ func BodyWithInfo(stdinReader io.Reader, stdinIsTTY bool, args []string, content
 			if serr != nil {
 				// Not parseable as structured data — return raw string so the
 				// content registry passes it through as the request body.
-				if len(args) == 0 {
+				if !hasPatches {
 					return string(data), info, nil
 				}
 				if bodyOpts.Warnf != nil {
-					bodyOpts.Warnf("stdin body could not be parsed as structured shorthand; applying body arguments only")
+					bodyOpts.Warnf("stdin body could not be parsed as structured shorthand; applying body patches only")
 				}
 				info.UsedStdin = false
-				// Can't patch non-structured stdin; treat it as args-only.
+				// Can't patch non-structured stdin; ignore it as a base document.
 			} else {
-				if len(args) == 0 {
+				if !hasPatches {
 					return parsed, info, nil
 				}
 				if !isStructuredBody(parsed) {
 					if bodyOpts.Warnf != nil {
-						bodyOpts.Warnf("stdin body is not a structured object or array; applying body arguments only")
+						bodyOpts.Warnf("stdin body is not a structured object or array; applying body patches only")
 					}
 					parsed = nil
 					info.UsedStdin = false
@@ -91,18 +101,32 @@ func BodyWithInfo(stdinReader io.Reader, stdinIsTTY bool, args []string, content
 		}
 	}
 
-	if len(args) == 0 {
+	if !hasPatches {
 		return nil, info, nil
 	}
 
-	// Args are shell-split tokens; join with spaces to reconstruct the
-	// full shorthand expression (e.g. ["name:", "Alice,", "age:", "30"]
-	// → "name: Alice, age: 30").
-	result, err := shorthand.Unmarshal(strings.Join(args, " "), opts, base)
-	if err != nil {
-		return nil, info, err
+	result := base
+	if len(args) > 0 {
+		// Args are shell-split tokens; join with spaces to reconstruct the
+		// full shorthand expression (e.g. ["name:", "Alice,", "age:", "30"]
+		// → "name: Alice, age: 30").
+		var err error
+		result, err = shorthand.Unmarshal(strings.Join(args, " "), opts, result)
+		if err != nil {
+			return nil, info, err
+		}
+		info.UsedArgs = true
 	}
-	info.UsedArgs = true
+	for _, prompted := range bodyOpts.PromptValues {
+		doc := shorthand.NewDocument(opts)
+		doc.Operations = []shorthand.Operation{{Kind: shorthand.OpSet, Path: prompted.Path, Value: prompted.Value}}
+		var err error
+		result, err = doc.Apply(result)
+		if err != nil {
+			return nil, info, err
+		}
+		info.UsedPrompt = true
+	}
 	return result, info, nil
 }
 

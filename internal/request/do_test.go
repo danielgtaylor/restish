@@ -758,6 +758,35 @@ func TestDo_TemporaryRedirectKeepsBodyHeaders(t *testing.T) {
 	}
 }
 
+func TestDo_CrossOriginRedirectRejectsMarkedCredentialBody(t *testing.T) {
+	var targetHit atomic.Bool
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		targetHit.Store(true)
+		w.WriteHeader(200)
+	}))
+	defer target.Close()
+	start := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusTemporaryRedirect)
+	}))
+	defer start.Close()
+
+	resp, err := request.Do(context.Background(), "POST", start.URL, strings.NewReader(`{"pin":"secret"}`), request.Options{
+		OnRequest: func(req *http.Request) error {
+			request.MarkCredentialBody(req)
+			return nil
+		},
+	})
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err == nil || !strings.Contains(err.Error(), "refusing cross-origin redirect") {
+		t.Fatalf("Do() error = %v, want credential body redirect refusal", err)
+	}
+	if targetHit.Load() {
+		t.Fatal("credential-bearing request body reached cross-origin redirect target")
+	}
+}
+
 func TestSameOriginUsesSchemeHostAndEffectivePort(t *testing.T) {
 	tests := []struct {
 		name string

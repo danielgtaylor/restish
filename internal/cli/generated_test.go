@@ -1839,6 +1839,26 @@ func TestGeneratedCommandRequiredBodyMissingFailsBeforeRequest(t *testing.T) {
 	}
 }
 
+func TestGeneratedCommandWithoutBodyRejectsPromptSecret(t *testing.T) {
+	var calls atomic.Int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/items", func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+
+	env := setupGeneratedEnv(t, mux)
+	c := env.newCLI()
+	err := c.Run([]string{"restish", "tapi", "list-items", "--rsh-prompt-secret", "token"})
+	if err == nil || !strings.Contains(err.Error(), "operation has no request body") {
+		t.Fatalf("expected bodyless operation error, got %v", err)
+	}
+	if got := calls.Load(); got != 0 {
+		t.Fatalf("server was called %d times", got)
+	}
+}
+
 func TestGeneratedCommandRequiredBodyCanComeFromStdin(t *testing.T) {
 	var gotBody []byte
 	mux := http.NewServeMux()
@@ -2248,6 +2268,7 @@ func TestGeneratedCommandOptionalJSONSchemaValidation(t *testing.T) {
             "properties": {
               "server_id": {"type": "string", "readOnly": true},
               "name": {"type": "string"},
+              "pin": {"type": "string", "pattern": "^allowed$"},
               "count": {"type": "integer"},
               "note": {"type": "string", "nullable": true},
               "details": {
@@ -2343,6 +2364,20 @@ func TestGeneratedCommandOptionalJSONSchemaValidation(t *testing.T) {
 				t.Fatalf("validation error should not send request; hits = %d, want 2", got)
 			}
 		})
+	}
+
+	const secret = "invalid-prompted-secret"
+	c = env.newCLI()
+	c.Hooks().PassReader = strings.NewReader(secret + "\n")
+	err := c.Run([]string{"restish", "tapi", "validate-body", "--rsh-validate", "--rsh-prompt-secret", "pin", "name: Ada"})
+	if err == nil {
+		t.Fatal("expected prompted secret validation error")
+	}
+	if msg := err.Error(); strings.Contains(msg, secret) || !strings.Contains(msg, "<redacted>") {
+		t.Fatalf("validation error leaked prompted secret: %s", msg)
+	}
+	if got := hits.Load(); got != 2 {
+		t.Fatalf("validation error should not send request; hits = %d, want 2", got)
 	}
 }
 

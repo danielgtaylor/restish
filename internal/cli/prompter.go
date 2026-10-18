@@ -7,13 +7,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/rest-sh/restish/v2/internal/output"
 	"golang.org/x/term"
 )
 
-var promptOpenTTY = func() (*os.File, error) {
+var promptOpenTTY = openPromptTTY
+
+func openPromptTTY() (*os.File, error) {
+	if runtime.GOOS == "windows" {
+		return os.OpenFile("CONIN$", os.O_RDWR, 0)
+	}
 	return os.Open("/dev/tty")
 }
 
@@ -105,7 +111,14 @@ func (c *CLI) promptSource() (io.Reader, func()) {
 }
 
 func (c *CLI) canPromptInteractively() bool {
-	if c.hooks.PromptFunc != nil || c.hooks.SecretFunc != nil || c.hooks.PassReader != nil {
+	if c.hooks.PromptFunc != nil {
+		return true
+	}
+	return c.canPromptSecretInteractively()
+}
+
+func (c *CLI) canPromptSecretInteractively() bool {
+	if c.hooks.SecretFunc != nil || c.hooks.PassReader != nil {
 		return true
 	}
 	if output.IsTerminalReader(c.Stdin) {

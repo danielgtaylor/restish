@@ -458,6 +458,9 @@ func credentialStrippingRedirectPolicy(req *http.Request, via []*http.Request) e
 	if prev == nil || SameOrigin(prev.URL, req.URL) {
 		return nil
 	}
+	if req.Body != nil && IsMarkedCredentialBody(prev) {
+		return fmt.Errorf("refusing cross-origin redirect with a credential-bearing request body")
+	}
 	for name := range req.Header {
 		if IsCredentialHeader(name) || IsMarkedCredentialHeader(req, name) {
 			delete(req.Header, name)

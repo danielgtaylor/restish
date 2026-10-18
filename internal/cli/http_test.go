@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -12,12 +13,14 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/rest-sh/restish/v2/config"
 	"github.com/rest-sh/restish/v2/internal/cli"
+	requestpkg "github.com/rest-sh/restish/v2/internal/request"
 )
 
 // requestRecorder is a small helper that captures the last HTTP request
@@ -102,6 +105,76 @@ func TestHTTPVerbUppercaseAlias(t *testing.T) {
 	}
 	if got := rr.Last().Method; got != "GET" {
 		t.Errorf("expected GET, got %q", got)
+	}
+}
+
+func TestHTTPPromptSecretBodyValue(t *testing.T) {
+	const secret = `arbitrary: @value, "quoted"`
+	const secondSecret = "second-secret"
+	var rr requestRecorder
+	var prompts []string
+	c, out, errOut := newTestCLI(t)
+	c.Hooks().SecretFunc = func(_ context.Context, label string) (string, error) {
+		prompts = append(prompts, label)
+		if strings.Contains(label, "backup") {
+			return secondSecret, nil
+		}
+		return secret, nil
+	}
+	useTransport(c, func(r *http.Request) (*http.Response, error) {
+		if !requestpkg.IsMarkedCredentialBody(r) {
+			t.Error("prompted request body was not marked as credential-bearing")
+		}
+		rr.capture(r)
+		return jsonResponse(200, `{}`), nil
+	})
+
+	err := c.Run([]string{"restish", "post", "-v", "--rsh-print", "B", "--rsh-prompt-secret", "credentials.codes[0]", "--rsh-prompt-secret", "credentials.backup", "https://api.example.com/items", "name: visible"})
+	if err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rr.body, &body); err != nil {
+		t.Fatalf("decode request body: %v", err)
+	}
+	credentials, ok := body["credentials"].(map[string]any)
+	codes, codesOK := credentials["codes"].([]any)
+	if !ok || !codesOK || len(codes) != 1 || codes[0] != secret || credentials["backup"] != secondSecret || body["name"] != "visible" {
+		t.Fatalf("request body = %#v, prompts = %q, stderr = %q", body, prompts, errOut.String())
+	}
+	wantPrompts := []string{"Secret for credentials.codes[0]: ", "Secret for credentials.backup: "}
+	if !reflect.DeepEqual(prompts, wantPrompts) {
+		t.Fatalf("prompts = %q, want %q", prompts, wantPrompts)
+	}
+	stderr := errOut.String()
+	redacted := strings.Contains(stderr, `"<redacted>"`) || strings.Contains(stderr, `"\u003credacted\u003e"`)
+	if strings.Contains(stderr, secret) || strings.Contains(stderr, secondSecret) || !redacted {
+		t.Fatalf("verbose output did not redact prompted secret:\n%s", stderr)
+	}
+	stdout := out.String()
+	printedRedacted := strings.Contains(stdout, `"<redacted>"`) || strings.Contains(stdout, `"\u003credacted\u003e"`)
+	if strings.Contains(stdout, secret) || strings.Contains(stdout, secondSecret) || !printedRedacted {
+		t.Fatalf("printed request body did not redact prompted secret:\n%s", stdout)
+	}
+}
+
+func TestHTTPPromptSecretRedactsRequestError(t *testing.T) {
+	const secret = "request\t\"error\\secret<"
+	escapedSecret := strconv.Quote(secret)
+	c, _, _ := newTestCLI(t)
+	c.Hooks().SecretFunc = func(context.Context, string) (string, error) { return secret, nil }
+	useTransport(c, func(r *http.Request) (*http.Response, error) {
+		return nil, errors.New("request failed for " + escapedSecret)
+	})
+
+	err := c.Run([]string{"restish", "post", "--rsh-prompt-secret", "pin", "https://api.example.com/items"})
+	if err == nil || strings.Contains(err.Error(), secret) || strings.Contains(err.Error(), escapedSecret) || !strings.Contains(err.Error(), "<redacted>") {
+		t.Fatalf("request error was not redacted: %v", err)
+	}
+	for cause := errors.Unwrap(err); cause != nil; cause = errors.Unwrap(cause) {
+		if strings.Contains(cause.Error(), secret) || strings.Contains(cause.Error(), escapedSecret) {
+			t.Fatalf("unwrapped request error leaked prompted secret: %v", cause)
+		}
 	}
 }
 
@@ -1154,6 +1227,30 @@ func TestMultipartBody(t *testing.T) {
 	}
 	if filenames["file"] != "upload.txt" {
 		t.Fatalf("expected upload.txt filename, got %q", filenames["file"])
+	}
+}
+
+func TestMultipartPromptSecretKeepsAtPrefixLiteral(t *testing.T) {
+	secret := "@" + filepath.Join(t.TempDir(), "existing-secret")
+	if err := os.WriteFile(strings.TrimPrefix(secret, "@"), []byte("file contents"), 0o600); err != nil {
+		t.Fatalf("write secret-named file: %v", err)
+	}
+	c, _, _ := newTestCLI(t)
+	c.Hooks().SecretFunc = func(context.Context, string) (string, error) { return secret, nil }
+	var got string
+	useTransport(c, func(r *http.Request) (*http.Response, error) {
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			t.Fatalf("parse multipart form: %v", err)
+		}
+		got = r.FormValue("pin")
+		return jsonResponse(200, `{}`), nil
+	})
+
+	if err := c.Run([]string{"restish", "post", "-c", "multipart", "--rsh-prompt-secret", "pin", "https://api.example.com/items"}); err != nil {
+		t.Fatalf("post: %v", err)
+	}
+	if got != secret {
+		t.Fatalf("pin = %q, want literal %q", got, secret)
 	}
 }
 

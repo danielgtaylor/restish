@@ -64,6 +64,22 @@ func TestCacheSecondRequestServedFromCache(t *testing.T) {
 	}
 }
 
+func TestCachePromptedBodyBypassesCache(t *testing.T) {
+	var hits atomic.Int32
+	srv := newCacheableServer(t, &hits)
+	cacheDir := t.TempDir()
+
+	for _, secret := range []string{"first-secret", "second-secret"} {
+		app := newCacheApp(t, cacheDir)
+		app.CLI.Hooks().PassReader = strings.NewReader(secret + "\n")
+		app.Run("get", "--rsh-prompt-secret", "token", srv.URL)
+	}
+
+	if n := hits.Load(); n != 2 {
+		t.Fatalf("prompted request bodies should bypass the cache, got %d server hits", n)
+	}
+}
+
 func TestCacheAuthenticatedProfileRequestUsesProfileNamespace(t *testing.T) {
 	var hits atomic.Int32
 	srv := newCacheableServer(t, &hits)
